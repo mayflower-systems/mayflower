@@ -1,6 +1,6 @@
 use mayf_characteristic_linear::{LinearParams, LinearParamsError};
 use mayf_fixed_dashu::DashuFixed12;
-use mayf_fixed_number::{FixedNumber, NonNeg};
+use mayf_fixed_number::{FixedNumber, Pos};
 
 type Fx = DashuFixed12;
 
@@ -14,8 +14,12 @@ fn stores_only_a_valid_neutral_slope() {
 
     assert_eq!(params.slope().get(), n(2));
     assert_eq!(
+        LinearParams::try_new(n(0)),
+        Err(LinearParamsError::NonPositiveSlope)
+    );
+    assert_eq!(
         LinearParams::try_new(n(-1)),
-        Err(LinearParamsError::NegativeSlope)
+        Err(LinearParamsError::NonPositiveSlope)
     );
 }
 
@@ -34,13 +38,13 @@ fn fuzz_linear_parameter_taxonomy() {
         let slope = Fx::checked_from_i128(slope_raw).unwrap();
 
         let res = LinearParams::try_new(slope);
-        if slope_raw < 0 {
-            assert_eq!(res, Err(LinearParamsError::NegativeSlope));
+        if slope_raw <= 0 {
+            assert_eq!(res, Err(LinearParamsError::NonPositiveSlope));
         } else {
             let p = res.unwrap();
             assert_eq!(p.slope().get(), slope);
 
-            let direct = LinearParams::new(NonNeg::new(slope).unwrap());
+            let direct = LinearParams::new(Pos::new(slope).unwrap());
             assert_eq!(p, direct);
         }
     }
