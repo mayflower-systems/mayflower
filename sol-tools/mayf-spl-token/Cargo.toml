@@ -1,0 +1,15 @@
+[package]
+name = "mayf-spl-token"
+version = "0.1.0"
+description = "Small Anchor CPI helpers for the SPL Token program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_spl_token"
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
