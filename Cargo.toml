@@ -30,6 +30,7 @@ mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
 mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0" }
 mayf-monotone = { path = "avm/rust/mayf-monotone", version = "0.1.0" }
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
+mayf-spl-token = { path = "sol-tools/mayf-spl-token", version = "0.1.0" }
 
 # Third-party crates.
 # Declare every third-party crate here, once, with an exact `=` pin.
@@ -37,9 +38,11 @@ mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", ver
 # Members may add features; they may not change the version.
 # Cargo.lock pins the transitive graph by version and checksum; build with `--locked`.
 # To upgrade a crate, change its pin here, then run `cargo update -p <crate>`.
+anchor-lang = "=1.1.2"
 # Must match the anchor-lang-idl version that anchor-lang =1.1.2 uses, so IDL
 # extraction matches the programs it describes.
 anchor-lang-idl = "=0.1.4"
+anchor-spl = "=1.1.2"
 anyhow = "=1.0.104"
 clap = "=4.6.7"
 crypto-bigint = { version = "=0.5.5", default-features = false }
