@@ -1,0 +1,18 @@
+[package]
+name = "mayf-sol-log-sink-reader"
+version = "1.0.0"
+description = "Extract Solana log-sink payloads by calling program"
+license.workspace = true
+repository.workspace = true
+publish = ["crates-io"]
+edition.workspace = true
+
+[lib]
+name = "mayf_sol_log_sink_reader"
+
+[dependencies]
+mayf-sol-log-sink-id.workspace = true
+solana-address = { workspace = true, default-features = true }
+# Decoded message and inner-instruction types.
+solana-message.workspace = true
+

@@ -1,0 +1,18 @@
+[package]
+name = "mayf-sol-log-sink-cpi"
+version = "1.0.0"
+description = "Allocation-free CPI helper for the Solana log sink"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = ["crates-io"]
+
+[lib]
+name = "mayf_sol_log_sink_cpi"
+
+[dependencies]
+mayf-sol-log-sink-id.workspace = true
+# Safe CPI over borrowed instruction data and a zero-length account array.
+solana-account-view.workspace = true
+solana-instruction-view.workspace = true
+solana-program-error.workspace = true

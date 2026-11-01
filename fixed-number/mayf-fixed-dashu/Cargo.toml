@@ -1,0 +1,16 @@
+[package]
+name = "mayf-fixed-dashu"
+version = "0.1.0"
+description = "Implement FixedNumber for dashu"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_fixed_dashu"
+doctest = false
+
+[dependencies]
+mayf-fixed-number.workspace = true
+dashu.workspace = true

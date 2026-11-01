@@ -1,0 +1,19 @@
+[package]
+name = "mayf-reward-clearing"
+version = "0.1.0"
+description = "Pure reward-clearing auction mathematics and accounting transitions"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_reward_clearing"
+
+[dependencies]
+mayf-fixed-number.workspace = true
+
+[dev-dependencies]
+dashu.workspace = true
+mayf-fixed-dashu.workspace = true
+mayf-fixed-drivers.workspace = true

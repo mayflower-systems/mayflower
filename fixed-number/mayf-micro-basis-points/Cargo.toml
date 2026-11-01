@@ -1,0 +1,18 @@
+[package]
+name = "mayf-micro-basis-points"
+description = "Validated micro-basis-point wire rates and their fixed-point conversion"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "mayf_micro_basis_points"
+doctest = false
+
+[dependencies]
+mayf-fixed-number.workspace = true
+
+[dev-dependencies]
+mayf-fixed-drivers.workspace = true

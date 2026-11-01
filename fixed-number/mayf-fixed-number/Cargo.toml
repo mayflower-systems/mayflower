@@ -1,0 +1,12 @@
+[package]
+name = "mayf-fixed-number"
+version = "0.1.0"
+description = "Checked fixed-point traits, constrained values, and bounded expressions"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "mayf_fixed_number"
+doctest = true

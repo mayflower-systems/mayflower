@@ -1,0 +1,22 @@
+[package]
+name = "mayf-anchor-idl-to-gen"
+version = "0.1.0"
+description = "Build Anchor IDLs and generate Anchor-free Rust and TypeScript clients"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_anchor_idl_to_gen"
+
+[[bin]]
+name = "anchor-idl-to-gen"
+path = "src/main.rs"
+
+[dependencies]
+anchor-lang-idl = { workspace = true, features = ["build"] }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+solana-address = { workspace = true, features = ["decode"] }

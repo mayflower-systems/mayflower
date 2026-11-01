@@ -1,0 +1,11 @@
+[package]
+name = "mayf-sol-log-sink-id"
+version = "1.0.0"
+description = "Shared Solana log sink program ID"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = ["crates-io"]
+
+[dependencies]
+solana-address = { workspace = true, features = ["decode"] }

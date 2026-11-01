@@ -1,0 +1,5 @@
+# rust build artifacts
+target/
+
+# GitHub wiki: git clone --depth 1 https://github.com/mayflower-systems/system.wiki.git wiki
+/wiki/

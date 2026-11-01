@@ -1,0 +1,15 @@
+[package]
+name = "mayf-referral"
+description = "Referral membership, admission offers, and per-scope deposit lanes"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version = "0.1.0"
+publish = false
+
+[lib]
+name = "mayf_referral"
+
+[dependencies]
+mayf-fixed-drivers.workspace = true
+referral-tree.workspace = true

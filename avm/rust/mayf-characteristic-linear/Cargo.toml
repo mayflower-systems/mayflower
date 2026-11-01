@@ -1,0 +1,18 @@
+[package]
+name = "mayf-characteristic-linear"
+description = "Neutral parameters for the linear characteristic function"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version = "0.1.0"
+publish = false
+
+[lib]
+name = "mayf_characteristic_linear"
+doctest = false
+
+[dependencies]
+mayf-fixed-number.workspace = true
+
+[dev-dependencies]
+mayf-fixed-dashu.workspace = true

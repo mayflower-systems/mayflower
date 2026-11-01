@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = [
+    "fixed-number/*",
+    "sol-log-sink/*",
+    "reward-clearing/rust/*",
+    "referral/rust/*",
+    "avm/rust/*",
+    "sol-tools/*",
+]
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/mayflower-systems/system"
+
+[workspace.dependencies]
+# Workspace crates. Paths are relative to this file.
+# Each entry needs a version to be published: crates.io has no paths, so
+# `cargo package` drops the path and keeps only the version. The version is a
+# caret range; the local build fails if the crate's own version leaves it.
+# Release tooling (release-plz) rewrites these versions on each release.
+mayf-fixed-number = { path = "fixed-number/mayf-fixed-number", version = "0.1.0" }
+mayf-fixed-dashu = { path = "fixed-number/mayf-fixed-dashu", version = "0.1.0" }
+mayf-fixed-drivers = { path = "fixed-number/mayf-fixed-drivers", version = "0.1.0" }
+mayf-micro-basis-points = { path = "fixed-number/mayf-micro-basis-points", version = "0.1.0" }
+mayf-sol-log-sink-id = { path = "sol-log-sink/mayf-sol-log-sink-id", version = "1.0.0" }
+referral-tree = { path = "referral/rust/referral-tree", version = "0.1.0" }
+mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
+mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0" }
+mayf-monotone = { path = "avm/rust/mayf-monotone", version = "0.1.0" }
+mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
+
+# Third-party crates.
+# Declare every third-party crate here, once, with an exact `=` pin.
+# Member crates reference these with `workspace = true` and never set a version.
+# Members may add features; they may not change the version.
+# Cargo.lock pins the transitive graph by version and checksum; build with `--locked`.
+# To upgrade a crate, change its pin here, then run `cargo update -p <crate>`.
+# Must match the anchor-lang-idl version that anchor-lang =1.1.2 uses, so IDL
+# extraction matches the programs it describes.
+anchor-lang-idl = "=0.1.4"
+anyhow = "=1.0.104"
+clap = "=4.6.7"
+crypto-bigint = { version = "=0.5.5", default-features = false }
+dashu = { version = "=0.4.4", default-features = false }
+fixed = { version = "=1.28.0", default-features = false }
+serde_json = "=1.0.154"
+solana-account-view = { version = "=2.1.0", default-features = false }
+solana-address = { version = "=2.9.0", default-features = false }
+solana-define-syscall = "=5.3.0"
+# The fixed-size CPI helper borrows data; the allocating `slice-cpi` API is disabled.
+solana-instruction-view = { version = "=2.1.0", default-features = false, features = ["cpi"] }
+solana-message = "=4.6.0"
+solana-program-error = "=3.0.1"

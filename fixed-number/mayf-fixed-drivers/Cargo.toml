@@ -1,0 +1,23 @@
+[package]
+name = "mayf-fixed-drivers"
+version = "0.1.0"
+description = "Explicit, checked fixed-point drivers for Mayflower math"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[features]
+default = []
+# Allocating host/reference arithmetic; constrained targets need not enable it.
+reference = ["dep:dashu", "dep:mayf-fixed-dashu"]
+
+[dependencies]
+mayf-fixed-number.workspace = true
+fixed.workspace = true
+crypto-bigint.workspace = true
+dashu = { workspace = true, optional = true }
+mayf-fixed-dashu = { workspace = true, optional = true }
+
+[dev-dependencies]
+dashu.workspace = true
