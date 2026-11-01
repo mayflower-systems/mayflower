@@ -1,0 +1,23 @@
+[package]
+name = "mayf-characteristic-linear-driver"
+description = "Certified affine point and integral calculations for linear characteristics"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version = "0.1.0"
+publish = false
+
+[lib]
+name = "mayf_characteristic_linear_driver"
+doctest = true
+
+[dependencies]
+mayf-characteristic = { workspace = true }
+mayf-characteristic-linear = { workspace = true }
+mayf-fixed-number = { workspace = true }
+mayf-monotone = { workspace = true }
+
+[dev-dependencies]
+mayf-fixed-drivers = { workspace = true }
+mayf-fixed-dashu = { workspace = true }
+dashu = { workspace = true }

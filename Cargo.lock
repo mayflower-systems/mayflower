@@ -1070,6 +1070,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-characteristic-linear-driver"
+version = "0.1.0"
+dependencies = [
+ "dashu",
+ "mayf-characteristic",
+ "mayf-characteristic-linear",
+ "mayf-fixed-dashu",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+ "mayf-monotone",
+]
+
+[[package]]
 name = "mayf-fixed-dashu"
 version = "0.1.0"
 dependencies = [
