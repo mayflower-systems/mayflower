@@ -2,13 +2,14 @@
 
 //! Persistent parameters for the origin-anchored linear characteristic.
 
-use mayf_fixed_number::{FixedNumber, NonNeg};
+use mayf_fixed_number::{FixedNumber, Pos};
 
 /// A semantic failure while constructing linear parameters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LinearParamsError {
-    /// A negative slope would violate the increasing characteristic contract.
-    NegativeSlope,
+    /// A zero or negative slope would violate the increasing characteristic
+    /// contract.
+    NonPositiveSlope,
 }
 
 /// Parameters for the neutral characteristic `f(x) = slope * x`.
@@ -16,34 +17,30 @@ pub enum LinearParamsError {
 /// This is the persistable representation. Affine schedule state belongs to a
 /// disposable calculator, not to these parameters. Construction of a concrete
 /// characteristic asserts the semantic `Characteristic` contract; this
-/// parameter type only rejects a slope that points downward.
+/// parameter type only rejects a slope that is zero or negative.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LinearParams<N>
 where
     N: FixedNumber,
 {
-    slope: NonNeg<N>,
+    slope: Pos<N>,
 }
 
 impl<N> LinearParams<N>
 where
     N: FixedNumber,
 {
-    pub const fn new(slope: NonNeg<N>) -> Self {
+    pub const fn new(slope: Pos<N>) -> Self {
         Self { slope }
     }
 
     pub fn try_new(slope: N) -> Result<Self, LinearParamsError> {
-        if slope < N::ZERO {
-            return Err(LinearParamsError::NegativeSlope);
-        }
-
-        Ok(Self::new(
-            NonNeg::new(slope).map_err(|_| LinearParamsError::NegativeSlope)?,
-        ))
+        Pos::new(slope)
+            .map(Self::new)
+            .map_err(|_| LinearParamsError::NonPositiveSlope)
     }
 
-    pub const fn slope(&self) -> NonNeg<N> {
+    pub const fn slope(&self) -> Pos<N> {
         self.slope
     }
 }
