@@ -1,0 +1,17 @@
+[package]
+name = "mayf-avm-prog"
+version = "0.1.0"
+description = "AVM program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_avm_prog"
+doctest = true
+
+[dependencies]
+mayf-fixed-number = { workspace = true }
+mayf-schedule-segmented = { workspace = true }
+mayf-micro-basis-points = { workspace = true }
