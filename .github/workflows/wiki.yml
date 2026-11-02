@@ -1,0 +1,34 @@
+name: Wiki
+
+# docs/github-wiki/content/ is a git subtree of the GitHub wiki. This check
+# fails when the two differ. docs/github-wiki/README.md explains how to sync
+# them.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wiki:
+    name: subtree matches wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare docs/github-wiki/content with the wiki
+        run: |
+          prefix=docs/github-wiki/content
+          git fetch --quiet --depth=1 "https://github.com/${GITHUB_REPOSITORY}.wiki.git" master
+          if [ "$(git rev-parse "HEAD:$prefix")" = "$(git rev-parse 'FETCH_HEAD^{tree}')" ]; then
+            echo "$prefix matches the wiki."
+            exit 0
+          fi
+          echo "::error::$prefix differs from the wiki. See docs/github-wiki/README.md to sync them."
+          echo "How the wiki differs from $prefix:"
+          git diff --stat "HEAD:$prefix" FETCH_HEAD
+          exit 1
