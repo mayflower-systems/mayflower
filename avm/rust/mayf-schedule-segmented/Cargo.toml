@@ -1,0 +1,23 @@
+[package]
+name = "mayf-schedule-segmented"
+version = "0.1.0"
+description = "Segmented issuance schedules"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_schedule_segmented"
+doctest = true
+
+[dependencies]
+mayf-characteristic = { workspace = true }
+mayf-fixed-number = { workspace = true }
+mayf-monotone = { workspace = true }
+
+[dev-dependencies]
+mayf-characteristic-linear-driver = { workspace = true }
+mayf-fixed-drivers = { workspace = true }
+mayf-fixed-dashu = { workspace = true }
+dashu = { workspace = true }
