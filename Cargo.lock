@@ -1140,6 +1140,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-schedule-segmented"
+version = "0.1.0"
+dependencies = [
+ "dashu",
+ "mayf-characteristic",
+ "mayf-characteristic-linear-driver",
+ "mayf-fixed-dashu",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+ "mayf-monotone",
+]
+
+[[package]]
 name = "mayf-sol-log-sink-cpi"
 version = "1.0.0"
 dependencies = [
