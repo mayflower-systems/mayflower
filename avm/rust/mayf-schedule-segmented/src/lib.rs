@@ -3,11 +3,11 @@
 #![doc = include_str!("../README.md")]
 
 mod calculator;
-pub mod geometry;
-mod schedule;
+mod error;
+mod segmentation;
+mod shifted;
 
-pub use geometry::{Segmentation, SegmentationError, SegmentedRaiseFloorProposal};
-pub use schedule::{
-    BuyQuote, FloorRaise, FloorSchedule, RaisableFloorSchedule, Schedule, ScheduleError,
-    ScheduleResult, SegmentedSchedule, SellQuote,
-};
+pub use calculator::{SegmentedScheduleCalculator, compile_segmented_schedule};
+pub use error::{ScheduleError, ScheduleResult};
+pub use segmentation::{MainReference, Segmentation};
+pub use shifted::ShiftedScheduleCalculator;

@@ -1,114 +1,143 @@
 # mayf-schedule-segmented
 
-Floor/ramp/main issuance schedules for Amplified Value Assets, following the
-[AVM specification](../../../docs/wiki/avm--specification.md). The schedule works
-with any implementation of `mayf_characteristic::Characteristic`; characteristic
-formulas and their rounding algorithms stay in the driver crate.
+Floor/ramp/main calculators for Amplified Value Assets, following the
+[AVM specification](../../../docs/github-wiki/content/AVM/AVM-Specification.md).
+Characteristic formulas and rounding algorithms stay in their driver crates.
 
-`geometry` owns immutable `Segmentation` and its structural transformations.
-`SegmentedSchedule` combines that geometry with a neutral characteristic and a
-horizontal supply shift. It implements the `Schedule`, `FloorSchedule`, and
-`RaisableFloorSchedule` contracts exported by this crate. Private calculators
-derive the affine views for each calculation. Persist the characteristic,
-geometry, and shift; affine transforms and calculators are disposable.
+## Layers
 
-## Price and reserve
+- `Segmentation` stores exact geometry and an independent `MainReference`.
+- `compile_segmented_schedule` constructs a disposable
+  `SegmentedScheduleCalculator` on the net-issued supply axis. It provides
+  `y`, `integrate`, and `contract_to`.
+- `ShiftedScheduleCalculator` optionally wraps that calculator to apply a signed
+  horizontal translation. It provides `y` and `integrate` in shifted supply
+  coordinates, and `translate` reuses its compiled components.
 
-Let `f` be the neutral characteristic, `p` the floor price, `s <= e` the ramp
-boundaries in curve coordinates, `k > 1` the ramp scalar, and `h` outstanding
-supply issued at the floor. For total supply coordinate `x`, the curve is
+The core has no horizontal-shift field. The wrapper handles coordinate placement
+without knowing about token operations. Market actions, supply accounting,
+quotes, fees, reserve checks, and floor-raise acceptance belong above both
+calculators. Persist the neutral characteristic, segmentation, and any market
+shift; derive calculators and affine views when needed.
 
-```text
-floor: p                                      for x <= h+s
-ramp:  p + k*(f(x-h) - f(s))                   for h+s < x < h+e
-main:  p + k*(f(e) - f(s)) + f(x-h) - f(e)    for x >= h+e
-```
+## Curve and precision
 
-The joins are continuous. Throughout the ramp, the ramp price is below the
-backward extension of main by `(k-1)*(f(e)-f(x-h))`. A zero-width ramp is valid;
-launch geometry has `s = e = 0`.
-
-Integrals split at the two boundaries, combining outward-rounded bounds from
-the characteristic calculators. `required_reserve` integrates from zero to
-current supply. Exact-AVA buy quotes charge the upper area bound; sell quotes
-pay the lower bound. Quotes contain principal amounts before any action fees.
-
-## State transitions
-
-- Ordinary buys move supply along the current curve without changing geometry.
-- Selling into the ramp contracts `e` to the remaining curve supply. Selling
-  into the floor collapses both boundaries there. Rebuying uses this contracted
-  main schedule; it does not restore the former one.
-- Issuing at the floor increases `h`, extending the floor and translating the
-  curve to the right. Redeeming outstanding floor-issued supply reverses that
-  shift. Ordinary curve redemption cannot reduce total supply below `h`.
-
-Geometry needs only `N: FixedNumber`; operational schedules need `N: SignedFixed`
-for negative horizontal translations. The implementation uses no allocation or
-floating-point conversion and accepts characteristics without `Copy` or `Clone`.
-Numeric failures cross the public interface as `ScheduleError`.
-
-## Raising the floor
-
-A `SegmentedRaiseFloorProposal` advances `s` by a positive amount and sets the
-new end to `max(old_e, new_s) + end_extension`, where the extension is
-nonnegative. Geometry may widen, shorten, or collapse the ramp.
-
-To keep prices aligned past the reshaped region, the new floor is derived from
+Let the neutral characteristic be `f`, the floor `F`, the ramp end `E`, the
+stored ramp width `W`, the scalar `k > 1`, and the main reference `(q, V)`.
+The exact ramp start is `A = E-W`:
 
 ```text
-increase = k*(f(new_s)-f(old_s)) - (k-1)*(f(new_e)-f(old_e))
+floor: F                           for 0 <= x < A
+ramp:  F + k*(f(x)-f(A))            for A <= x < E
+main:  V + f(x)-f(q)                for x >= E
 ```
 
-The driver evaluates these characteristic differences with anchored affine
-views. The schedule takes the certified lower bound of the increase, which
-must be at least one quantum. `FloorRaise::max_live_price_decrease` bounds the
-possible price drop introduced by this choice. Current supply must cover the
-reshaped region: the new end if it advances, otherwise the new start.
+Ramp width may be zero. Main owns the exact end point; an inactive ramp is
+neither compiled nor evaluated. At launch both boundaries and `q` are zero,
+and `V=F`, so the schedule is `F+f(x)`.
 
-The returned schedule is a candidate. The calling action checks its required
-reserve against backing and chooses an acceptable price tolerance. For the
-specification's area-preserving floor raise, it selects a proposal that also
-preserves required reserve. A surplus-funded floor investment may instead
-increase required reserve within the available backing. Constructing a candidate
-does not establish either reserve policy.
+The main reference is independent of the floor and ramp. A future floor-raise
+verifier can copy it unchanged while checking a proposed floor, end, and width.
+The ramp meets the floor by construction; the ramp/main join is a separate
+validation obligation. Constructors check structural geometry and forward
+component domains. Unverified candidates retain their actual piecewise values
+and do not implement `MonotoneCalculator` unconditionally.
 
-This example redistributes area exactly, raising the floor from 1 to 16 while
-preserving reserve and spot price at supply 6:
+Coordinates use exact checked grid arithmetic. Prices and integrals return
+`Bounds<NonNeg<N>>`. A bounded reference is copied whole; recompilation never
+chooses a new point from it. The compiler derives affine views without probing
+endpoints. Queries report component domain or arithmetic failures through
+`ScheduleError`.
+
+Integrals split at exact boundaries and combine outward-rounded component
+results. Query width is `Pos<N>`; internal empty pieces are skipped. The core
+requires no inverse search, numerical boundary approximation, allocation, or
+floating-point conversion. Characteristics need neither `Copy` nor `Clone`.
+
+## Contraction
+
+`contract_to(Q)` returns new segmentation for remaining **net-issued** supply.
+If `Q >= E`, it returns the original state. Otherwise, the new boundaries are:
+
+```text
+new_E = Q
+new_A = min(A, Q)
+new_W = new_E-new_A
+```
+
+The new main reference is `(Q, old_schedule.y(Q))`. This retains price and the
+prefix area through `Q`; subsequent issuance immediately uses unscaled main
+from characteristic input `Q`. Selling into the floor collapses the ramp
+without resetting positive progress. At `Q=0`, main becomes `F+f(x)`.
+
+Contraction remains in core coordinates even when a shifted wrapper is used.
+Callers own the relationship between circulating supply and net-issued supply.
+
+## Horizontal translation
+
+A wrapper with signed shift `h` has visible boundaries `A+h` and `E+h`.
+To keep the floor tail valid, construction requires `A+h >= 0` and representable
+boundaries. Positive shifts extend the tail; negative shifts consume it.
+
+Beyond the tail the wrapper delegates at input `x-h`. Within the tail it uses
+constant arithmetic, including positions whose translated input would be
+negative. Integration handles that flat prefix before delegating the rest.
+The characteristic's affine parameters remain unchanged.
+
+A market may add `n` to the shift when options are exercised, or subtract `n`
+when tokens are redeemed at the floor, while changing circulating supply by the
+same amount. These translations preserve the price at the shifted supply.
+The wrapper itself performs no issuance, redemption, or balance accounting.
+
+## Example
+
+This state has floor 16, a ramp over `[3,5]`, and unchanged main `1+8*x`.
+The optional translation consumes three units of tail:
 
 ```rust
 use mayf_characteristic_linear_driver::LinearCharacteristic;
 use mayf_fixed_drivers::I64F64;
 use mayf_fixed_number::{AboveOne, Bounds, FixedNumber, NonNeg, Pos};
 use mayf_schedule_segmented::{
-    Schedule, Segmentation, SegmentedRaiseFloorProposal, SegmentedSchedule,
+    MainReference, Segmentation, ShiftedScheduleCalculator,
+    compile_segmented_schedule,
 };
 
-let n = |value: i64| NonNeg::new(I64F64::from(value)).unwrap();
+let n = |value: u64| NonNeg::<I64F64>::from_u64(value).unwrap();
 let scalar = n(25).get().checked_div_floor(n(16).get()).unwrap();
-let schedule = SegmentedSchedule::new(
-    LinearCharacteristic::new(Pos::from_i32(8).unwrap()),
-    Segmentation::new(n(1), n(0), n(0), AboveOne::new(scalar).unwrap()).unwrap(),
+let characteristic = LinearCharacteristic::new(Pos::from_i32(8).unwrap());
+let segmentation = Segmentation::new(
+    n(16), n(5), n(2), AboveOne::new(scalar).unwrap(),
+    MainReference::exact(n(0), n(1)),
 ).unwrap();
-let raised = schedule.raise_floor(
-    n(6), SegmentedRaiseFloorProposal::new(Pos::from_i32(3).unwrap(), n(2)),
-).unwrap();
+let core = compile_segmented_schedule(&characteristic, segmentation).unwrap();
+assert_eq!(core.y(n(6)).unwrap(), Bounds::exact(n(49)));
+assert_eq!(
+    core.integrate(n(0), Pos::from_i32(6).unwrap()).unwrap(),
+    Bounds::exact(n(150)),
+);
 
-assert_eq!(raised.new_floor, n(16));
-assert_eq!(raised.next_schedule.required_reserve(n(6)).unwrap(), Bounds::exact(n(150)));
-assert_eq!(schedule.required_reserve(n(6)).unwrap(), Bounds::exact(n(150)));
-assert_eq!(raised.next_schedule.spot_price(n(6)).unwrap(), Bounds::exact(n(49)));
-assert_eq!(schedule.spot_price(n(6)).unwrap(), Bounds::exact(n(49)));
-assert_eq!(raised.max_live_price_decrease, n(0));
+let shifted = ShiftedScheduleCalculator::new(
+    core, I64F64::from_i32(-3).unwrap(),
+).unwrap();
+assert_eq!(shifted.ramp_start(), n(0));
+assert_eq!(shifted.y(n(3)).unwrap(), Bounds::exact(n(49)));
+assert_eq!(
+    shifted.integrate(n(0), Pos::from_i32(3).unwrap()).unwrap(),
+    Bounds::exact(n(102)),
+);
 ```
 
 ## Verification
 
 Run `cargo test -p mayf-schedule-segmented --locked`.
 
-Tests compare piecewise prices, integrals, contraction, and floor-raise
-certificates against exact integer formulas on binary, decimal, and coarse
-grids. Boundary cases cover collapsed ramps, shifts, conservative quotes,
-small floor advances, and checked arithmetic failures. Successful bounds enclose
-the exact values; chained rounding need not give the narrowest possible bounds,
-and unrepresentable intermediates remain checked failures.
+Tests use independent exact integer oracles on binary, decimal, and coarse
+numeric grids. They check containment and error measured in grid quanta for
+prices and areas across joins, signed shifts, and contraction. Focused cases
+check unchanged main placement, retained progress and prefix area, inactive
+ramps, and checked arithmetic failures. Affine-view observations verify the
+neutral input mapping without adding another characteristic implementation.
+
+The [calculator specification](SPEC.md) describes the layer boundaries and the
+market accounting required by future validation and floor-raise layers.

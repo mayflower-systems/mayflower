@@ -1,4 +1,4 @@
-//! Exact raw-integer oracles for composition, independent of driver rounding.
+//! Independent raw-integer oracles for affine composition and piecewise areas.
 use core::fmt::Debug;
 use dashu::{base::DivRem, integer::UBig};
 use mayf_characteristic_linear_driver::LinearCharacteristic;
@@ -6,7 +6,7 @@ use mayf_fixed_dashu::DashuFixed12;
 use mayf_fixed_drivers::{I64F64, I64Scaled};
 use mayf_fixed_number::{AboveOne, Bounds, NonNeg, Pos, SignedFixed};
 use mayf_schedule_segmented::{
-    Schedule, Segmentation, SegmentedRaiseFloorProposal, SegmentedSchedule,
+    MainReference, Segmentation, ShiftedScheduleCalculator, compile_segmented_schedule,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -24,7 +24,7 @@ fn big(value: i128) -> UBig {
 }
 
 impl Curve {
-    // Price numerator with denominator S^2.
+    // Price in raw units, with denominator S^2.
     fn price(self, x: i128, s: &UBig) -> UBig {
         let ramp = (x - self.shift - self.start)
             .max(0)
@@ -35,8 +35,8 @@ impl Curve {
             + big(self.slope) * s * big(main)
     }
 
-    // Integral from zero, numerator with denominator 2*S^3. Positive-part
-    // squares account for both boundaries without calling piecewise calculators.
+    // Integral from zero in raw units, with denominator 2*S^3.
+    // Positive-part squares account for both joins independently of splitting.
     fn primitive(self, x: i128, s: &UBig) -> UBig {
         let start_distance = big((x - self.shift - self.start).max(0));
         let end_distance = big((x - self.shift - self.end).max(0));
@@ -67,6 +67,7 @@ fn assert_encloses(actual: (i128, i128), ideal: (i128, i128), slack: i128) {
 
 fn check_math<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_raw: fn(N) -> i128) {
     let nn = |raw| NonNeg::new(from_raw(raw)).unwrap();
+    let pos = |raw| Pos::new(from_raw(raw)).unwrap();
     let edges = |b: Bounds<NonNeg<N>>| (to_raw(b.lower().get()), to_raw(b.upper().get()));
     let s = big(scale);
     let price_denominator = &s * &s;
@@ -81,136 +82,133 @@ fn check_math<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
     for case in 0..128 {
         let mut curve = Curve {
             floor: sample(8 * scale),
-            slope: scale + sample(3 * scale),
+            slope: 1 + sample(4 * scale),
             scalar: scale + 1 + sample(2 * scale),
-            start: sample(4 * scale),
+            start: if case % 16 == 0 { 0 } else { sample(4 * scale) },
             end: 0,
-            shift: sample(3 * scale),
+            shift: 0,
         };
         curve.end = curve.start + if case % 8 == 0 { 0 } else { sample(4 * scale) };
-        let geometry = Segmentation::new(
+        curve.shift = if case % 4 == 0 {
+            -curve.start
+        } else {
+            sample(curve.start + 3 * scale + 1) - curve.start
+        };
+        let unshifted = Curve { shift: 0, ..curve };
+        // Certify the exact ramp-end rate independently, including off-grid
+        // rates whose reference must retain a nonzero enclosure width.
+        let (lower, upper) = outward(unshifted.price(curve.end, &s), &price_denominator);
+        let segmentation = Segmentation::new(
             nn(curve.floor),
-            nn(curve.start),
             nn(curve.end),
+            nn(curve.end - curve.start),
             AboveOne::new(from_raw(curve.scalar)).unwrap(),
+            MainReference::new(nn(curve.end), Bounds::new(nn(lower), nn(upper)).unwrap()),
         )
         .unwrap();
-        let schedule = SegmentedSchedule::with_horizontal_shift(
-            LinearCharacteristic::new(Pos::new(from_raw(curve.slope)).unwrap()),
-            geometry,
-            nn(curve.shift),
-        )
-        .unwrap();
-        let start = curve.shift + curve.start;
-        let end = curve.shift + curve.end;
-        // Sample both sides and the exact position of every join.
-        for x in [
-            0,
-            curve.shift,
-            (start - 1).max(0),
-            start,
-            start + 1,
-            (end - 1).max(0),
-            end,
-            end + 1,
-            end + 3 * scale,
-        ] {
-            assert_encloses(
-                edges(schedule.y(nn(x)).unwrap()),
-                outward(curve.price(x, &s), &price_denominator),
-                6,
-            );
-        }
-        for (lo, width) in [
-            (0, end + 3 * scale),
-            ((start - 1).max(0), 2),
-            ((end - 1).max(0), 2),
-            (start, end - start),
-            (end, 3 * scale),
-            (0, 0),
-        ] {
-            let hi = lo + width;
-            let ideal = outward(
-                curve.primitive(hi, &s) - curve.primitive(lo, &s),
-                &area_denominator,
-            );
-            // Floor rounding <= 1q; ramp slope error times span <= 8q, plus
-            // <= 5q formula rounding; main anchor error <= 6q over width <= 4,
-            // plus <= 4q formula rounding. All three grids have q <= 0.1.
-            let area = schedule.integrate(nn(lo), nn(width)).unwrap();
-            assert_encloses(edges(area), ideal, 1 + 8 + 5 + 6 * 4 + 4);
-            if lo >= curve.shift {
-                let buy = schedule
-                    .quote_buy_with_exact_ava_out(nn(lo), nn(width))
-                    .unwrap();
-                let sell = schedule
-                    .quote_sell_with_exact_ava_in(nn(hi), nn(width))
-                    .unwrap();
-                assert_eq!(buy.reserve_in, area.upper());
-                assert_eq!(sell.reserve_out, area.lower());
+        let characteristic = LinearCharacteristic::new(pos(curve.slope));
+        let core = compile_segmented_schedule(&characteristic, segmentation).unwrap();
+        let shifted = ShiftedScheduleCalculator::new(core, from_raw(curve.shift)).unwrap();
+
+        for (expected, use_shift) in [(unshifted, false), (curve, true)] {
+            let start = expected.start + expected.shift;
+            let end = expected.end + expected.shift;
+            for x in [
+                0,
+                (start - 1).max(0),
+                start,
+                start + 1,
+                (end - 1).max(0),
+                end,
+                end + 1,
+                end + 3 * scale,
+            ] {
+                let price = if use_shift {
+                    shifted.y(nn(x))
+                } else {
+                    shifted.inner().y(nn(x))
+                }
+                .unwrap();
+                // Ramp slope rounding contributes < 4q, with < 2q final
+                // rounding. The certified main anchor is at most 1q wide.
+                assert_encloses(
+                    edges(price),
+                    outward(expected.price(x, &s), &price_denominator),
+                    6,
+                );
+            }
+            for (lo, width) in [
+                (0, end + 3 * scale),
+                ((start - 1).max(0), 2),
+                ((end - 1).max(0), 2),
+                (start, end - start),
+                (end, 3 * scale),
+                (end + 1, 1),
+            ] {
+                if width == 0 {
+                    continue;
+                }
+                let area = if use_shift {
+                    shifted.integrate(nn(lo), pos(width))
+                } else {
+                    shifted.inner().integrate(nn(lo), pos(width))
+                }
+                .unwrap();
+                let ideal = outward(
+                    expected.primitive(lo + width, &s) - expected.primitive(lo, &s),
+                    &area_denominator,
+                );
+                // Floor: <= 1q. Ramp: < 8q slope error plus <= 5q formula
+                // rounding. Main: <= 3q reference error plus <= 5q rounding.
+                assert_encloses(edges(area), ideal, 24);
             }
         }
 
-        // Contract into each segment, preserving the part already backing supply.
-        for supply in [
+        // A contraction preserves the retained prefix and its enclosure, while
+        // replacing future amplified growth with unscaled characteristic growth.
+        let original = shifted.inner();
+        for remaining in [
             0,
             curve.start,
             (curve.start + curve.end) / 2,
             curve.end,
             curve.end + scale,
         ] {
-            let contracted = schedule.contract_to(nn(supply + curve.shift)).unwrap();
+            let next = original.contract_to(nn(remaining)).unwrap();
             let expected = Curve {
-                start: curve.start.min(supply),
-                end: curve.end.min(supply),
-                ..curve
+                start: curve.start.min(remaining),
+                end: curve.end.min(remaining),
+                ..unshifted
             };
-            for x in [curve.shift, supply + curve.shift, end + scale] {
+            assert_eq!(to_raw(next.ramp_end().get()), expected.end);
+            assert_eq!(to_raw(next.ramp_start().unwrap().get()), expected.start);
+            if remaining < curve.end {
+                assert_eq!(next.main_reference().curve_x(), nn(remaining));
+            }
+            let contracted = compile_segmented_schedule(&characteristic, next).unwrap();
+            assert_eq!(
+                contracted.y(nn(remaining)).unwrap(),
+                original.y(nn(remaining)).unwrap()
+            );
+            for x in [0, remaining, curve.end + scale] {
                 assert_encloses(
                     edges(contracted.y(nn(x)).unwrap()),
                     outward(expected.price(x, &s), &price_denominator),
                     6,
                 );
             }
+            if remaining > 0 {
+                assert_eq!(
+                    contracted.integrate(nn(0), pos(remaining)).unwrap(),
+                    original.integrate(nn(0), pos(remaining)).unwrap()
+                );
+            }
         }
-
-        let proposal = SegmentedRaiseFloorProposal::new(Pos::new(from_raw(scale)).unwrap(), nn(0));
-        let new_start = curve.start + scale;
-        let new_end = curve.end.max(new_start);
-        let raised = schedule
-            .raise_floor(nn(curve.shift + new_end + scale), proposal)
-            .unwrap();
-        // Independently certify k*m*advance - (k-1)*m*end_advance.
-        let ideal_increase = outward(
-            big(curve.slope)
-                * (big(curve.scalar) * &s - big(curve.scalar - scale) * big(new_end - curve.end)),
-            &price_denominator,
-        );
-        let increase = to_raw(raised.new_floor.get()) - curve.floor;
-        let loss = to_raw(raised.max_live_price_decrease.get());
-        assert_encloses((increase, increase + loss), ideal_increase, 7);
-        let expected = Curve {
-            floor: curve.floor + increase,
-            start: new_start,
-            end: new_end,
-            ..curve
-        };
-        let future = curve.shift + new_end + scale;
-        assert_encloses(
-            edges(raised.next_schedule.y(nn(future)).unwrap()),
-            outward(expected.price(future, &s), &price_denominator),
-            6,
-        );
-        assert_encloses(
-            edges(raised.next_schedule.required_reserve(nn(future)).unwrap()),
-            outward(expected.primitive(future, &s), &area_denominator),
-            1 + 8 + 5 + 6 * 4 + 4,
-        );
     }
 }
 
 #[test]
-fn segmented_points_areas_and_transitions_enclose_exact_oracles_on_three_grids() {
+fn affine_prices_areas_contraction_and_signed_shifts_enclose_exact_oracles() {
     check_math(
         1i128 << 64,
         I64F64::from_scaled_i128,
@@ -221,6 +219,7 @@ fn segmented_points_areas_and_transitions_enclose_exact_oracles_on_three_grids()
         DashuFixed12::from_scaled_i128,
         DashuFixed12::to_scaled_i128,
     );
+    // A coarse decimal grid exposes rounding that is tiny on production grids.
     check_math(
         10,
         |raw| I64Scaled::<10>::from_scaled_i64(raw.try_into().unwrap()),
