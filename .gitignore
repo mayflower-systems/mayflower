@@ -1,2 +1,8 @@
 # rust build artifacts
 target/
+
+tsconfig.tsbuildinfo
+.turbo
+
+dist/
+node_modules/

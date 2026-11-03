@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "build": "turbo run build",
+    "clean": "pnpm -r run clean",
+    "lint": "turbo run lint",
+    "format": "prettier --write --cache --log-level=warn .",
+    "format:check": "prettier --check --cache --log-level=warn ."
+  },
+  "devDependencies": {
+    "prettier": "catalog:",
+    "turbo": "2.11.10",
+    "typescript": "catalog:"
+  }
+}

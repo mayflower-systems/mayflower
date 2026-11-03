@@ -5,15 +5,15 @@ production algorithms and tests. Default drivers are `no_std`, allocation-free,
 and contain no unsafe code. The optional `reference` feature provides allocating
 host arithmetic through Dashu.
 
-| Format     | Storage  | Range           | Quantum  | Capabilities                                                           |
-| ---------- | -------- | --------------- | -------- | ---------------------------------------------------------------------- |
-| `I64F64`   | 16 bytes | `[-2^63, 2^63)` | `2^-64`  | `FixedNumber`, `SignedFixed`, `IntegralRounding`, `BoundedExponential` |
-| `U64F64`   | 16 bytes | `[0, 2^64)`     | `2^-64`  | `FixedNumber`, `UnsignedFixed`, `IntegralRounding`                     |
-| `U192F64`  | 32 bytes | `[0, 2^192)`    | `2^-64`  | `FixedNumber`, `UnsignedFixed`, `IntegralRounding`                     |
-| `U128F128` | 32 bytes | `[0, 2^128)`    | `2^-128` | Specialized index arithmetic; no `FixedNumber` implementation          |
-| `I64Scaled<S>` | 8 bytes | `[-2^63/S, (2^63-1)/S]` | `1/S` | `FixedNumber`, `SignedFixed`, `IntegralRounding` |
-| `U256Scaled<S>` | 32 bytes | `[0, (2^256-1)/S]` | `1/S` | `FixedNumber`, `UnsignedFixed`, `IntegralRounding` |
-| `reference::DashuFixed12` | 16 bytes | `[-2^127/10^12, (2^127-1)/10^12]` | `1e-12` | `FixedNumber`, `SignedFixed`, `IntegralRounding`, `BoundedExponential` |
+| Format                    | Storage  | Range                             | Quantum  | Capabilities                                                           |
+| ------------------------- | -------- | --------------------------------- | -------- | ---------------------------------------------------------------------- |
+| `I64F64`                  | 16 bytes | `[-2^63, 2^63)`                   | `2^-64`  | `FixedNumber`, `SignedFixed`, `IntegralRounding`, `BoundedExponential` |
+| `U64F64`                  | 16 bytes | `[0, 2^64)`                       | `2^-64`  | `FixedNumber`, `UnsignedFixed`, `IntegralRounding`                     |
+| `U192F64`                 | 32 bytes | `[0, 2^192)`                      | `2^-64`  | `FixedNumber`, `UnsignedFixed`, `IntegralRounding`                     |
+| `U128F128`                | 32 bytes | `[0, 2^128)`                      | `2^-128` | Specialized index arithmetic; no `FixedNumber` implementation          |
+| `I64Scaled<S>`            | 8 bytes  | `[-2^63/S, (2^63-1)/S]`           | `1/S`    | `FixedNumber`, `SignedFixed`, `IntegralRounding`                       |
+| `U256Scaled<S>`           | 32 bytes | `[0, (2^256-1)/S]`                | `1/S`    | `FixedNumber`, `UnsignedFixed`, `IntegralRounding`                     |
+| `reference::DashuFixed12` | 16 bytes | `[-2^127/10^12, (2^127-1)/10^12]` | `1e-12`  | `FixedNumber`, `SignedFixed`, `IntegralRounding`, `BoundedExponential` |
 
 Binary upper endpoints are exclusive; scaled ranges include both endpoints.
 `I64F64`'s 64 integer bits include its sign.

@@ -6,7 +6,7 @@ members = [
     "reward-clearing/rust/*",
     "referral/rust/*",
     "avm/rust/*",
-    "sol-tools/*",
+    "sol-tools/rust/*",
 ]
 
 [workspace.package]

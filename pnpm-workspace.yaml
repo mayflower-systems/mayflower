@@ -1,0 +1,58 @@
+packages:
+  - "sol-tools/ts/**"
+
+strictPeerDependencies: false
+autoInstallPeers: false
+shamefullyHoist: false
+
+# Refuse new resolutions younger than 5 days; already locked versions are
+# unaffected.
+minimumReleaseAge: 7200
+verifyStoreIntegrity: true
+auditLevel: moderate
+
+# Centralized, pinned dependency versions. Packages reference these with the
+# `catalog:` protocol instead of a literal version range, so a version is
+# defined once here and stays consistent across the workspace. Every entry is
+# an exact version — no ranges — so `pnpm install` cannot drift.
+catalog:
+  "@types/node": 26.6.6
+  tsx: 4.23.5
+  typescript: 7.0.2
+  vitest: 3.2.4
+
+  decimal.js: 10.6.0
+
+  # Formatting.
+  prettier: 3.8.3
+
+  # Effect.
+  effect: 4.0.7
+
+  # Solana.
+  "@solana/spl-token": 0.4.15
+  "@solana/web3.js": 1.98.4
+  borsh: 2.0.0
+  bs58: 6.0.0
+  buffer: 6.0.3
+  # A peer dependency of @solana/codecs-strings, which @solana/spl-token pulls
+  # in. autoInstallPeers is off, so packages that use spl-token must list it.
+  fastestsmallesttextencoderdecoder: 1.0.22
+
+# jayson 4.x is a dependency of @solana/web3.js 1.x. These overrides replace
+# two of its outdated dependencies:
+# - @types/node 12: use the catalog version, so the workspace has one copy of
+#   the Node types.
+# - uuid 8, which is deprecated: use uuid 11, the last major version that
+#   supports CommonJS. jayson only calls require("uuid").v4, which uuid 11
+#   still provides.
+overrides:
+  "jayson>@types/node": "catalog:"
+  "jayson>uuid": 11.1.1
+
+minimumReleaseAgeExclude:
+  - effect@4.1.0
+allowBuilds:
+  bigint-buffer: true
+  bufferutil: true
+  utf-8-validate: true

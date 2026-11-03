@@ -1,0 +1,31 @@
+{
+  "name": "@mayflower-sys/sol-client-effect",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@solana/spl-token": "catalog:",
+    "@solana/web3.js": "catalog:",
+    "bs58": "catalog:",
+    "buffer": "catalog:",
+    "effect": "catalog:",
+    "fastestsmallesttextencoderdecoder": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
