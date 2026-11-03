@@ -1053,6 +1053,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-avm-prog"
+version = "0.1.0"
+dependencies = [
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+ "mayf-micro-basis-points",
+ "mayf-schedule-segmented",
+]
+
+[[package]]
 name = "mayf-characteristic"
 version = "0.1.0"
 dependencies = [
