@@ -48,3 +48,27 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --locked
+
+  typescript:
+    name: typescript build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Installs the pnpm version named in the packageManager field of
+      # package.json, installs Node, restores the pnpm store cache, and runs
+      # pnpm install. require-lockfile fails the job if pnpm-lock.yaml is
+      # missing or out of date.
+      - uses: pnpm/setup@v3
+        with:
+          runtime: node@26.8.1
+          cache: true
+          require-lockfile: true
+
+      # Runs a local Turborepo remote cache server backed by the GitHub Actions
+      # cache, and sets TURBO_API, TURBO_TOKEN and TURBO_TEAM so turbo uses it.
+      # It must run before turbo.
+      - uses: rharkor/caching-for-turbo@v2.5.2
+
+      - name: Build
+        run: pnpm build

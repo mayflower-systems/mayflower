@@ -6,12 +6,12 @@ The program ID comes from [`mayf-sol-log-sink-id`](../mayf-sol-log-sink-id/READM
 
 ## Instruction
 
-| Field | Value |
-| --- | --- |
-| Data | Raw event bytes; empty data is allowed. |
-| Accounts | None required or read. |
-| Signers | None required. |
-| Discriminator | None. |
+| Field         | Value                                   |
+| ------------- | --------------------------------------- |
+| Data          | Raw event bytes; empty data is allowed. |
+| Accounts      | None required or read.                  |
+| Signers       | None required.                          |
+| Discriminator | None.                                   |
 
 The program succeeds when the invocation stack height exceeds 1. Otherwise,
 it logs an error and returns `ProgramError::Custom(1)`.
