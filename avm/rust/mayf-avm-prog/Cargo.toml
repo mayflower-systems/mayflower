@@ -15,3 +15,6 @@ doctest = true
 mayf-fixed-number = { workspace = true }
 mayf-schedule-segmented = { workspace = true }
 mayf-micro-basis-points = { workspace = true }
+
+[dev-dependencies]
+mayf-fixed-drivers = { workspace = true }

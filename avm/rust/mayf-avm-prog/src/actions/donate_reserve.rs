@@ -17,6 +17,7 @@ where
     pub market_next: Market<N>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DonateReserveError {
     ReserveBalanceOverflow,
 }

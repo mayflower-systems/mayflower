@@ -7,7 +7,7 @@ where
 {
     pub segmentation_geometry: SegmentationGeometry<N>,
 
-    /// the total supply of AVA  by the market
+    /// Total circulating AVA supply in base units.
     pub supply_ava: u64,
 
     /// The amount of reserve actively held by the market
@@ -31,6 +31,7 @@ where
     /// treated as rational number so that the calculated ramp_start (and ramp slope) can be precise for the sake of rounding errors
     pub ramp_width: NonNeg<N>,
     pub ramp_scalar: AboveOne<N>,
+    /// Ramp end in circulating-supply coordinates, including horizontal shifts.
     pub ramp_end: u64,
 }
 
