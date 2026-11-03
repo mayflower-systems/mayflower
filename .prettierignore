@@ -1,0 +1,29 @@
+# Prettier formats only the files this list lets through: Markdown anywhere in
+# the repo, and the TypeScript packages under sol-tools/ts/. Everything else is
+# ignored, so new file types are left alone until a rule below adds them.
+#
+# Prettier also skips everything in .gitignore (node_modules/, dist/, target/,
+# .turbo/). A rule here cannot bring those back.
+
+# Ignore every file. Directories stay visible, so the rules below can re-include
+# files inside them.
+*
+!*/
+
+# Markdown, anywhere in the repo.
+!*.md
+
+# The TypeScript packages.
+!/sol-tools/ts/**
+
+# Markdown that another source owns. Formatting these files makes them differ
+# from that source.
+
+# The GitHub wiki. This folder must match the wiki exactly, and the Wiki check
+# in CI fails when it does not. See docs/github-wiki/README.md.
+/docs/github-wiki/content/
+
+# Agent skills installed from other repos and tracked in skills-lock.json.
+# .claude/skills/ holds symlinks into .agents/skills/.
+/.agents/skills/
+/.claude/skills/
