@@ -57,12 +57,12 @@ Let $m=2$ and $q=10\%$. Alice, Bob, and Charlie form a chain, with Bob a child
 of Alice and Charlie a child of Bob. Each has 100 own points. In ideal
 arithmetic:
 
-| Member           | Own-point retention |  Overrides from downline | Core points |
-| ---------------- | ------------------: | -----------------------: | ----------: |
-| Alice, depth 0   |                 100 |                       20 |         120 |
-| Bob, depth 1     |                  90 |                       10 |         100 |
-| Charlie, depth 2 |                  80 |                        0 |          80 |
-| **Total**        |                     |                          |     **300** |
+| Member           | Own-point retention | Overrides from downline | Core points |
+| ---------------- | ------------------: | ----------------------: | ----------: |
+| Alice, depth 0   |                 100 |                      20 |         120 |
+| Bob, depth 1     |                  90 |                      10 |         100 |
+| Charlie, depth 2 |                  80 |                       0 |          80 |
+| **Total**        |                     |                         |     **300** |
 
 If a reward pool allocates 30 units during an interval in which these balances
 remain constant, their ideal core earnings are 12, 10, and 8. Each deposit's
