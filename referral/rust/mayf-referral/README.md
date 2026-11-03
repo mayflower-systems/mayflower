@@ -24,13 +24,13 @@ return new ones, so an error leaves stored state unchanged.
 implementations from `mayf-fixed-drivers`; its callers supply no numeric type
 parameter.
 
-| Quantity | Representation | Reason |
-| --- | --- | --- |
-| Token amounts, fees, and current direct/subtree balances | `u64` | Matches token base units and bounds the scope's total deposits |
-| Clock ticks | `u64` | Matches the referral algorithms' lifetime bound |
-| Lifetime deposit/withdrawal counters | Checked `u128` | Counts repeated flows, which can exceed a current token balance |
-| `ReferralRate` | `U64F64`, 16 bytes | Compact unsigned override and sharing fractions with 64 fractional bits |
-| `ReferralPoints` | `U192F64`, 32 bytes | Points, cumulative point-time, and sharing indexes on the same fractional grid |
+| Quantity                                                 | Representation      | Reason                                                                         |
+| -------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| Token amounts, fees, and current direct/subtree balances | `u64`               | Matches token base units and bounds the scope's total deposits                 |
+| Clock ticks                                              | `u64`               | Matches the referral algorithms' lifetime bound                                |
+| Lifetime deposit/withdrawal counters                     | Checked `u128`      | Counts repeated flows, which can exceed a current token balance                |
+| `ReferralRate`                                           | `U64F64`, 16 bytes  | Compact unsigned override and sharing fractions with 64 fractional bits        |
+| `ReferralPoints`                                         | `U192F64`, 32 bytes | Points, cumulative point-time, and sharing indexes on the same fractional grid |
 
 A full `u64` scope balance over a full `u64` lifetime needs up to 128 integral
 bits. Preserving 64 fractional bits therefore needs at least 192 raw bits.
