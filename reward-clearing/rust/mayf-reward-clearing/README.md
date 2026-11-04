@@ -4,11 +4,12 @@ The pure Rust algorithm for the [Reward Clearing auction](../../README.md).
 
 ## Calling the algorithm
 
-[Actions](src/actions.rs) take accounting state and explicit inputs and return
-replacement state with a receipt. The public model consists of an epoch
-schedule, immutable terms, active and finalized epochs, position totals, and
-lots. It has no account identities, authorities, tenant creation, fee policy,
-lot storage, or account closure operations.
+[Actions](src/actions/) take accounting state and explicit inputs and return
+replacement state with a receipt. Each action has its own file, and
+[`actions.rs`](src/actions.rs) lists their public items. The public model
+consists of an epoch schedule, immutable terms, active and finalized epochs,
+position totals, and lots. It has no account identities, authorities, tenant
+creation, fee policy, lot storage, or account closure operations.
 
 A shared `EpochSchedule` derives aligned windows for channels that synchronize
 epochs. Starting an epoch fixes its terms. Deposits issue weighted shares;
