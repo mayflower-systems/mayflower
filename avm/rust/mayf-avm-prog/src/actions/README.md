@@ -1,20 +1,15 @@
-Actions are pure functions. Each accepts a state snapshot and returns a receipt
-containing the next state and any reserve distributions. The caller performs
-authorization, token transfers, burns, and state persistence together.
+Actions are pure functions over normalized quantities. Each accepts a state
+snapshot and returns next-state and reserve-distribution receipts. A simulator
+can apply the receipt directly. A Solana host will authorize and settle it,
+including token-unit rounding and persistence.
 
-`donate_reserve` adds reserve units without changing supply or the schedule.
+`donate_reserve` adds held reserve without changing calculator state.
 
-`redeem_at_floor` burns AVA at the floor rate, rounding gross reserve down to
-whole units. It charges the redemption fee rounded up, then splits that fee
-between the protocol (rounded up) and market owner (the remainder). Held reserve
-decreases by the subject's payment plus both fees. Outstanding advances remain
-unchanged, and the remaining position must still collateralize its advance.
+`redeem_at_floor` delegates the quote and circulation update to
+`mayf-avm-calculator`. It preserves progress and segmentation, checks position
+collateral and held liquidity, applies fees, and enforces the minimum payout.
+Fees round up on the numeric grid; the market owner receives the remainder
+after the protocol share. The receipt conserves reserve on that grid.
 
-Floor redemption consumes only the flat tail: it moves the ramp end left by the
-amount burned while preserving ramp width, scalar, and floor. The stored ramp
-end uses circulating-supply coordinates. A redemption that would move the ramp
-start below zero is rejected. This operation does not contract the ramp.
-
-Numeric conversion and range failures are returned as errors. Capacity and
-payout calculations require a fixed-number driver with `IntegralRounding` so
-that the final reserve amount is settled in whole token units.
+See the [crate documentation](../../README.md) for the layer boundaries,
+numeric contract, and a complete action example.

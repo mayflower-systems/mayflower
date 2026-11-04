@@ -1,7 +1,7 @@
 [package]
 name = "mayf-avm-prog"
 version = "0.1.0"
-description = "AVM program"
+description = "Pure AVM program actions over shared calculator state"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -13,8 +13,9 @@ doctest = true
 
 [dependencies]
 mayf-fixed-number = { workspace = true }
-mayf-schedule-segmented = { workspace = true }
+mayf-avm-calculator = { workspace = true }
 mayf-micro-basis-points = { workspace = true }
 
 [dev-dependencies]
 mayf-fixed-drivers = { workspace = true }
+mayf-characteristic-linear-driver = { workspace = true }

@@ -1069,10 +1069,11 @@ dependencies = [
 name = "mayf-avm-prog"
 version = "0.1.0"
 dependencies = [
+ "mayf-avm-calculator",
+ "mayf-characteristic-linear-driver",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
  "mayf-micro-basis-points",
- "mayf-schedule-segmented",
 ]
 
 [[package]]
@@ -1160,19 +1161,6 @@ dependencies = [
  "mayf-fixed-dashu",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
-]
-
-[[package]]
-name = "mayf-schedule-segmented"
-version = "0.1.0"
-dependencies = [
- "dashu",
- "mayf-characteristic",
- "mayf-characteristic-linear-driver",
- "mayf-fixed-dashu",
- "mayf-fixed-drivers",
- "mayf-fixed-number",
- "mayf-monotone",
 ]
 
 [[package]]
