@@ -1053,6 +1053,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-avm-calculator"
+version = "0.1.0"
+dependencies = [
+ "dashu",
+ "mayf-characteristic",
+ "mayf-characteristic-linear-driver",
+ "mayf-fixed-dashu",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+ "mayf-monotone",
+]
+
+[[package]]
 name = "mayf-avm-prog"
 version = "0.1.0"
 dependencies = [

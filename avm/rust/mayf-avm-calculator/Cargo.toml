@@ -1,0 +1,19 @@
+[package]
+name = "mayf-avm-calculator"
+version = "0.1.0"
+description = "AVM arithmetic and state transitions over a neutral characteristic calculator"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+mayf-characteristic.workspace = true
+mayf-fixed-number.workspace = true
+mayf-monotone.workspace = true
+
+[dev-dependencies]
+mayf-characteristic-linear-driver.workspace = true
+mayf-fixed-drivers.workspace = true
+mayf-fixed-dashu.workspace = true
+dashu.workspace = true
