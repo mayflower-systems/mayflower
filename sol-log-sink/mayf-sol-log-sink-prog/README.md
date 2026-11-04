@@ -1,8 +1,9 @@
 # `mayf-sol-log-sink-prog`
 
-Solana program that accepts event data through CPI.
+Solana program that accepts event data.
 
-The program ID comes from [`mayf-sol-log-sink-id`](../mayf-sol-log-sink-id/README.md).
+The program does not know its own address. Callers and readers get it from
+[`mayf-sol-log-sink-id`](../mayf-sol-log-sink-id/README.md).
 
 ## Instruction
 
@@ -13,28 +14,30 @@ The program ID comes from [`mayf-sol-log-sink-id`](../mayf-sol-log-sink-id/READM
 | Signers       | None required.                          |
 | Discriminator | None.                                   |
 
-The program succeeds when the invocation stack height exceeds 1. Otherwise,
-it logs an error and returns `ProgramError::Custom(1)`.
+The program always succeeds. The entrypoint returns without reading the
+loader's input buffer. It does not inspect the payload or write state.
 
-The entrypoint calls `sol_get_stack_height` without deserializing the loader's
-input buffer. It does not inspect the payload or write state. Any program can
-invoke it; readers must identify the caller from the transaction trace.
+Any program can invoke it, and a transaction can also call it directly.
+Readers must identify the caller from the transaction trace.
+[`mayf-sol-log-sink-reader`](../mayf-sol-log-sink-reader/README.md) returns
+only payloads sent through CPI by a given program.
 
 ## Build
 
 Building the program needs `cargo build-sbf`, which comes with the Solana
-(Agave) CLI tools. From the repository root:
+(Agave) CLI tools. Run the build script:
 
 ```bash
-cargo build-sbf --manifest-path sol-log-sink/mayf-sol-log-sink-prog/Cargo.toml
-cargo test -p mayf-sol-log-sink-prog --all-targets --locked
+./build_program.sh
 ```
 
-Output: `target/deploy/mayf_sol_log_sink_prog.so`.
+The script works from any directory.
+
+Output: `out/mayf_sol_log_sink_prog.so`.
 
 ## Deployment
 
 The repository includes no deployment keypair. To deploy a new instance, set
 `ID_STR` in [mayf-sol-log-sink-id/src/lib.rs](../mayf-sol-log-sink-id/src/lib.rs)
-to your program keypair's public key, then rebuild the program, callers, and
-readers.
+to your program keypair's public key, then rebuild the callers and readers.
+The program binary does not change.
