@@ -1,5 +1,6 @@
-use mayf_fixed_number::MathResult;
 use mayf_monotone::MonotoneCalculatorError;
+
+use crate::characteristic::CharacteristicEngineError;
 
 /// Failures in schedule geometry, quote acceptance, or characteristic arithmetic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,10 +11,9 @@ pub enum Error {
     InsufficientFloorTail,
     FloorNotRaised,
     RampMovedBackward,
-    RampNarrowed,
     MainCurveChanged,
-    BackingIncreased,
-    ReserveSurplusExceeded,
+    AreaChangeOutsideTolerance,
+    InvalidCharacteristicBatch,
     CharacteristicOutOfDomain,
     InvalidInterval,
     NegativeOutput,
@@ -21,6 +21,15 @@ pub enum Error {
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
+
+impl From<CharacteristicEngineError> for Error {
+    fn from(error: CharacteristicEngineError) -> Self {
+        match error {
+            CharacteristicEngineError::InvalidBatch => Self::InvalidCharacteristicBatch,
+            CharacteristicEngineError::Calculation(error) => error.into(),
+        }
+    }
+}
 
 impl From<MonotoneCalculatorError> for Error {
     fn from(error: MonotoneCalculatorError) -> Self {
@@ -31,8 +40,4 @@ impl From<MonotoneCalculatorError> for Error {
             MonotoneCalculatorError::ArithmeticFailure => Self::ArithmeticFailure,
         }
     }
-}
-
-pub(crate) fn arithmetic<T>(result: MathResult<T>) -> Result<T> {
-    result.map_err(|_| Error::ArithmeticFailure)
 }

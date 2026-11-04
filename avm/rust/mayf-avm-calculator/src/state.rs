@@ -1,8 +1,7 @@
 //! Exact persistent geometry and supply accounting, independent of the engine.
 
-use mayf_fixed_number::{FixedNumber, NonNeg, Pos};
+use mayf_fixed_number::{FixedNumber, NonNeg};
 
-use crate::error::arithmetic;
 use crate::{Error, Result};
 
 /// A floor and ramp on the permanent characteristic-progress axis.
@@ -12,17 +11,19 @@ use crate::{Error, Result};
 /// persistent anchor or vertical offset. Zero ramp width is valid.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Segmentation<N: FixedNumber> {
-    floor: Pos<N>,
+    floor: NonNeg<N>,
     ramp_end: NonNeg<N>,
     ramp_width: NonNeg<N>,
 }
 
 impl<N: FixedNumber> Segmentation<N> {
-    pub fn new(floor: Pos<N>, ramp_end: NonNeg<N>, ramp_width: NonNeg<N>) -> Result<Self> {
+    pub fn new(floor: NonNeg<N>, ramp_end: NonNeg<N>, ramp_width: NonNeg<N>) -> Result<Self> {
         if ramp_width > ramp_end {
             return Err(Error::RampWidthExceedsEnd);
         }
-        arithmetic(ramp_end.checked_sub(ramp_width))?;
+        ramp_end
+            .checked_sub(ramp_width)
+            .map_err(|_| Error::ArithmeticFailure)?;
         Ok(Self {
             floor,
             ramp_end,
@@ -31,7 +32,7 @@ impl<N: FixedNumber> Segmentation<N> {
     }
 
     /// Start with main `floor + f(x)` and no ramp or flat tail.
-    pub fn launch(floor: Pos<N>) -> Self {
+    pub fn launch(floor: NonNeg<N>) -> Self {
         Self {
             floor,
             ramp_end: NonNeg::zero(),
@@ -39,7 +40,7 @@ impl<N: FixedNumber> Segmentation<N> {
         }
     }
 
-    pub const fn floor(&self) -> Pos<N> {
+    pub const fn floor(&self) -> NonNeg<N> {
         self.floor
     }
 
@@ -52,23 +53,24 @@ impl<N: FixedNumber> Segmentation<N> {
     }
 
     pub fn ramp_start(&self) -> Result<NonNeg<N>> {
-        arithmetic(self.ramp_end.checked_sub(self.ramp_width))
+        self.ramp_end
+            .checked_sub(self.ramp_width)
+            .map_err(|_| Error::ArithmeticFailure)
     }
 
     /// Retain the old prefix through `progress` and attach main at that point.
     ///
     /// This changes only exact geometry. It needs no characteristic evaluation,
-    /// inverse, or rounded price. A later compilation derives the new main.
+    /// inverse, or rounded price. A later evaluation derives the new main.
     pub fn contract_to(&self, progress: NonNeg<N>) -> Result<Self> {
         if progress >= self.ramp_end {
             return Ok(*self);
         }
         let ramp_start = self.ramp_start()?.min(progress);
-        Self::new(
-            self.floor,
-            progress,
-            arithmetic(progress.checked_sub(ramp_start))?,
-        )
+        let ramp_width = progress
+            .checked_sub(ramp_start)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        Self::new(self.floor, progress, ramp_width)
     }
 }
 
@@ -116,8 +118,10 @@ impl<N: FixedNumber> MarketState<N> {
         if accounting.progress < segmentation.ramp_end {
             return Err(Error::RampEndBeyondProgress);
         }
-        let nonfloor_supply =
-            arithmetic(accounting.progress.checked_sub(segmentation.ramp_start()?))?;
+        let nonfloor_supply = accounting
+            .progress
+            .checked_sub(segmentation.ramp_start()?)
+            .map_err(|_| Error::ArithmeticFailure)?;
         if accounting.circulating_supply < nonfloor_supply {
             return Err(Error::InsufficientCirculation);
         }
@@ -127,7 +131,7 @@ impl<N: FixedNumber> MarketState<N> {
         })
     }
 
-    pub fn launch(floor: Pos<N>) -> Self {
+    pub fn launch(floor: NonNeg<N>) -> Self {
         Self {
             segmentation: Segmentation::launch(floor),
             accounting: Accounting::new(NonNeg::zero(), NonNeg::zero()),
@@ -144,15 +148,14 @@ impl<N: FixedNumber> MarketState<N> {
 
     /// Available physical floor tail, evaluated without a signed supply offset.
     pub fn floor_tail(&self) -> Result<NonNeg<N>> {
-        let nonfloor_supply = arithmetic(
-            self.accounting
-                .progress
-                .checked_sub(self.segmentation.ramp_start()?),
-        )?;
-        arithmetic(
-            self.accounting
-                .circulating_supply
-                .checked_sub(nonfloor_supply),
-        )
+        let nonfloor_supply = self
+            .accounting
+            .progress
+            .checked_sub(self.segmentation.ramp_start()?)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        self.accounting
+            .circulating_supply
+            .checked_sub(nonfloor_supply)
+            .map_err(|_| Error::ArithmeticFailure)
     }
 }

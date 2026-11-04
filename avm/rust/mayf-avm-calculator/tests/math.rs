@@ -2,13 +2,16 @@
 use core::fmt::Debug;
 
 use dashu::{base::DivRem, integer::UBig};
-use mayf_avm_calculator::{Segmentation, compile_schedule};
+use mayf_avm_calculator::{
+    Accounting, AvmCalculator, FloorRaisePolicy, FloorRaiseProposal, LocalCharacteristic,
+    MarketState, ScheduleCalculator, Segmentation,
+};
 use mayf_characteristic_linear_driver::LinearCharacteristic;
 use mayf_fixed_dashu::DashuFixed12;
 use mayf_fixed_drivers::{I64F64, I64Scaled};
 use mayf_fixed_number::{AboveOne, Bounds, NonNeg, Pos, SignedFixed};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct Curve {
     floor: i128,
     slope: i128,
@@ -86,11 +89,10 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
             end: start + if case % 8 == 0 { 0 } else { sample(4 * scale) },
         };
         let segmentation =
-            Segmentation::new(pos(curve.floor), nn(curve.end), nn(curve.end - curve.start))
-                .unwrap();
-        let characteristic = LinearCharacteristic::new(pos(curve.slope));
+            Segmentation::new(nn(curve.floor), nn(curve.end), nn(curve.end - curve.start)).unwrap();
+        let engine = LocalCharacteristic::new(LinearCharacteristic::new(pos(curve.slope)));
         let scalar = AboveOne::new(from_raw(curve.scalar)).unwrap();
-        let calculator = compile_schedule(&characteristic, scalar, segmentation).unwrap();
+        let calculator = ScheduleCalculator::new(segmentation, scalar);
         for x in [
             0,
             (curve.start - 1).max(0),
@@ -101,10 +103,12 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
             curve.end + 1,
             curve.end + 3 * scale,
         ] {
-            // A <=4-unit ramp amplifies slope rounding by <4q. Its derived
-            // endpoint and the main multiplication each add at most one quantum.
+            // With k < 3, neutral endpoint bounds and the ramp-scale product
+            // must remain within eight quanta of the exact price.
             check_bounds(
-                edges(calculator.y(nn(x)).unwrap()),
+                edges(calculator.y(nn(x), &engine).unwrap_or_else(|error| {
+                    panic!("price failed: {error:?}; scale={scale}, x={x}, curve={curve:?}")
+                })),
                 outward(curve.price(x, &s), &price_denominator),
                 8,
             );
@@ -121,10 +125,12 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
                 curve.primitive(lo + width, &s) - curve.primitive(lo, &s),
                 &area_denominator,
             );
-            // Floor <=1q; ramp slope error <8q plus final rounding; derived
-            // main-anchor error integrated over <=3 units contributes <15q.
+            // Check that scaling and rectangle adjustments retain a tight
+            // enclosure across these normalized ramp and main widths.
             check_bounds(
-                edges(calculator.integrate(nn(lo), nn(width)).unwrap()),
+                edges(calculator.integrate(nn(lo), nn(width), &engine).unwrap_or_else(|error| {
+                    panic!("area failed: {error:?}; scale={scale}, lo={lo}, width={width}, curve={curve:?}")
+                })),
                 ideal,
                 32,
             );
@@ -143,28 +149,81 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
                 end: curve.end.min(remaining),
                 ..curve
             };
-            let contracted = compile_schedule(&characteristic, scalar, contracted_state).unwrap();
-            assert_eq!(
-                contracted.y(nn(remaining)).unwrap(),
-                calculator.y(nn(remaining)).unwrap()
-            );
-            assert_eq!(
-                contracted.integrate(nn(0), nn(remaining)).unwrap(),
-                calculator.integrate(nn(0), nn(remaining)).unwrap()
-            );
+            let contracted = ScheduleCalculator::new(contracted_state, scalar);
+            // Both geometries retain the same exact prefix. Their independently
+            // assembled enclosures need not have identical endpoints.
+            let prefix = outward(curve.primitive(remaining, &s), &area_denominator);
+            for schedule in [&calculator, &contracted] {
+                check_bounds(
+                    edges(schedule.integrate(nn(0), nn(remaining), &engine).unwrap()),
+                    prefix,
+                    32,
+                );
+            }
             for x in [remaining, curve.end + scale] {
                 check_bounds(
-                    edges(contracted.y(nn(x)).unwrap()),
+                    edges(contracted.y(nn(x), &engine).unwrap()),
                     outward(expected.price(x, &s), &price_denominator),
                     8,
                 );
             }
         }
+
+        // Move both joins by one normalized unit and raise the floor by the
+        // linear slope. This preserves main exactly; extra circulation funds
+        // the increased backing. Compare the direct residual against two
+        // independently integrated whole curves, including rounded endpoints.
+        let shifted = Curve {
+            floor: curve.floor + curve.slope,
+            start: curve.start + scale,
+            end: curve.end + scale,
+            ..curve
+        };
+        let progress = shifted.end + 3 * scale;
+        let circulation = progress + 128 * scale;
+        let backing = |curve: Curve| {
+            curve.primitive(progress, &s)
+                + 2u32 * big(curve.floor) * big(circulation - progress) * &s * &s
+        };
+        let ideal = outward(backing(shifted) - backing(curve), &area_denominator);
+        let state =
+            MarketState::new(segmentation, Accounting::new(nn(progress), nn(circulation))).unwrap();
+        let raised = AvmCalculator::new(scalar)
+            .verify_floor_raise(
+                &state,
+                FloorRaiseProposal {
+                    floor: nn(shifted.floor),
+                    ramp_end: nn(shifted.end),
+                    ramp_width: nn(shifted.end - shifted.start),
+                },
+                FloorRaisePolicy::new(nn(8), from_raw(1024 * scale)),
+                &engine,
+            )
+            .unwrap();
+        check_bounds(
+            (
+                to_raw(raised.main_change.lower()),
+                to_raw(raised.main_change.upper()),
+            ),
+            (0, 0),
+            8,
+        );
+        // Each endpoint enclosure costs at most one quantum. The start/end
+        // movements are at most seven/three units from progress; propagating
+        // their bounds through gains below three/two fits within 64 quanta.
+        check_bounds(
+            (
+                to_raw(raised.backing_change.lower()),
+                to_raw(raised.backing_change.upper()),
+            ),
+            ideal,
+            64,
+        );
     }
 }
 
 #[test]
-fn prices_integrals_and_contracted_prefixes_enclose_exact_oracles_on_three_grids() {
+fn segmented_calculations_enclose_exact_oracles_on_three_grids() {
     check_grid(
         1i128 << 64,
         I64F64::from_scaled_i128,

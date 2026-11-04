@@ -1,7 +1,7 @@
 [package]
 name = "mayf-avm-calculator"
 version = "0.1.0"
-description = "Stateless AVM quotes with continuous segmented schedules"
+description = "AVM arithmetic and state transitions over a neutral characteristic calculator"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

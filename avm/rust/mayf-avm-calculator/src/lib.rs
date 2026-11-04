@@ -3,16 +3,20 @@
 #![doc = include_str!("../README.md")]
 
 mod calculator;
-mod engine;
+mod characteristic;
 mod error;
+mod market;
 mod state;
 
-pub use calculator::{ScheduleCalculator, compile_schedule};
-pub use engine::{
-    AvmCalculator, CharacteristicEngine, FloorRaisePolicy, FloorRaiseProposal, FloorRaiseQuote,
-    TradeQuote,
+pub use calculator::ScheduleCalculator;
+pub use characteristic::{
+    CharacteristicEngine, CharacteristicEngineError, CharacteristicEngineResult,
+    LocalCharacteristic, SpanRequest, SpanResponse,
 };
 pub use error::{Error, Result};
+pub use market::{
+    AvmCalculator, FloorRaisePolicy, FloorRaiseProposal, FloorRaiseQuote, TradeQuote,
+};
 pub use state::{Accounting, MarketState, Segmentation};
 
 pub use mayf_characteristic::{AffineAnchor, AffineTransform, Characteristic};
