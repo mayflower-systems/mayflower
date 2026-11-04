@@ -5,14 +5,12 @@ use mayf_avm_calculator::{
     CharacteristicEngineResult, Error, FloorRaisePolicy, FloorRaiseProposal, LocalCharacteristic,
     MarketState, ScheduleCalculator, Segmentation, SpanRequest, SpanResponse,
 };
-use mayf_characteristic::{AffineTransform, Characteristic};
-use mayf_characteristic_linear_driver::{LinearCalculator, LinearCharacteristic};
+use mayf_characteristic::CharacteristicError;
+use mayf_characteristic_linear_driver::LinearCharacteristic;
 use mayf_fixed_drivers::I64F64;
 use mayf_fixed_number::{
     AboveOne, Bounds, DirectedRounding, FixedNumber, NonNeg, Pos, SignedFixed,
 };
-
-use mayf_monotone::MonotoneCalculatorError;
 
 type N = I64F64;
 
@@ -35,12 +33,8 @@ fn scalar() -> AboveOne<N> {
     AboveOne::new(fraction(25, 16).get()).unwrap()
 }
 
-fn linear() -> LinearCharacteristic<N> {
-    LinearCharacteristic::new(pos(8))
-}
-
 fn engine() -> LocalCharacteristic<LinearCharacteristic<N>> {
-    LocalCharacteristic::new(linear())
+    LocalCharacteristic::new(LinearCharacteristic::new(pos(8)))
 }
 
 fn calculator() -> AvmCalculator<N> {
@@ -142,20 +136,6 @@ fn ordinary_sales_retain_the_prefix_and_resume_buying_on_main() {
     );
 }
 
-struct OriginOnly;
-
-impl Characteristic<N> for OriginOnly {
-    type Calculator = LinearCalculator<N>;
-
-    fn calculator(&self, affine: AffineTransform<N>) -> Self::Calculator {
-        assert!(
-            affine.is_identity(),
-            "only a neutral characteristic view is requested"
-        );
-        linear().calculator(affine)
-    }
-}
-
 #[derive(Default)]
 struct ObservedEngine {
     batches: RefCell<Vec<Vec<SpanRequest<N>>>>,
@@ -176,7 +156,7 @@ impl CharacteristicEngine<N> for ObservedEngine {
         responses: &mut [SpanResponse<N>],
     ) -> CharacteristicEngineResult<()> {
         self.batches.borrow_mut().push(requests.to_vec());
-        LocalCharacteristic::new(OriginOnly).spans(requests, responses)
+        engine().spans(requests, responses)
     }
 }
 
@@ -565,7 +545,7 @@ fn invalid_market_geometry_and_unrepresentable_quotes_return_errors() {
             &mut responses[..1]
         ),
         Err(CharacteristicEngineError::Calculation(
-            MonotoneCalculatorError::ArithmeticFailure
+            CharacteristicError::ArithmeticFailure
         ))
     );
 

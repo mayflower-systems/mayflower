@@ -1,4 +1,4 @@
-use mayf_monotone::MonotoneCalculatorError;
+use mayf_characteristic::CharacteristicError;
 
 use crate::characteristic::CharacteristicEngineError;
 
@@ -15,7 +15,6 @@ pub enum Error {
     AreaChangeOutsideTolerance,
     InvalidCharacteristicBatch,
     CharacteristicOutOfDomain,
-    InvalidInterval,
     NegativeOutput,
     ArithmeticFailure,
 }
@@ -26,18 +25,12 @@ impl From<CharacteristicEngineError> for Error {
     fn from(error: CharacteristicEngineError) -> Self {
         match error {
             CharacteristicEngineError::InvalidBatch => Self::InvalidCharacteristicBatch,
-            CharacteristicEngineError::Calculation(error) => error.into(),
-        }
-    }
-}
-
-impl From<MonotoneCalculatorError> for Error {
-    fn from(error: MonotoneCalculatorError) -> Self {
-        match error {
-            MonotoneCalculatorError::InputOutOfDomain => Self::CharacteristicOutOfDomain,
-            MonotoneCalculatorError::InvalidInterval => Self::InvalidInterval,
-            MonotoneCalculatorError::NegativeOutput => Self::NegativeOutput,
-            MonotoneCalculatorError::ArithmeticFailure => Self::ArithmeticFailure,
+            CharacteristicEngineError::Calculation(CharacteristicError::InputOutOfDomain) => {
+                Self::CharacteristicOutOfDomain
+            }
+            CharacteristicEngineError::Calculation(CharacteristicError::ArithmeticFailure) => {
+                Self::ArithmeticFailure
+            }
         }
     }
 }

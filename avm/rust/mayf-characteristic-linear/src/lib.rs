@@ -13,11 +13,6 @@ pub enum LinearParamsError {
 }
 
 /// Parameters for the neutral characteristic `f(x) = slope * x`.
-///
-/// This is the persistable representation. Affine schedule state belongs to a
-/// disposable calculator, not to these parameters. Construction of a concrete
-/// characteristic asserts the semantic `Characteristic` contract; this
-/// parameter type only rejects a slope that is zero or negative.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LinearParams<N>
 where

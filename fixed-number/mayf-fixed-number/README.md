@@ -75,12 +75,12 @@ rounding or a universally small interval width.
 
 ## Why signed bounds remain
 
-They serve hinged-exponential characteristic calculations. There, negative
-intensity produces negative exponential inputs and alternating series terms; `exp(x)-1` and third-order remainders can be negative. Affine translation
-also adds a signed offset before checking the nonnegative input domain. Prices,
-areas, and the expression layer remain nonnegative.
+The AVM calculator uses signed intervals for offsets such as
+`floor - ramp_scalar * f(ramp_start)` and for differences in backing when
+checking a proposed floor raise. The neutral characteristic's prices and
+integrals remain nonnegative.
 
-The signed interval API provides only those calculations' operations: addition,
+The signed interval API provides addition,
 subtraction, negation, a product of two exact points, fused scaling by an exact
 multiplier and positive divisor, and a symmetric error allowance. There is no
 general signed interval multiplication/division or signed expression engine.

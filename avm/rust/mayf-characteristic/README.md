@@ -1,30 +1,20 @@
 # mayf-characteristic
 
-Definition seam between persistable characteristic shapes and disposable
-calculation views.
+A characteristic describes how redemption price grows with issuance progress.
+Implement `Characteristic<N>` for the immutable parameters of a smooth,
+increasing function with `f(0) = 0`. The trait has two methods:
 
-## Owns
+- `y(x)` encloses the value at a nonnegative progress coordinate.
+- `integrate(lo, width)` encloses the area from `lo` to `lo + width`. A zero
+  width has exactly zero area.
 
-- `Characteristic`: constructs a calculator for a supplied affine transform.
-- `AffineTransform`: horizontal scale/translation, vertical scale, and anchor.
-- `AffineAnchor`: a certified point through which the transformed view passes.
-- Transform validation errors.
+Both return `Bounds<NonNeg<N>>` on success. Round outward so the exact value
+lies between the bounds; return an error when it cannot be certified.
+The trait works with any `FixedNumber`; each driver chooses how to evaluate its
+own function. For example, `mayf-characteristic-linear-driver` implements both
+methods for `f(x) = slope * x`.
 
-`Characteristic<N>` and `AffineTransform<N>` require `N: SignedFixed` to support
-negative translations. The translation is stored directly as `N` rather than
-in a sign wrapper; scales and anchor coordinates retain `Pos<N>`/`NonNeg<N>`
-constraints. `AffineAnchor<N>` alone needs only `FixedNumber`.
-
-Implementing `Characteristic` asserts that the neutral function passes through
-the origin and is increasing, smooth, and differentiable on its supported
-non-negative domain.
-
-## State Rule
-
-Persist the neutral characteristic parameters. Do not persist an
-`AffineTransform` or calculator. A schedule derives those just in time for the
-calculation it needs.
-
-This crate defines no formulas for `y`, integration, or inversion.
-Implementations live in separate crates, and each can satisfy the same seam
-with its own algorithms.
+The AVM calculator uses these neutral values and integrals to place the floor,
+scale the ramp, and quote trades. A local driver can be passed to its
+`LocalCharacteristic` adapter; a remote engine can answer the same span batches
+in one invocation. Neither needs market state to evaluate the characteristic.
