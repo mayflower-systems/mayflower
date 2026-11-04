@@ -1195,10 +1195,6 @@ dependencies = [
 [[package]]
 name = "mayf-sol-log-sink-prog"
 version = "1.0.0"
-dependencies = [
- "mayf-sol-log-sink-id",
- "solana-define-syscall 5.3.0",
-]
 
 [[package]]
 name = "mayf-sol-log-sink-reader"

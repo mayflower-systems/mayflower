@@ -1,4 +1,4 @@
-//! Shared program ID for the log sink, CPI helper, and reader.
+//! Log sink program ID, shared by the CPI helper and the reader.
 //!
 //! [`ID_STR`] is the base58 address. [`ID`] is decoded at compile time.
 

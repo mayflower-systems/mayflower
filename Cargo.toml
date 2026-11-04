@@ -54,7 +54,6 @@ fixed = { version = "=1.28.0", default-features = false }
 serde_json = "=1.0.154"
 solana-account-view = { version = "=2.1.0", default-features = false }
 solana-address = { version = "=2.9.0", default-features = false }
-solana-define-syscall = "=5.3.0"
 # The fixed-size CPI helper borrows data; the allocating `slice-cpi` API is disabled.
 solana-instruction-view = { version = "=2.1.0", default-features = false, features = ["cpi"] }
 solana-message = "=4.6.0"

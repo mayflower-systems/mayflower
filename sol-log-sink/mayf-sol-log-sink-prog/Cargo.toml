@@ -11,11 +11,6 @@ repository.workspace = true
 crate-type = ["cdylib"]
 name = "mayf_sol_log_sink_prog"
 
-[dependencies]
-mayf-sol-log-sink-id.workspace = true
-# Stack-height check and error logging.
-solana-define-syscall.workspace = true
-
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = ['cfg(target_os, values("solana"))']
