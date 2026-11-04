@@ -10,7 +10,6 @@ publish = false
 [dependencies]
 mayf-characteristic.workspace = true
 mayf-fixed-number.workspace = true
-mayf-monotone.workspace = true
 
 [dev-dependencies]
 mayf-characteristic-linear-driver.workspace = true

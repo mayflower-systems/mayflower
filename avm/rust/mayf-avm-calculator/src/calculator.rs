@@ -1,7 +1,6 @@
 //! Assemble segmented prices and integrals from neutral characteristic spans.
 
 use mayf_fixed_number::{AboveOne, Bounds, FixedNumber, NonNeg, Pos, SignedFixed};
-use mayf_monotone::require_nonnegative;
 
 use crate::characteristic::{CharacteristicEngine, SpanRequest, SpanResponse};
 use crate::{Error, Result, Segmentation};
@@ -96,7 +95,9 @@ impl<N: SignedFixed> ScheduleCalculator<N> {
                 .checked_add(growth)
                 .map_err(|_| Error::ArithmeticFailure)?
         };
-        require_nonnegative(floor_enclosure(price, floor)?).map_err(Into::into)
+        floor_enclosure(price, floor)?
+            .try_nonnegative()
+            .map_err(|_| Error::NegativeOutput)
     }
 
     /// Enclose `[lo, lo + width]`, using only the spans needed by its segments.
@@ -215,7 +216,9 @@ impl<N: SignedFixed> ScheduleCalculator<N> {
             .into_raw()
             .checked_add(curve_area)
             .map_err(|_| Error::ArithmeticFailure)?;
-        require_nonnegative(floor_enclosure(area, minimum)?).map_err(Into::into)
+        floor_enclosure(area, minimum)?
+            .try_nonnegative()
+            .map_err(|_| Error::NegativeOutput)
     }
 
     fn ramp_price(

@@ -1062,7 +1062,6 @@ dependencies = [
  "mayf-fixed-dashu",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
- "mayf-monotone",
 ]
 
 [[package]]
@@ -1080,9 +1079,7 @@ dependencies = [
 name = "mayf-characteristic"
 version = "0.1.0"
 dependencies = [
- "mayf-fixed-dashu",
  "mayf-fixed-number",
- "mayf-monotone",
 ]
 
 [[package]]
@@ -1103,7 +1100,6 @@ dependencies = [
  "mayf-fixed-dashu",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
- "mayf-monotone",
 ]
 
 [[package]]
@@ -1134,14 +1130,6 @@ name = "mayf-micro-basis-points"
 version = "0.1.0"
 dependencies = [
  "mayf-fixed-drivers",
- "mayf-fixed-number",
-]
-
-[[package]]
-name = "mayf-monotone"
-version = "0.1.0"
-dependencies = [
- "mayf-fixed-dashu",
  "mayf-fixed-number",
 ]
 

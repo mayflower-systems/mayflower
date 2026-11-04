@@ -1,7 +1,7 @@
 [package]
 name = "mayf-characteristic"
 version = "0.1.0"
-description = "Characteristic definitions and their disposable anchored affine calculators"
+description = "Bounded point evaluation and integration for neutral AVM characteristics"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -9,11 +9,6 @@ publish = false
 
 [lib]
 name = "mayf_characteristic"
-doctest = false
 
 [dependencies]
 mayf-fixed-number.workspace = true
-mayf-monotone.workspace = true
-
-[dev-dependencies]
-mayf-fixed-dashu.workspace = true

@@ -16,10 +16,10 @@ contains bounds for `f(lo)`, `f(lo + width)`, and the integral between them.
 A zero-width span returns the point value at both endpoints and exact zero area.
 Engines return calculation errors when they cannot produce valid bounds.
 
-An engine receives no segmentation, supply, trade, or floor-raise policy.
-`LocalCharacteristic::new(characteristic)` adapts an existing `Characteristic`
-implementation using its identity affine view. A remote adapter can implement
-the same interface by encoding the complete batch in one invocation.
+`LocalCharacteristic::new(characteristic)` evaluates each span using the neutral
+`Characteristic::y` and `Characteristic::integrate` methods. A remote adapter
+can encode the complete batch in one invocation. The central calculator applies
+the floor, ramp scalar, and offsets to the returned bounds.
 
 `AvmCalculator::new(ramp_scalar)` owns the shared calculation rules:
 

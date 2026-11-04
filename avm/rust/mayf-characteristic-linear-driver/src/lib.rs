@@ -4,5 +4,5 @@
 
 mod linear;
 
-pub use linear::{LinearCalculator, LinearCharacteristic};
+pub use linear::LinearCharacteristic;
 pub use mayf_characteristic_linear::{LinearParams, LinearParamsError};

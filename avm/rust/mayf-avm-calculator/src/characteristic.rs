@@ -1,8 +1,7 @@
 //! The numerical contract between shared AVM arithmetic and a characteristic engine.
 
-use mayf_characteristic::{AffineTransform, Characteristic};
-use mayf_fixed_number::{Bounds, FixedNumber, NonNeg, SignedFixed};
-use mayf_monotone::{MonotoneCalculator, MonotoneCalculatorError};
+use mayf_characteristic::{Characteristic, CharacteristicError};
+use mayf_fixed_number::{Bounds, FixedNumber, NonNeg};
 
 /// An interval on the neutral characteristic's permanent progress axis.
 /// Zero width is a point query: both endpoint values are equal and area is zero.
@@ -36,11 +35,11 @@ impl<N: FixedNumber> SpanResponse<N> {
 pub enum CharacteristicEngineError {
     /// Input and output lengths differ.
     InvalidBatch,
-    Calculation(MonotoneCalculatorError),
+    Calculation(CharacteristicError),
 }
 
-impl From<MonotoneCalculatorError> for CharacteristicEngineError {
-    fn from(error: MonotoneCalculatorError) -> Self {
+impl From<CharacteristicError> for CharacteristicEngineError {
+    fn from(error: CharacteristicError) -> Self {
         Self::Calculation(error)
     }
 }
@@ -61,10 +60,7 @@ pub trait CharacteristicEngine<N: FixedNumber> {
     ) -> CharacteristicEngineResult<()>;
 }
 
-/// Run an existing affine characteristic locally through its neutral view.
-///
-/// Engine authors implementing [`Characteristic`] can reuse this adapter. A
-/// remote adapter implements the same batch trait without exposing its formula.
+/// Evaluate a batch locally using a [`Characteristic`]'s point and integral methods.
 pub struct LocalCharacteristic<C> {
     characteristic: C,
 }
@@ -75,7 +71,7 @@ impl<C> LocalCharacteristic<C> {
     }
 }
 
-impl<N: SignedFixed, C: Characteristic<N>> CharacteristicEngine<N> for LocalCharacteristic<C> {
+impl<N: FixedNumber, C: Characteristic<N>> CharacteristicEngine<N> for LocalCharacteristic<C> {
     fn spans(
         &self,
         requests: &[SpanRequest<N>],
@@ -84,19 +80,15 @@ impl<N: SignedFixed, C: Characteristic<N>> CharacteristicEngine<N> for LocalChar
         if requests.len() != responses.len() {
             return Err(CharacteristicEngineError::InvalidBatch);
         }
-        if requests.is_empty() {
-            return Ok(());
-        }
-        let calculator = self.characteristic.calculator(AffineTransform::identity());
         for (request, response) in requests.iter().zip(responses) {
             let hi = request
                 .lo
                 .checked_add(request.width)
-                .map_err(|_| MonotoneCalculatorError::ArithmeticFailure)?;
+                .map_err(|_| CharacteristicError::ArithmeticFailure)?;
             let y_at_lo = if request.lo == NonNeg::zero() {
                 Bounds::exact(NonNeg::zero())
             } else {
-                calculator.y(request.lo)?
+                self.characteristic.y(request.lo)?
             };
             *response = if request.width == NonNeg::zero() {
                 SpanResponse {
@@ -107,8 +99,8 @@ impl<N: SignedFixed, C: Characteristic<N>> CharacteristicEngine<N> for LocalChar
             } else {
                 SpanResponse {
                     y_at_lo,
-                    y_at_hi: calculator.y(hi)?,
-                    area: calculator.integrate(request.lo, request.width)?,
+                    y_at_hi: self.characteristic.y(hi)?,
+                    area: self.characteristic.integrate(request.lo, request.width)?,
                 }
             };
         }
