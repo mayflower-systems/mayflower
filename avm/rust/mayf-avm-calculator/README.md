@@ -217,24 +217,18 @@ a payout, applies its normalization and integer rounding, and settles fees,
 transfers, and state persistence atomically. Conservative bounds need not give
 the nearest possible whole-unit result.
 
-This crate does not choose a concrete number type, `u64` wire encoding,
-normalization metadata, CPI transport, fees, or custody rules. A future AVM
-program can own those concerns and operations such as `raise_floor_from_surplus`.
-Only the numerical span batch crosses the characteristic program boundary;
-quoting, validation, and next-state construction stay central.
+`mayf-avm-prog` wraps this calculator with pure program actions, reserve and
+position accounting, and fees. It remains generic over the number type so the
+same actions can run in a desktop simulator. Semantic operations such as
+`raise_floor_from_surplus` belong in that layer.
+
+A future `mayf-avm-prog-sol` will select concrete numeric types, normalize token
+units, encode CPI requests, check authorization, map program errors, and perform
+transfers and persistence. Only the numerical span batch crosses the
+characteristic program boundary; quoting, validation, and next-state
+construction stay central.
 
 Restored state must remain bound to the same characteristic parameters and ramp
 scalar. Checked constructors establish geometry and supply relationships; they
 do not establish account authorization, actual reserve balances, collateral
 health, or the truth of bounds supplied by an untrusted engine.
-
-## Comparing the designs
-
-`mayf-schedule-segmented` keeps an independent main reference and exposes an
-optional horizontal-translation calculator. `mayf-avm-prog` remains its separate
-program prototype.
-
-This crate derives main placement from geometry, represents horizontal effects
-through separate progress and circulation, and centralizes all transformations
-around a neutral numerical engine. The existing crates remain alongside it for
-comparison.

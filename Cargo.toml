@@ -31,7 +31,6 @@ mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0"
 mayf-monotone = { path = "avm/rust/mayf-monotone", version = "0.1.0" }
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
 mayf-characteristic-linear-driver = { path = "avm/rust/mayf-characteristic-linear-driver", version = "0.1.0" }
-mayf-schedule-segmented = { path = "avm/rust/mayf-schedule-segmented", version = "0.1.0" }
 mayf-avm-calculator = { path = "avm/rust/mayf-avm-calculator", version = "0.1.0" }
 mayf-spl-token = { path = "sol-tools/mayf-spl-token", version = "0.1.0" }
 

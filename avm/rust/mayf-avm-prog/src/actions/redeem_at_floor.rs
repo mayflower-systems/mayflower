@@ -1,83 +1,62 @@
 use crate::{
-    fees::{FeeChain, split_fee},
+    fees::{FeeChain, apply_fee, split_fee},
     state::{Market, Position},
 };
-use mayf_fixed_number::{FixedNumber, IntegralRounding};
+use mayf_avm_calculator::AvmCalculator;
+use mayf_fixed_number::{FixedNumber, NonNeg, Pos, SignedFixed};
 
-pub struct RedeemAtFloorArgs<N>
-where
-    N: FixedNumber,
-{
-    pub amount_ava: u64,
-    /// The minimum expected amount of reserve received after fees
-    pub min_reserve_out: u64,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RedeemAtFloorArgs<N: FixedNumber> {
+    pub amount_ava: Pos<N>,
+    /// Minimum normalized reserve received after fees.
+    pub min_reserve_out: NonNeg<N>,
     pub market: Market<N>,
-    pub position: Position,
+    pub position: Position<N>,
 }
 
-pub struct RedeemAtFloorReceipt<N>
-where
-    N: FixedNumber,
-{
-    /// the next state of the market
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RedeemAtFloorReceipt<N: FixedNumber> {
     pub market_next: Market<N>,
-    /// the next state of the position
-    pub position_next: Position,
-    /// Reserve paid to the subject after fees.
-    pub reserve_to_subject: u64,
-    /// the fees that were paid
-    pub fee_chain: FeeChain,
+    pub position_next: Position<N>,
+    /// Normalized reserve paid to the subject after fees.
+    pub reserve_to_subject: NonNeg<N>,
+    pub fee_chain: FeeChain<N>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedeemAtFloorError {
     AvaBalanceTooLow,
-    SupplyTooLow,
-    FloorLiquidityTooLow,
-    InvalidSegmentation,
+    Calculator(mayf_avm_calculator::Error),
     PositionUnderCollateralized,
     ReserveBalanceTooLow,
     MinimumReserveOutNotMet,
     ArithmeticFailure,
 }
 
-/// Burn AVA against the flat tail without changing ramp width or outstanding advances.
+/// Redeem against the floor tail while preserving progress and segmentation.
 pub fn redeem_at_floor<N>(
     args: RedeemAtFloorArgs<N>,
 ) -> Result<RedeemAtFloorReceipt<N>, RedeemAtFloorError>
 where
-    N: IntegralRounding,
+    N: SignedFixed,
 {
+    if NonNeg::from(args.amount_ava) > args.position.ava_owned {
+        return Err(RedeemAtFloorError::AvaBalanceTooLow);
+    }
     let ava_owned = args
         .position
         .ava_owned
         .checked_sub(args.amount_ava)
-        .ok_or(RedeemAtFloorError::AvaBalanceTooLow)?;
-    let supply_ava = args
-        .market
-        .supply_ava
-        .checked_sub(args.amount_ava)
-        .ok_or(RedeemAtFloorError::SupplyTooLow)?;
-
-    let mut segmentation_geometry = args.market.segmentation_geometry;
-    if segmentation_geometry.ramp_end > args.market.supply_ava {
-        return Err(RedeemAtFloorError::InvalidSegmentation);
-    }
-    segmentation_geometry.ramp_end = segmentation_geometry
-        .ramp_end
-        .checked_sub(args.amount_ava)
-        .ok_or(RedeemAtFloorError::FloorLiquidityTooLow)?;
-    let ramp_end = N::checked_from_u64(segmentation_geometry.ramp_end)
         .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?;
-    if segmentation_geometry.ramp_width.get() > ramp_end {
-        return Err(RedeemAtFloorError::FloorLiquidityTooLow);
-    }
+    let quote = AvmCalculator::new(args.market.ramp_scalar)
+        .quote_redeem_at_floor(&args.market.calculator_state, args.amount_ava)
+        .map_err(RedeemAtFloorError::Calculator)?;
 
     let position_next = Position {
         ava_owned,
         ..args.position
     };
-    let floor = segmentation_geometry.floor;
+    let floor = args.market.calculator_state.segmentation().floor();
     if !position_next
         .is_healthy(floor)
         .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?
@@ -85,26 +64,29 @@ where
         return Err(RedeemAtFloorError::PositionUnderCollateralized);
     }
 
-    let gross_reserve = N::checked_from_u64(args.amount_ava)
-        .and_then(|amount| amount.checked_mul_floor(floor.get()))
-        .and_then(N::checked_floor_to_u64)
+    let gross_reserve = quote.reserve.lower();
+    let gross_fee = apply_fee(gross_reserve, args.market.fee_rates.redeem_fee)
         .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?;
-    let gross_fee = args.market.fee_rates.redeem_fee.apply_ceil(gross_reserve);
-    let reserve_to_subject = gross_reserve - gross_fee;
+    let reserve_to_subject = gross_reserve
+        .checked_sub(gross_fee)
+        .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?;
     if reserve_to_subject < args.min_reserve_out {
         return Err(RedeemAtFloorError::MinimumReserveOutNotMet);
     }
 
     // The subject and both fee recipients are paid from held reserve.
+    if gross_reserve > args.market.reserve_held {
+        return Err(RedeemAtFloorError::ReserveBalanceTooLow);
+    }
     let reserve_held = args
         .market
         .reserve_held
         .checked_sub(gross_reserve)
-        .ok_or(RedeemAtFloorError::ReserveBalanceTooLow)?;
-    let fee_chain = split_fee(gross_fee, args.market.protocol_fee_rate);
+        .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?;
+    let fee_chain = split_fee(gross_fee, args.market.protocol_fee_rate)
+        .map_err(|_| RedeemAtFloorError::ArithmeticFailure)?;
     let market_next = Market {
-        segmentation_geometry,
-        supply_ava,
+        calculator_state: quote.next_state,
         reserve_held,
         ..args.market
     };
