@@ -14,9 +14,8 @@ external accounts. The crate is `no_std` and performs no storage or token I/O.
 | `mayf-avm-prog`            | Program actions, position collateral, reserve accounting, and fees, using generic normalized quantities.               |
 | Future `mayf-avm-prog-sol` | Concrete numeric types, token normalization, authentication, Solana errors, CPI transport, transfers, and persistence. |
 
-Borrowing, repayment, option exercise, ordinary trading, and semantic floor-raise
-flavors belong in this program layer as it grows. The current actions are
-`donate_reserve` and `redeem_at_floor`. For example, a future
+Borrowing, repayment, and semantic floor raises belong in this program layer
+as it grows. For example, a future
 `raise_floor_from_surplus` action will select a policy and establish reserve
 funding before accepting the calculator's verified next state.
 
@@ -48,20 +47,44 @@ engine authorization, and atomic settlement belong to that host.
 
 ## Actions
 
+`issue_ava` buys an exact amount of AVA. The upper bound from
+`AvmCalculator::quote_issue` is credited to held reserves. The buyer pays
+that amount plus the issue fee, subject to the inclusive `max_reserve_in`.
+The receipt credits the AVA to the position and carries the calculator's
+updated progress and circulation.
+
+Pass the market's characteristic engine by reference. A simulator can use
+`LocalCharacteristic` with the linear driver. An Anchor host can implement
+`CharacteristicEngine::spans` with one synchronous CPI per successful issue.
+The host checks the buyer's cap against the final token-unit debit and settles
+the transfers, mint, and state updates atomically.
+
+`issue_ava_at_floor` settles an option exercise. The holder receives the exact
+AVA amount and deposits `floor * amount_ava` into held reserves, rounded up on
+the fixed-point grid. The configured `exercise_fee` is charged separately and
+counts toward `max_reserve_in`. Circulation and the floor tail grow by the
+amount issued. Progress and ramp geometry stay fixed, which preserves the spot
+price. The action requires no characteristic engine call. The host authorizes
+and consumes the option when settling the receipt.
+
+`redeem_ava` sells an exact amount of AVA. The calculator integrates the
+pre-sale schedule across any main, ramp, and floor portions sold. Progress
+decreases toward zero. Any AVA sold beyond that point pays the floor price.
+If the sale ends inside the ramp, the ramp ends at the remaining progress.
+If it ends on the floor, the ramp width becomes zero. The next buy starts on
+main in both cases. Pricing takes at most one engine batch, and contraction
+uses the geometry returned in the same quote.
+
+`redeem_at_floor` sells directly from the available floor tail. It decreases
+circulation and preserves progress, segmentation, and the current price.
+
+Both redemptions check the seller's holdings and remaining collateral, use the
+quote's lower bound for the gross reserve debit, and enforce `min_reserve_out`
+on the payout after fees. Held reserves must cover the payout and both fee
+shares. A Solana host enforces the minimum on the final token-unit payout.
+
 `donate_reserve` increases held reserves without changing calculator state,
 outstanding advances, or positions.
-
-`redeem_at_floor` obtains the gross quote and next calculator state from
-`AvmCalculator::quote_redeem_at_floor`. It checks owned AVA, remaining collateral,
-held reserve liquidity, and the minimum payout after fees. The gross reserve
-amount uses the quote's lower bound. The receipt conserves reserve exactly on
-the numeric grid: the reduction in held reserve equals the subject's payout
-plus both fee shares.
-
-Floor redemption changes circulation only. Progress, floor, ramp end, and ramp
-width remain unchanged, so the current price is preserved. Available floor-tail
-capacity comes from calculator state; the program does not translate geometry
-or duplicate that calculation.
 
 ```rust
 use mayf_avm_calculator::{Accounting, MarketState, Segmentation};

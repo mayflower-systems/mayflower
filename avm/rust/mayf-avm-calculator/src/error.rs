@@ -2,7 +2,7 @@ use mayf_characteristic::CharacteristicError;
 
 use crate::characteristic::CharacteristicEngineError;
 
-/// Failures in schedule geometry, quote acceptance, or characteristic arithmetic.
+/// Failures in schedule geometry, quote acceptance, or characteristic evaluation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     RampWidthExceedsEnd,
@@ -14,6 +14,7 @@ pub enum Error {
     MainCurveChanged,
     AreaChangeOutsideTolerance,
     InvalidCharacteristicBatch,
+    CharacteristicInvocationFailed,
     CharacteristicOutOfDomain,
     NegativeOutput,
     ArithmeticFailure,
@@ -25,6 +26,7 @@ impl From<CharacteristicEngineError> for Error {
     fn from(error: CharacteristicEngineError) -> Self {
         match error {
             CharacteristicEngineError::InvalidBatch => Self::InvalidCharacteristicBatch,
+            CharacteristicEngineError::InvocationFailed => Self::CharacteristicInvocationFailed,
             CharacteristicEngineError::Calculation(CharacteristicError::InputOutOfDomain) => {
                 Self::CharacteristicOutOfDomain
             }
