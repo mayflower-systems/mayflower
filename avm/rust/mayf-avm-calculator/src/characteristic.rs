@@ -30,11 +30,13 @@ impl<N: FixedNumber> SpanResponse<N> {
     }
 }
 
-/// Numerical failures, independent of market state and acceptance policies.
+/// Failures evaluating or obtaining a batch of neutral characteristic spans.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CharacteristicEngineError {
     /// Input and output lengths differ.
     InvalidBatch,
+    /// The adapter could not complete the engine invocation.
+    InvocationFailed,
     Calculation(CharacteristicError),
 }
 

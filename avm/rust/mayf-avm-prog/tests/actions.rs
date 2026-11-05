@@ -1,13 +1,15 @@
-use core::fmt::Debug;
+use core::{cell::Cell, fmt::Debug};
 
 use mayf_avm_calculator::{
-    Accounting, AvmCalculator, Error as CalculatorError, LocalCharacteristic, MarketState,
-    Segmentation,
+    Accounting, AvmCalculator, CharacteristicEngine, CharacteristicEngineError,
+    CharacteristicEngineResult, Error as CalculatorError, LocalCharacteristic, MarketState,
+    Segmentation, SpanRequest, SpanResponse,
 };
 use mayf_avm_prog::{
     actions::{
-        DonateReserveArgs, DonateReserveError, RedeemAtFloorArgs, RedeemAtFloorError,
-        donate_reserve, redeem_at_floor,
+        DonateReserveArgs, DonateReserveError, IssueAvaArgs, IssueAvaAtFloorArgs,
+        IssueAvaAtFloorError, IssueAvaError, RedeemAtFloorArgs, RedeemAtFloorError, RedeemAvaArgs,
+        RedeemAvaError, donate_reserve, issue_ava, issue_ava_at_floor, redeem_at_floor, redeem_ava,
     },
     fees::{apply_fee, split_fee},
     state::{FeeRates, Market, Position, PositionError},
@@ -37,6 +39,10 @@ fn fraction<N: FixedNumber>(numerator: i128, denominator: u128) -> NonNeg<N> {
 
 fn rate(percent: u32) -> MicroBasisPoints {
     MicroBasisPoints::from_percent(percent).unwrap()
+}
+
+fn linear_engine<N: FixedNumber>(slope: i32) -> LocalCharacteristic<LinearCharacteristic<N>> {
+    LocalCharacteristic::new(LinearCharacteristic::new(Pos::from_i32(slope).unwrap()))
 }
 
 fn market<N: FixedNumber>() -> Market<N> {
@@ -97,13 +103,263 @@ fn donation_changes_only_held_reserve_and_checks_the_numeric_limit() {
     );
 }
 
+/// Allow one synchronous engine invocation, even when the quote needs multiple spans.
+struct OneInvocation<'a>(Cell<Option<&'a dyn CharacteristicEngine<Tenths>>>);
+
+impl CharacteristicEngine<Tenths> for OneInvocation<'_> {
+    fn spans(
+        &self,
+        requests: &[SpanRequest<Tenths>],
+        responses: &mut [SpanResponse<Tenths>],
+    ) -> CharacteristicEngineResult<()> {
+        let engine = self
+            .0
+            .take()
+            .ok_or(CharacteristicEngineError::InvocationFailed)?;
+        engine.spans(requests, responses)
+    }
+}
+
+#[test]
+fn issuance_charges_the_upper_cost_plus_fees_and_advances_both_counters() {
+    let mut market = market::<Tenths>();
+    let segmentation = market.calculator_state.segmentation();
+    market.calculator_state =
+        MarketState::new(segmentation, Accounting::new(n(20), n(17))).unwrap();
+    let args = IssueAvaArgs {
+        amount_ava: Pos::try_from(fraction(14, 10)).unwrap(),
+        max_reserve_in: fraction(466, 10),
+        market,
+        position: Position {
+            ava_owned: n(10),
+            reserve_advanced: n(7),
+        },
+    };
+    let linear = linear_engine(2);
+    let engine = OneInvocation(Cell::new(Some(&linear)));
+    let receipt = issue_ava(args, &engine).unwrap();
+
+    // Main price at progress 20 is 31.5. Buying 1.4 costs 31.5 * 1.4 + 1.4² = 46.06.
+    // The buyer funds 46.1 of backing and a 1% fee rounded up to 0.5.
+    assert_eq!(receipt.reserve_from_subject, fraction(466, 10));
+    assert_eq!(receipt.fee_chain.fee_to_protocol, fraction(2, 10));
+    assert_eq!(receipt.fee_chain.fee_to_market_owner, fraction(3, 10));
+    assert_eq!(
+        receipt.market_next,
+        Market {
+            calculator_state: MarketState::new(
+                segmentation,
+                Accounting::new(fraction(214, 10), fraction(184, 10))
+            )
+            .unwrap(),
+            reserve_held: fraction(1461, 10),
+            ..market
+        }
+    );
+    assert_eq!(
+        receipt.position_next,
+        Position {
+            ava_owned: fraction(114, 10),
+            ..args.position
+        }
+    );
+
+    let lower_cap = IssueAvaArgs {
+        max_reserve_in: fraction(465, 10),
+        ..args
+    };
+    assert_eq!(
+        issue_ava(lower_cap, &linear).unwrap_err(),
+        IssueAvaError::MaximumReserveInExceeded
+    );
+    assert_eq!(
+        issue_ava(args, &engine).unwrap_err(),
+        IssueAvaError::Calculator(CalculatorError::CharacteristicInvocationFailed)
+    );
+}
+
+#[test]
+fn floor_issuance_funds_the_floor_tail_and_preserves_spot_price() {
+    let mut market = market::<Tenths>();
+    let segmentation = market.calculator_state.segmentation();
+    // Circulation just covers the nonfloor supply. The initial floor tail is empty.
+    market.calculator_state =
+        MarketState::new(segmentation, Accounting::new(n(20), fraction(125, 10))).unwrap();
+    let args = IssueAvaAtFloorArgs {
+        amount_ava: Pos::try_from(fraction(67, 10)).unwrap(),
+        max_reserve_in: fraction(104, 10),
+        market,
+        position: Position {
+            ava_owned: n(10),
+            reserve_advanced: n(7),
+        },
+    };
+    let receipt = issue_ava_at_floor(args).unwrap();
+
+    // 6.7 AVA at a floor of 1.5 needs 10.05 reserve, rounded up to 10.1.
+    // The 2% exercise fee rounds to 0.3, split 0.1 to the protocol and 0.2 to the owner.
+    assert_eq!(receipt.reserve_from_subject, fraction(104, 10));
+    assert_eq!(receipt.fee_chain.fee_to_protocol, fraction(1, 10));
+    assert_eq!(receipt.fee_chain.fee_to_market_owner, fraction(2, 10));
+    assert_eq!(
+        receipt.position_next,
+        Position {
+            ava_owned: fraction(167, 10),
+            ..args.position
+        }
+    );
+    assert_eq!(
+        receipt.market_next,
+        Market {
+            calculator_state: MarketState::new(
+                segmentation,
+                Accounting::new(n(20), fraction(192, 10))
+            )
+            .unwrap(),
+            reserve_held: fraction(1101, 10),
+            ..market
+        }
+    );
+    let next = receipt.market_next.calculator_state;
+    assert_eq!(next.floor_tail().unwrap(), NonNeg::from(args.amount_ava));
+    let calculator = AvmCalculator::new(market.ramp_scalar);
+    let engine = linear_engine(2);
+    assert_eq!(
+        calculator.price(&next, &engine).unwrap(),
+        calculator.price(&market.calculator_state, &engine).unwrap()
+    );
+    assert_eq!(
+        issue_ava_at_floor(IssueAvaAtFloorArgs {
+            max_reserve_in: fraction(103, 10),
+            ..args
+        })
+        .unwrap_err(),
+        IssueAvaAtFloorError::MaximumReserveInExceeded
+    );
+}
+
+fn raised_redemption() -> RedeemAvaArgs<Tenths> {
+    RedeemAvaArgs {
+        amount_ava: Pos::try_from(fraction(22, 10)).unwrap(),
+        min_reserve_out: fraction(177, 10),
+        market: Market {
+            calculator_state: MarketState::new(
+                Segmentation::new(n(3), n(4), n(2)).unwrap(),
+                Accounting::new(fraction(52, 10), fraction(72, 10)),
+            )
+            .unwrap(),
+            ..market()
+        },
+        position: Position {
+            ava_owned: fraction(72, 10),
+            reserve_advanced: n(3),
+        },
+    }
+}
+
+#[test]
+fn sale_into_ramp_pays_the_old_curve_and_next_buy_uses_contracted_main() {
+    let args = raised_redemption();
+    let linear = linear_engine(2);
+    let receipt = redeem_ava(args, &OneInvocation(Cell::new(Some(&linear)))).unwrap();
+
+    // [3, 4] on the ramp pays (7 + 11)/2 = 9. [4, 5.2] on main pays 14.64.
+    // The lower bound is 23.6, with a 25% redemption fee of 5.9.
+    assert_eq!(receipt.reserve_to_subject, fraction(177, 10));
+    assert_eq!(receipt.fee_chain.fee_to_protocol, fraction(15, 10));
+    assert_eq!(receipt.fee_chain.fee_to_market_owner, fraction(44, 10));
+    assert_eq!(
+        receipt.market_next,
+        Market {
+            calculator_state: MarketState::new(
+                Segmentation::new(n(3), n(3), n(1)).unwrap(),
+                Accounting::new(n(3), n(5)),
+            )
+            .unwrap(),
+            reserve_held: fraction(764, 10),
+            ..args.market
+        }
+    );
+    assert_eq!(
+        receipt.position_next,
+        Position {
+            ava_owned: n(5),
+            ..args.position
+        }
+    );
+    assert_eq!(
+        redeem_ava(
+            RedeemAvaArgs {
+                min_reserve_out: fraction(178, 10),
+                ..args
+            },
+            &linear
+        )
+        .unwrap_err(),
+        RedeemAvaError::MinimumReserveOutNotMet
+    );
+
+    // The next unit costs 8 at the main slope (price 7 to 9), plus a 0.1 issue fee.
+    let buy = issue_ava(
+        IssueAvaArgs {
+            amount_ava: Pos::from_i32(1).unwrap(),
+            max_reserve_in: fraction(81, 10),
+            market: receipt.market_next,
+            position: receipt.position_next,
+        },
+        &linear,
+    )
+    .unwrap();
+    assert_eq!(buy.reserve_from_subject, fraction(81, 10));
+}
+
+#[test]
+fn sale_through_entire_ramp_collapses_it_then_redeems_excess_circulation_at_floor() {
+    let args = RedeemAvaArgs {
+        amount_ava: Pos::try_from(fraction(42, 10)).unwrap(),
+        min_reserve_out: fraction(237, 10),
+        ..raised_redemption()
+    };
+    let linear = linear_engine(2);
+    let engine = OneInvocation(Cell::new(Some(&linear)));
+    let sale = redeem_ava(args, &engine).unwrap();
+    // [1, 2] pays 3 at the floor, [2, 4] pays 14 on the ramp, and main pays 14.64.
+    assert_eq!(sale.reserve_to_subject, fraction(237, 10));
+    assert_eq!(
+        sale.market_next.calculator_state,
+        MarketState::new(
+            Segmentation::new(n(3), n(1), n(0)).unwrap(),
+            Accounting::new(n(1), n(3))
+        )
+        .unwrap()
+    );
+
+    // The next two units consume one progress unit and one additional circulating unit.
+    // Both pay 3 before fees, so this sale needs zero engine calls.
+    let sale = redeem_ava(
+        RedeemAvaArgs {
+            amount_ava: Pos::from_i32(2).unwrap(),
+            min_reserve_out: fraction(45, 10),
+            market: sale.market_next,
+            position: sale.position_next,
+        },
+        &engine,
+    )
+    .unwrap();
+    assert_eq!(sale.reserve_to_subject, fraction(45, 10));
+    assert_eq!(
+        sale.market_next.calculator_state,
+        MarketState::new(Segmentation::launch(n(3)), Accounting::new(n(0), n(1))).unwrap()
+    );
+}
+
 fn check_floor_redemption<N: SignedFixed + Debug>(
     payout: NonNeg<N>,
     protocol_fee: NonNeg<N>,
     owner_fee: NonNeg<N>,
 ) {
     let original = market::<N>();
-    let engine = LocalCharacteristic::new(LinearCharacteristic::new(Pos::from_i32(8).unwrap()));
+    let engine = linear_engine(8);
     let calculator = AvmCalculator::new(original.ramp_scalar);
     let price = calculator
         .price(&original.calculator_state, &engine)
