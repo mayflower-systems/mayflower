@@ -15,6 +15,7 @@
 mod actions;
 mod amount;
 mod error;
+mod math;
 mod state;
 mod validation;
 
