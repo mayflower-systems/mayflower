@@ -4,6 +4,7 @@ members = [
     "fixed-number/*",
     "sol-log-sink/*",
     "reward-clearing/rust/*",
+    "reward-clearing/sol/*",
     "referral/rust/*",
     "avm/rust/*",
     "sol-tools/rust/*",
@@ -25,13 +26,16 @@ mayf-fixed-dashu = { path = "fixed-number/mayf-fixed-dashu", version = "0.1.0" }
 mayf-fixed-drivers = { path = "fixed-number/mayf-fixed-drivers", version = "0.1.0" }
 mayf-micro-basis-points = { path = "fixed-number/mayf-micro-basis-points", version = "0.1.0" }
 mayf-sol-log-sink-id = { path = "sol-log-sink/mayf-sol-log-sink-id", version = "1.0.0" }
+mayf-sol-log-sink-cpi = { path = "sol-log-sink/mayf-sol-log-sink-cpi", version = "1.0.0" }
 referral-tree = { path = "referral/rust/referral-tree", version = "0.1.0" }
 mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
 mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0" }
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
 mayf-characteristic-linear-driver = { path = "avm/rust/mayf-characteristic-linear-driver", version = "0.1.0" }
 mayf-avm-calculator = { path = "avm/rust/mayf-avm-calculator", version = "0.1.0" }
-mayf-spl-token = { path = "sol-tools/mayf-spl-token", version = "0.1.0" }
+mayf-spl-token = { path = "sol-tools/rust/mayf-spl-token", version = "0.1.0" }
+mayf-reward-clearing = { path = "reward-clearing/rust/mayf-reward-clearing", version = "0.1.0" }
+mayf-reward-clearing-sol = { path = "reward-clearing/sol/mayf-reward-clearing-sol", version = "0.1.0" }
 
 # Third-party crates.
 # Declare every third-party crate here, once, with an exact `=` pin.
