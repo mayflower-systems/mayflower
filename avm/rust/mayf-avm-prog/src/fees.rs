@@ -7,6 +7,15 @@ pub struct FeeChain<N: FixedNumber> {
     pub fee_to_protocol: NonNeg<N>,
 }
 
+impl<N: FixedNumber> Default for FeeChain<N> {
+    fn default() -> Self {
+        Self {
+            fee_to_market_owner: NonNeg::zero(),
+            fee_to_protocol: NonNeg::zero(),
+        }
+    }
+}
+
 /// Apply a fee with one upward rounding to the number type's native grid.
 /// The integer rate and its denominator must be representable by that type.
 pub fn apply_fee<N: FixedNumber>(

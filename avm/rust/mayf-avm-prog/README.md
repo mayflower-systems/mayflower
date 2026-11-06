@@ -14,8 +14,7 @@ external accounts. The crate is `no_std` and performs no storage or token I/O.
 | `mayf-avm-prog`            | Program actions, position collateral, reserve accounting, and fees, using generic normalized quantities.               |
 | Future `mayf-avm-prog-sol` | Concrete numeric types, token normalization, authentication, Solana errors, CPI transport, transfers, and persistence. |
 
-Borrowing, repayment, and semantic floor raises belong in this program layer
-as it grows. For example, a future
+Semantic floor raises belong in this program layer as it grows. For example, a future
 `raise_floor_from_surplus` action will select a policy and establish reserve
 funding before accepting the calculator's verified next state.
 
@@ -26,8 +25,9 @@ immutable ramp scalar, held and advanced reserves, and fee configuration.
 Segmentation and supply counters have a single representation in calculator
 state. `Position<N>` stores owned AVA and outstanding reserve advances.
 
-All balances and quantities use `NonNeg<N>` or `Pos<N>`, in the same normalized
-units as the calculator. Actions require positive amounts. The program selects
+Balances and quantities use `NonNeg<N>` or `Pos<N>`, in the same normalized
+units as the calculator. Trades require positive amounts. Reconciliation accepts
+zero targets and reports a signed net reserve transfer. The program selects
 conservative bounds and rounds fees on the chosen fixed-number grid; it does
 not round to whole token units or select a numeric implementation. The
 calculator uses `SignedFixed` for intermediate arithmetic, while persisted
@@ -47,44 +47,45 @@ engine authorization, and atomic settlement belong to that host.
 
 ## Actions
 
-`issue_ava` buys an exact amount of AVA. The upper bound from
-`AvmCalculator::quote_issue` is credited to held reserves. The buyer pays
-that amount plus the issue fee, subject to the inclusive `max_reserve_in`.
-The receipt credits the AVA to the position and carries the calculator's
-updated progress and circulation.
+`reconcile_position` handles ordinary buying, selling, borrowing, and repayment
+from target AVA holdings and outstanding advance. For a simple buy or sell,
+keep the target advance equal to the current advance. It quotes the AVA
+difference on the current schedule and nets it with the draw or repayment.
+Collateral and liquidity checks apply to the combined result, allowing a
+purchase to supply its own collateral or a sale to repay the advance securing it.
 
-Pass the market's characteristic engine by reference. A simulator can use
-`LocalCharacteristic` with the linear driver. An Anchor host can implement
-`CharacteristicEngine::spans` with one synchronous CPI per successful issue.
-The host checks the buyer's cap against the final token-unit debit and settles
-the transfers, mint, and state updates atomically.
+Buying uses the upper cost bound and the issue fee. Selling uses the lower
+proceeds bound and the redemption fee. A sale is priced on the pre-sale
+schedule. When it enters the ramp or floor, contraction attaches main at the
+remaining progress. The next buy starts on main. Newly drawn reserve incurs the reserve access fee.
+Repayment carries no fee. Trade and borrowing fees are split separately to
+preserve each operation's protocol rounding.
 
-`issue_ava_at_floor` settles an option exercise. The holder receives the exact
-AVA amount and deposits `floor * amount_ava` into held reserves, rounded up on
-the fixed-point grid. The configured `exercise_fee` is charged separately and
-counts toward `max_reserve_in`. Circulation and the floor tail grow by the
-amount issued. Progress and ramp geometry stay fixed, which preserves the spot
-price. The action requires no characteristic engine call. The host authorizes
-and consumes the option when settling the receipt.
+The signed `reserve_to_subject` is the final transfer after fees. Positive means
+the subject receives reserve, negative means they pay. `SlippageProtection`
+supplies the initial wallet balance and its minimum acceptable final balance,
+which limits either spending or the expected payout. The host supplies the
+actual initial balance and enforces that minimum after token-unit rounding.
 
-`redeem_ava` sells an exact amount of AVA. The calculator integrates the
-pre-sale schedule across any main, ramp, and floor portions sold. Progress
-decreases toward zero. Any AVA sold beyond that point pays the floor price.
-If the sale ends inside the ramp, the ramp ends at the remaining progress.
-If it ends on the floor, the ramp width becomes zero. The next buy starts on
-main in both cases. Pricing takes at most one engine batch, and contraction
-uses the geometry returned in the same quote.
+Reconciliation takes at most one synchronous characteristic batch. Borrowing
+and repayment with constant AVA holdings require zero engine calls. A simulator
+can use `LocalCharacteristic` with the linear driver. An Anchor host can supply
+a `CharacteristicEngine::spans` implementation that performs CPI.
 
-`redeem_at_floor` sells directly from the available floor tail. It decreases
-circulation and preserves progress, segmentation, and the current price.
+The two floor actions change circulation while preserving progress, ramp
+geometry, and spot price. Both require zero characteristic engine calls.
 
-Both redemptions check the seller's holdings and remaining collateral, use the
-quote's lower bound for the gross reserve debit, and enforce `min_reserve_out`
-on the payout after fees. Held reserves must cover the payout and both fee
-shares. A Solana host enforces the minimum on the final token-unit payout.
+- `issue_ava_at_floor` settles an option exercise. The holder receives the exact
+  AVA amount and deposits `floor * amount_ava` into held reserves, rounded up.
+  The exercise fee is charged separately and counts toward `max_reserve_in`.
+  The host authorizes and consumes the option when settling the receipt.
+- `redeem_at_floor` sells from the available floor tail. It checks holdings,
+  remaining collateral, and held liquidity. The gross reserve debit uses the
+  lower quote bound. The payout after the redemption fee must meet
+  `min_reserve_out`.
 
-`donate_reserve` increases held reserves without changing calculator state,
-outstanding advances, or positions.
+`donate_reserve` increases held reserves. The host settles each action's
+reserve transfers, fee distributions, token mint or burn, and next state atomically.
 
 ```rust
 use mayf_avm_calculator::{Accounting, MarketState, Segmentation};
