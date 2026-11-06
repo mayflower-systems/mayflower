@@ -1,4 +1,3 @@
-#![no_std]
 #![forbid(unsafe_code)]
 
 //! Pure reward-clearing auction mathematics and accounting transitions.
@@ -24,7 +23,7 @@ pub use actions::*;
 pub use amount::Amount;
 pub use error::{Result, RewardClearingError};
 pub use state::{
-    Epoch, EpochCounter, EpochDuration, EpochSchedule, EpochSnapshot, EpochTerms, EpochWindow,
+    EpochCounter, EpochDuration, EpochSchedule, EpochSnapshot, EpochTerms, EpochWindow,
     ExitPenaltyExponent, FinalizedEpoch, FinalizedEpochSnapshot, Lot, LotSnapshot, Position,
     PositionSnapshot, RampBonusSlope, Seconds,
 };

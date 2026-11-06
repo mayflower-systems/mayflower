@@ -1,13 +1,13 @@
-use crate::{EpochCounter, Seconds};
+use crate::{EpochCounter, Seconds, models::Identifiable};
 
-pub struct Epoch<I: PartialEq> {
+pub struct Epoch<I: Identifiable> {
     pub channel_group_id: I,
     pub epoch_counter: EpochCounter,
     pub start_time_unix_seconds: Seconds,
     pub duration_seconds: Seconds,
 }
 
-impl<I: PartialEq> Epoch<I> {
+impl<I: Identifiable> Epoch<I> {
     pub fn new(
         channel_group_id: I,
         epoch_counter: EpochCounter,

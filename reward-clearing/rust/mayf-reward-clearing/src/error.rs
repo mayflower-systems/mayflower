@@ -37,6 +37,7 @@ macro_rules! with_reward_clearing_errors {
             EmptyLot                             = "an empty deposit lot cannot remain on the stack",
             DepositTooSmall                      = "the deposit is too small to issue a weighted share",
             ArithmeticFailure                    = "checked reward-clearing arithmetic failed",
+            ChannelEpochInvalidEpochCounter       = "the channel epoch's epoch counter does not match the epoch",
         }
     };
 }

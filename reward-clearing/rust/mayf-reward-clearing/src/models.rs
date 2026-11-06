@@ -1,3 +1,4 @@
+pub mod bidder_position;
 pub mod channel;
 pub mod channel_epoch;
 pub mod channel_group;

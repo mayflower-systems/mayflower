@@ -1,6 +1,6 @@
+use crate::models::bidder_position::{BidderLot, BidderPosition};
 use crate::{
-    Amount, Epoch, EpochDuration, Lot, Position, RampBonusSlope, Result, RewardClearingError,
-    Seconds,
+    Amount, EpochDuration, Lot, Position, RampBonusSlope, Result, RewardClearingError, Seconds,
     amount::from_amount,
     math::{arithmetic, ratio},
     validation::{
