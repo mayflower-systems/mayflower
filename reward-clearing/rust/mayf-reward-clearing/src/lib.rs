@@ -16,6 +16,7 @@ mod actions;
 mod amount;
 mod error;
 mod math;
+pub mod models;
 mod state;
 mod validation;
 

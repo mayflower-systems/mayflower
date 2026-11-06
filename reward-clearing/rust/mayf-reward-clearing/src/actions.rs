@@ -5,6 +5,7 @@
 //! computed amounts and replacement state.
 
 mod add_reward;
+mod advance_epoch;
 mod claim;
 mod deposit;
 mod settle;
@@ -12,6 +13,7 @@ mod start_epoch;
 mod withdraw;
 
 pub use add_reward::{AddRewardArgs, AddRewardReceipt, AddRewardState, add_reward};
+pub use advance_epoch::{AdvanceEpochArgs, AdvanceEpochReceipt, advance_epoch};
 pub use claim::{ClaimArgs, ClaimReceipt, ClaimState, claim};
 pub use deposit::{DepositArgs, DepositReceipt, DepositState, deposit, entry_weight};
 pub use settle::{SettleArgs, SettleReceipt, SettleState, settle};

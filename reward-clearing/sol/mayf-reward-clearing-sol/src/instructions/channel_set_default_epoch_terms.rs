@@ -4,16 +4,22 @@ use crate::state::{channel::Channel, com::EpochTerms, organization::Organization
 
 #[derive(Accounts)]
 pub struct ChannelSetDefaultEpochTermsAccounts<'info> {
-    #[account(mut)]
     pub authority: Signer<'info>,
 
-    #[account(has_one = authority)]
+    #[account(
+        has_one = authority
+    )]
     pub organization: Box<Account<'info, Organization>>,
 
-    #[account(has_one = organization)]
+    #[account(
+        has_one = organization
+    )]
     pub tenant: Box<Account<'info, Tenant>>,
 
-    #[account(mut, has_one = tenant)]
+    #[account(
+        mut,
+        has_one = tenant
+    )]
     pub channel: Account<'info, Channel>,
 }
 
