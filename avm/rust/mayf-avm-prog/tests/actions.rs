@@ -43,10 +43,16 @@ fn linear_engine<N: FixedNumber>(slope: i32) -> LocalCharacteristic<LinearCharac
     LocalCharacteristic::new(LinearCharacteristic::new(Pos::from_i32(slope).unwrap()))
 }
 
-fn market<N: FixedNumber>() -> Market<N> {
+fn market<N: SignedFixed>() -> Market<N> {
     Market {
         calculator_state: MarketState::new(
-            Segmentation::new(fraction(3, 2), n(10), fraction(5, 2)).unwrap(),
+            Segmentation::new(
+                fraction(3, 2),
+                n(10),
+                fraction(5, 2),
+                fraction::<N>(17, 2).get().checked_neg().unwrap(),
+            )
+            .unwrap(),
             Accounting::new(n(20), n(20)),
         )
         .unwrap(),
@@ -63,7 +69,7 @@ fn market<N: FixedNumber>() -> Market<N> {
     }
 }
 
-fn redemption<N: FixedNumber>() -> RedeemAtFloorArgs<N> {
+fn redemption<N: SignedFixed>() -> RedeemAtFloorArgs<N> {
     RedeemAtFloorArgs {
         amount_ava: Pos::from_i32(5).unwrap(),
         min_reserve_out: n(5),
@@ -167,7 +173,7 @@ fn check_floor_redemption<N: SignedFixed + Debug>(
     owner_fee: NonNeg<N>,
 ) {
     let original = market::<N>();
-    let engine = linear_engine(8);
+    let engine = linear_engine(2);
     let calculator = AvmCalculator::new(original.ramp_scalar);
     let price = calculator
         .price(&original.calculator_state, &engine)
@@ -236,10 +242,20 @@ fn floor_redemption_conserves_reserve_and_preserves_price_and_progress() {
 
 #[test]
 fn floor_tail_uses_circulation_separately_from_progress() {
-    for (width, tail) in [(fraction(5, 2), fraction(9, 2)), (n(0), n(7))] {
+    for (width, tail, offset_numerator) in [(fraction(5, 2), fraction(9, 2), 17), (n(0), n(7), 37)]
+    {
         let mut args = redemption::<I64F64>();
         args.market.calculator_state = MarketState::new(
-            Segmentation::new(fraction(3, 2), n(10), width).unwrap(),
+            Segmentation::new(
+                fraction(3, 2),
+                n(10),
+                width,
+                fraction::<I64F64>(offset_numerator, 2)
+                    .get()
+                    .checked_neg()
+                    .unwrap(),
+            )
+            .unwrap(),
             Accounting::new(n(20), n(17)),
         )
         .unwrap();

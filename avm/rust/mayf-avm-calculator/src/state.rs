@@ -6,18 +6,25 @@ use crate::{Error, Result};
 
 /// A floor and ramp on the permanent characteristic-progress axis.
 ///
-/// Ramp start is exactly `ramp_end - ramp_width`. The main segment is derived
-/// from the ramp endpoint when compiling a calculator; it has no independent
-/// persistent anchor or vertical offset. Zero ramp width is valid.
+/// Ramp start is exactly `ramp_end - ramp_width`. Main is `f(x) + main_offset`;
+/// floor raises preserve that offset. Zero ramp width is valid. The constructor
+/// checks geometry; engine-dependent floor joins are checked by the floor-raise
+/// verifier. Restored state must originate from verified transitions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Segmentation<N: FixedNumber> {
     floor: NonNeg<N>,
     ramp_end: NonNeg<N>,
     ramp_width: NonNeg<N>,
+    main_offset: N,
 }
 
 impl<N: FixedNumber> Segmentation<N> {
-    pub fn new(floor: NonNeg<N>, ramp_end: NonNeg<N>, ramp_width: NonNeg<N>) -> Result<Self> {
+    pub fn new(
+        floor: NonNeg<N>,
+        ramp_end: NonNeg<N>,
+        ramp_width: NonNeg<N>,
+        main_offset: N,
+    ) -> Result<Self> {
         if ramp_width > ramp_end {
             return Err(Error::RampWidthExceedsEnd);
         }
@@ -28,6 +35,7 @@ impl<N: FixedNumber> Segmentation<N> {
             floor,
             ramp_end,
             ramp_width,
+            main_offset,
         })
     }
 
@@ -37,6 +45,7 @@ impl<N: FixedNumber> Segmentation<N> {
             floor,
             ramp_end: NonNeg::zero(),
             ramp_width: NonNeg::zero(),
+            main_offset: floor.get(),
         }
     }
 
@@ -58,19 +67,8 @@ impl<N: FixedNumber> Segmentation<N> {
             .map_err(|_| Error::ArithmeticFailure)
     }
 
-    /// Retain the old prefix through `progress` and attach main at that point.
-    ///
-    /// This changes only exact geometry. It needs no characteristic evaluation,
-    /// inverse, or rounded price. A later evaluation derives the new main.
-    pub fn contract_to(&self, progress: NonNeg<N>) -> Result<Self> {
-        if progress >= self.ramp_end {
-            return Ok(*self);
-        }
-        let ramp_start = self.ramp_start()?.min(progress);
-        let ramp_width = progress
-            .checked_sub(ramp_start)
-            .map_err(|_| Error::ArithmeticFailure)?;
-        Self::new(self.floor, progress, ramp_width)
+    pub const fn main_offset(&self) -> N {
+        self.main_offset
     }
 }
 

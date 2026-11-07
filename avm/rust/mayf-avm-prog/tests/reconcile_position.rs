@@ -170,7 +170,7 @@ fn trades_and_advances_fund_each_other_atomically() {
 fn ramp_sale_repays_locked_collateral_and_prices_the_next_leveraged_buy() {
     let mut args = args(0, 0, 100);
     args.market.calculator_state = MarketState::new(
-        Segmentation::new(n(3), n(4), n(2)).unwrap(),
+        Segmentation::new(n(3), n(4), n(2), n(3).get()).unwrap(),
         Accounting::new(tenths(52), tenths(92)),
     )
     .unwrap();
@@ -205,7 +205,7 @@ fn ramp_sale_repays_locked_collateral_and_prices_the_next_leveraged_buy() {
     assert_eq!(
         sale.market_next.calculator_state,
         MarketState::new(
-            Segmentation::new(n(3), n(3), n(1)).unwrap(),
+            Segmentation::new(n(3), n(3), n(1), n(1).get()).unwrap(),
             Accounting::new(n(3), n(7)),
         )
         .unwrap()
@@ -277,7 +277,7 @@ fn ramp_sale_repays_locked_collateral_and_prices_the_next_leveraged_buy() {
 fn sales_with_fixed_debt_collapse_the_ramp_and_exhaust_progress() {
     let mut args = args(0, 0, 100);
     args.market.calculator_state = MarketState::new(
-        Segmentation::new(n(3), n(4), n(2)).unwrap(),
+        Segmentation::new(n(3), n(4), n(2), n(3).get()).unwrap(),
         Accounting::new(tenths(52), tenths(72)),
     )
     .unwrap();
@@ -310,7 +310,7 @@ fn sales_with_fixed_debt_collapse_the_ramp_and_exhaust_progress() {
     assert_eq!(
         sale.market_next.calculator_state,
         MarketState::new(
-            Segmentation::new(n(3), n(1), n(0)).unwrap(),
+            Segmentation::new(n(3), n(1), n(0), n(1).get()).unwrap(),
             Accounting::new(n(1), n(3))
         )
         .unwrap()

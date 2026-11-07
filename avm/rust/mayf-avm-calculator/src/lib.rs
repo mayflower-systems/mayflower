@@ -6,6 +6,7 @@ mod calculator;
 mod characteristic;
 mod error;
 mod market;
+pub mod solver;
 mod state;
 
 pub use calculator::ScheduleCalculator;

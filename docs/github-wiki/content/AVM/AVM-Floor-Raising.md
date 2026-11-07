@@ -121,9 +121,24 @@ The area-preserving raise rearranges existing reserve: the ramp eats into
 main-schedule territory to compensate for the taller floor.
 [Floor investment](Floor-Investment) instead permits required
 reserve to increase when existing surplus covers the candidate. Its geometry may
-shorten or collapse the ramp and may consume the old $x_2$; the action still
-requires the price at live supply to remain unchanged.
+shorten or collapse the ramp and may move beyond the old $x_2$. Both actions
+preserve the entire main schedule and require the new ramp end not to exceed
+characteristic progress.
 
 The two mechanisms compose. An operator can donate capital (creating surplus),
 raise the floor from surplus, and then — if supply is beyond $x_2$ — perform an
 additional area-preserving raise on top.
+
+## Numerical policy
+
+The program accepts a positive floor increment and proposed ramp geometry. An
+ordinary raise permits only a bounded decrease in required backing:
+$-\epsilon \le \Delta R \le 0$, with $\epsilon$ expressed as an absolute
+reserve amount. It never permits area growth. The entire fixed-point enclosure
+must fit this interval. A client can bias its candidate slightly downward when
+an exactly balanced candidate cannot be certified on the numeric grid.
+
+Main placement is stored independently of the floor and ramp and is copied
+unchanged during a raise. The ramp joins main at its end by construction; a
+separate floor-join allowance permits only a bounded upward step. Neither
+numerical allowance authorizes a change to main prices.

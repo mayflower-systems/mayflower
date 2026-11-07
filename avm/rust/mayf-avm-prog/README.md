@@ -14,10 +14,6 @@ external accounts. The crate is `no_std` and performs no storage or token I/O.
 | `mayf-avm-prog`            | Program actions, position collateral, reserve accounting, and fees, using generic normalized quantities.               |
 | Future `mayf-avm-prog-sol` | Concrete numeric types, token normalization, authentication, Solana errors, CPI transport, transfers, and persistence. |
 
-Semantic floor raises belong in this program layer as it grows. For example, a future
-`raise_floor_from_surplus` action will select a policy and establish reserve
-funding before accepting the calculator's verified next state.
-
 ## State and arithmetic
 
 `Market<N>` embeds the calculator's checked `MarketState<N>` and stores the
@@ -30,8 +26,8 @@ units as the calculator. Trades require positive amounts. Reconciliation accepts
 zero targets and reports a signed net reserve transfer. The program selects
 conservative bounds and rounds fees on the chosen fixed-number grid; it does
 not round to whole token units or select a numeric implementation. The
-calculator uses `SignedFixed` for intermediate arithmetic, while persisted
-quantities remain nonnegative.
+calculator uses `SignedFixed` for intermediate arithmetic and the stored main
+offset. Supply and reserve quantities remain nonnegative.
 
 Fee rates use `MicroBasisPoints`. Fees round up with one fused
 `amount * rate / 1_000_000` calculation, avoiding a pre-rounded rate. The protocol
@@ -72,7 +68,7 @@ and repayment with constant AVA holdings require zero engine calls. A simulator
 can use `LocalCharacteristic` with the linear driver. An Anchor host can supply
 a `CharacteristicEngine::spans` implementation that performs CPI.
 
-The two floor actions change circulation while preserving progress, ramp
+The floor issuance and redemption actions change circulation while preserving progress, ramp
 geometry, and spot price. Both require zero characteristic engine calls.
 
 - `issue_ava_at_floor` settles an option exercise. The holder receives the exact
@@ -83,6 +79,28 @@ geometry, and spot price. Both require zero characteristic engine calls.
   remaining collateral, and held liquidity. The gross reserve debit uses the
   lower quote bound. The payout after the redemption fee must meet
   `min_reserve_out`.
+
+The two floor-raise actions share the calculator's geometry verifier:
+
+| Action | Absolute reserve budget | Permitted backing change |
+| --- | --- | --- |
+| `raise_floor_preserving_area` | `max_area_decrease` | `[-max_area_decrease, 0]` |
+| `raise_floor_from_surplus` | `max_area_increase` | `[0, max_area_increase]` |
+
+Both take `floor_increase_by: Pos<N>`, `new_ramp_end`, `new_ramp_width`,
+and `max_floor_join_gap`. The budgets use normalized reserve quantities, not
+ratios. The entire calculated change enclosure must fit the selected interval.
+The floor-join allowance permits only a bounded upward gap; it never permits
+the main function to move. Floor raises retain the stored main offset exactly,
+keep ramp end at or below progress, and preserve both supply counters.
+
+Each action also requires the proposed backing upper bound to be covered by
+`reserve_held + reserve_advanced`. Borrowing exchanges liquid reserve for a
+collateralized advance and does not create surplus. Floor raising changes no
+reserve balance, charges no fee, and returns a `FloorRaiseReceipt` with the
+next market and bounded backing change. The host handles authorization and
+persists the accepted state. Verification and backing calculation share one
+characteristic batch.
 
 `donate_reserve` increases held reserves. The host settles each action's
 reserve transfers, fee distributions, token mint or burn, and next state atomically.
@@ -101,7 +119,7 @@ type N = I64F64;
 let n = |value| NonNeg::<N>::from_u64(value).unwrap();
 let quarter = MicroBasisPoints::from_percent(25).unwrap();
 let calculator_state = MarketState::new(
-    Segmentation::new(n(16), n(5), n(2)).unwrap(),
+    Segmentation::new(n(16), n(5), n(2), n(8).get()).unwrap(),
     Accounting::new(n(6), n(6)),
 ).unwrap();
 let market = Market {

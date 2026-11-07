@@ -32,280 +32,258 @@ impl<N: SignedFixed> ScheduleCalculator<N> {
         x: NonNeg<N>,
         engine: &dyn CharacteristicEngine<N>,
     ) -> Result<Bounds<NonNeg<N>>> {
-        let start = self.ramp_start()?;
         let end = self.segmentation.ramp_end();
-        let floor = self.segmentation.floor();
-        if x <= start {
-            return Ok(Bounds::exact(floor));
-        }
-
-        let price = if x <= end {
-            let width = x.checked_sub(start).map_err(|_| Error::ArithmeticFailure)?;
-            let [ramp] = evaluate_spans(engine, [SpanRequest { lo: start, width }])?;
-            self.ramp_price(ramp.y_at_lo, ramp.y_at_hi)?
-        } else if self.segmentation.ramp_width() == NonNeg::zero() {
-            let point = SpanRequest {
-                lo: x,
-                width: NonNeg::zero(),
-            };
-            let (at_end, at_x) = if end == NonNeg::zero() {
-                let [point] = evaluate_spans(engine, [point])?;
-                (Bounds::exact(NonNeg::zero()), point.y_at_lo)
+        // Main never reads the floor, ramp start, or ramp scalar. In particular,
+        // the shared endpoint follows exactly the same evaluation as main.
+        if x >= end {
+            let at_x = if x == NonNeg::zero() {
+                Bounds::exact(NonNeg::zero())
             } else {
-                let [anchor, point] = evaluate_spans(
+                let [point] = evaluate_spans(
                     engine,
-                    [
-                        SpanRequest {
-                            lo: end,
-                            width: NonNeg::zero(),
-                        },
-                        point,
-                    ],
-                )?;
-                (anchor.y_at_lo, point.y_at_lo)
-            };
-            let growth = at_x
-                .into_raw()
-                .checked_sub(at_end.into_raw())
-                .map_err(|_| Error::ArithmeticFailure)?;
-            growth
-                .checked_add_exact(floor.get())
-                .map_err(|_| Error::ArithmeticFailure)?
-        } else {
-            let [ramp, point] = evaluate_spans(
-                engine,
-                [
-                    SpanRequest {
-                        lo: start,
-                        width: self.segmentation.ramp_width(),
-                    },
-                    SpanRequest {
+                    [SpanRequest {
                         lo: x,
                         width: NonNeg::zero(),
-                    },
-                ],
-            )?;
-            let anchor_price = self.ramp_price(ramp.y_at_lo, ramp.y_at_hi)?;
-            let growth = point
-                .y_at_lo
-                .into_raw()
-                .checked_sub(ramp.y_at_hi.into_raw())
-                .map_err(|_| Error::ArithmeticFailure)?;
-            anchor_price
-                .checked_add(growth)
-                .map_err(|_| Error::ArithmeticFailure)?
-        };
-        floor_enclosure(price, floor)?
-            .try_nonnegative()
-            .map_err(|_| Error::NegativeOutput)
+                    }],
+                )?;
+                point.y_at_lo
+            };
+            return nonnegative_enclosure(main_price(at_x, self.segmentation.main_offset())?);
+        }
+        if x <= self.ramp_start()? {
+            return Ok(Bounds::exact(self.segmentation.floor()));
+        }
+        let width = end.checked_sub(x).map_err(|_| Error::ArithmeticFailure)?;
+        let [span] = evaluate_spans(engine, [SpanRequest { lo: x, width }])?;
+        nonnegative_enclosure(ramp_price(
+            span.y_at_lo,
+            span.y_at_hi,
+            self.segmentation.main_offset(),
+            self.ramp_scalar,
+        )?)
     }
 
-    /// Enclose `[lo, lo + width]`, using only the spans needed by its segments.
-    /// A partial-ramp/main interval needs two integrals and the ramp-start point.
-    /// Zero width or a wholly flat interval requires no characteristic call.
+    /// Enclose the segmented integral. Zero-width and flat spans need no engine.
     pub fn integrate(
         &self,
         lo: NonNeg<N>,
         width: NonNeg<N>,
         engine: &dyn CharacteristicEngine<N>,
     ) -> Result<Bounds<NonNeg<N>>> {
+        self.interval(lo, width, false, engine)
+            .map(|(area, _)| area)
+    }
+
+    /// Quote the sold interval and contract main in the same characteristic batch.
+    /// Upward offset rounding preserves the floor join; the quote reserves the
+    /// maximum rounding-induced increase in retained ramp backing.
+    pub(crate) fn redeem(
+        &self,
+        remaining: NonNeg<N>,
+        progress: NonNeg<N>,
+        engine: &dyn CharacteristicEngine<N>,
+    ) -> Result<(Bounds<NonNeg<N>>, Segmentation<N>)> {
+        let width = progress
+            .checked_sub(remaining)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        self.interval(remaining, width, true, engine)
+    }
+
+    fn interval(
+        &self,
+        lo: NonNeg<N>,
+        width: NonNeg<N>,
+        contract: bool,
+        engine: &dyn CharacteristicEngine<N>,
+    ) -> Result<(Bounds<NonNeg<N>>, Segmentation<N>)> {
+        let state = self.segmentation;
         if width == NonNeg::zero() {
-            return Ok(Bounds::exact(NonNeg::zero()));
+            return Ok((Bounds::exact(NonNeg::zero()), state));
         }
         let hi = lo
             .checked_add(width)
             .map_err(|_| Error::ArithmeticFailure)?;
-        let floor = self.segmentation.floor();
-        let minimum = constant_area(floor, width)?.lower();
-        let start = self.ramp_start()?;
-        let end = self.segmentation.ramp_end();
-        if hi <= start {
-            return constant_area(floor, width);
-        }
-
-        let cursor = lo.max(start);
-        let flat_width = cursor
+        let start = state.ramp_start()?;
+        let end = state.ramp_end();
+        let flat_width = hi
+            .min(start)
+            .max(lo)
             .checked_sub(lo)
             .map_err(|_| Error::ArithmeticFailure)?;
-        let flat_area = constant_area(floor, flat_width)?;
-        let curve_area = if cursor >= end {
-            let width = hi
-                .checked_sub(cursor)
-                .map_err(|_| Error::ArithmeticFailure)?;
-            self.main_area(cursor, width, engine)?
-        } else if hi <= end {
-            let width = hi
-                .checked_sub(cursor)
-                .map_err(|_| Error::ArithmeticFailure)?;
-            let request = SpanRequest { lo: cursor, width };
-            let (ramp, anchor) = if cursor == start {
-                let [ramp] = evaluate_spans(engine, [request])?;
-                (ramp, ramp.y_at_lo)
-            } else if start == NonNeg::zero() {
-                let [ramp] = evaluate_spans(engine, [request])?;
-                (ramp, Bounds::exact(NonNeg::zero()))
-            } else {
-                let [point, ramp] = evaluate_spans(
-                    engine,
-                    [
-                        SpanRequest {
-                            lo: start,
-                            width: NonNeg::zero(),
-                        },
-                        request,
-                    ],
-                )?;
-                (ramp, point.y_at_lo)
-            };
-            anchored_area(
-                ramp,
-                width,
-                anchor,
-                Bounds::exact(floor.get()),
-                self.ramp_scalar.get(),
-            )?
+        let ramp_lo = lo.max(start);
+        let ramp_hi = hi.min(end);
+        let ramp_request = span_between(ramp_lo, ramp_hi)?;
+        let main_request = span_between(lo.max(end), hi)?;
+        let contracting = contract && lo < end;
+        // A partial ramp needs f(E). A sale below the ramp instead needs f(lo)
+        // to re-anchor the collapsed main. These cases are mutually exclusive.
+        let point_x = if ramp_request.is_some() && ramp_hi < end {
+            Some(end)
+        } else if contracting && (lo < start || ramp_request.is_none()) && lo != NonNeg::zero() {
+            Some(lo)
         } else {
-            let ramp_width = end
-                .checked_sub(cursor)
-                .map_err(|_| Error::ArithmeticFailure)?;
-            let main_width = hi.checked_sub(end).map_err(|_| Error::ArithmeticFailure)?;
-            let ramp_request = SpanRequest {
-                lo: cursor,
-                width: ramp_width,
-            };
-            let main_request = SpanRequest {
-                lo: end,
-                width: main_width,
-            };
-            let (ramp, main, anchor) = if cursor == start {
-                let [ramp, main] = evaluate_spans(engine, [ramp_request, main_request])?;
-                (ramp, main, ramp.y_at_lo)
-            } else if start == NonNeg::zero() {
-                let [ramp, main] = evaluate_spans(engine, [ramp_request, main_request])?;
-                (ramp, main, Bounds::exact(NonNeg::zero()))
-            } else {
-                let [point, ramp, main] = evaluate_spans(
-                    engine,
-                    [
-                        SpanRequest {
-                            lo: start,
-                            width: NonNeg::zero(),
-                        },
-                        ramp_request,
-                        main_request,
-                    ],
-                )?;
-                (ramp, main, point.y_at_lo)
-            };
-            let ramp_area = anchored_area(
-                ramp,
-                ramp_width,
-                anchor,
-                Bounds::exact(floor.get()),
-                self.ramp_scalar.get(),
-            )?;
-            // The redeemed ramp span already supplies f(E); no full-ramp query
-            // is needed to anchor the main segment.
-            let end_price = self.ramp_price(anchor, ramp.y_at_hi)?;
-            let main_area = anchored_area(main, main_width, ramp.y_at_hi, end_price, N::ONE)?;
-            ramp_area
-                .checked_add(main_area)
-                .map_err(|_| Error::ArithmeticFailure)?
+            None
         };
-        let area = flat_area
-            .into_raw()
-            .checked_add(curve_area)
-            .map_err(|_| Error::ArithmeticFailure)?;
-        floor_enclosure(area, minimum)?
-            .try_nonnegative()
-            .map_err(|_| Error::NegativeOutput)
-    }
-
-    fn ramp_price(
-        &self,
-        at_start: Bounds<NonNeg<N>>,
-        at_end: Bounds<NonNeg<N>>,
-    ) -> Result<Bounds<N>> {
-        let growth = at_end
-            .into_raw()
-            .checked_sub(at_start.into_raw())
-            .map_err(|_| Error::ArithmeticFailure)?;
-        let price = scale(growth, self.ramp_scalar.get())?
-            .checked_add_exact(self.segmentation.floor().get())
-            .map_err(|_| Error::ArithmeticFailure)?;
-        floor_enclosure(price, self.segmentation.floor())
-    }
-
-    fn main_area(
-        &self,
-        lo: NonNeg<N>,
-        width: NonNeg<N>,
-        engine: &dyn CharacteristicEngine<N>,
-    ) -> Result<Bounds<N>> {
-        let start = self.ramp_start()?;
-        let end = self.segmentation.ramp_end();
-        let floor = Bounds::exact(self.segmentation.floor().get());
-        let request = SpanRequest { lo, width };
-        if self.segmentation.ramp_width() == NonNeg::zero() {
-            let (main, anchor) = if end == NonNeg::zero() {
-                let [main] = evaluate_spans(engine, [request])?;
-                (main, Bounds::exact(NonNeg::zero()))
-            } else if lo == end {
-                let [main] = evaluate_spans(engine, [request])?;
-                (main, main.y_at_lo)
+        let [ramp, main, point] = evaluate_optional_spans(
+            engine,
+            [ramp_request, main_request, point_x.map(point_request)],
+        )?;
+        let mut area = constant_area(state.floor(), flat_width)?.into_raw();
+        if let (Some(request), Some(response)) = (ramp_request, ramp) {
+            let at_end = if ramp_hi == end {
+                response.y_at_hi
             } else {
-                let [point, main] = evaluate_spans(
-                    engine,
-                    [
-                        SpanRequest {
-                            lo: end,
-                            width: NonNeg::zero(),
-                        },
-                        request,
-                    ],
-                )?;
-                (main, point.y_at_lo)
+                point.ok_or(Error::InvalidCharacteristicBatch)?.y_at_lo
             };
-            return anchored_area(main, width, anchor, floor, N::ONE);
+            area = area
+                .checked_add(ramp_area(
+                    response,
+                    request.width,
+                    at_end,
+                    state.main_offset(),
+                    self.ramp_scalar,
+                )?)
+                .map_err(|_| Error::ArithmeticFailure)?;
         }
-
-        let (main, at_start, at_end) = if lo == end {
-            // The main integral already returns f(E), so only f(A) is missing.
-            if start == NonNeg::zero() {
-                let [main] = evaluate_spans(engine, [request])?;
-                (main, Bounds::exact(NonNeg::zero()), main.y_at_lo)
-            } else {
-                let [point, main] = evaluate_spans(
-                    engine,
-                    [
-                        SpanRequest {
-                            lo: start,
-                            width: NonNeg::zero(),
-                        },
-                        request,
-                    ],
-                )?;
-                (main, point.y_at_lo, main.y_at_lo)
-            }
+        if let (Some(request), Some(response)) = (main_request, main) {
+            area = area
+                .checked_add(main_area(response, request.width, state.main_offset())?)
+                .map_err(|_| Error::ArithmeticFailure)?;
+        }
+        if !contracting {
+            return Ok((nonnegative_enclosure(area)?, state));
+        }
+        let (next, retained_increase) = if lo > start {
+            self.contract_ramp(lo, start, ramp.ok_or(Error::InvalidCharacteristicBatch)?)?
         } else {
-            let [ramp, main] = evaluate_spans(
-                engine,
-                [
-                    SpanRequest {
-                        lo: start,
-                        width: self.segmentation.ramp_width(),
-                    },
-                    request,
-                ],
-            )?;
-            (main, ramp.y_at_lo, ramp.y_at_hi)
+            let at_lo = if lo == NonNeg::zero() {
+                Bounds::exact(NonNeg::zero())
+            } else if lo == start && ramp.is_some() {
+                ramp.ok_or(Error::InvalidCharacteristicBatch)?.y_at_lo
+            } else {
+                point.ok_or(Error::InvalidCharacteristicBatch)?.y_at_lo
+            };
+            (self.collapse(lo, at_lo)?, Bounds::exact(N::ZERO))
         };
-        let end_price = self.ramp_price(at_start, at_end)?;
-        anchored_area(main, width, at_end, end_price, N::ONE)
+        let reserve = area
+            .checked_sub(retained_increase)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        Ok((
+            reserve
+                .try_nonnegative()
+                .map_err(|_| Error::ContractionPrecisionLoss)?,
+            next,
+        ))
+    }
+
+    fn contract_ramp(
+        &self,
+        progress: NonNeg<N>,
+        start: NonNeg<N>,
+        sold_ramp: SpanResponse<N>,
+    ) -> Result<(Segmentation<N>, Bounds<N>)> {
+        let state = self.segmentation;
+        let gain = self
+            .ramp_scalar
+            .get()
+            .checked_sub(N::ONE)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let change = sold_ramp
+            .y_at_lo
+            .into_raw()
+            .checked_sub(sold_ramp.y_at_hi.into_raw())
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let offset = scale(change, gain)?
+            .checked_add_exact(state.main_offset())
+            .map_err(|_| Error::ArithmeticFailure)?;
+        // Monotonicity proves this contraction cannot increase main's offset.
+        let chosen = offset.upper().min(state.main_offset());
+        if chosen < offset.lower() {
+            return Err(Error::InvalidCharacteristicBatch);
+        }
+        let retained_width = progress
+            .checked_sub(start)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let rounding = chosen
+            .checked_sub(offset.lower())
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let increase = Bounds::product(rounding, retained_width.get())
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let increase =
+            Bounds::new(N::ZERO, increase.upper()).map_err(|_| Error::ArithmeticFailure)?;
+        Ok((
+            Segmentation::new(state.floor(), progress, retained_width, chosen)?,
+            increase,
+        ))
+    }
+
+    fn collapse(
+        &self,
+        progress: NonNeg<N>,
+        at_progress: Bounds<NonNeg<N>>,
+    ) -> Result<Segmentation<N>> {
+        let floor = self.segmentation.floor();
+        let offset = Bounds::exact(floor.get())
+            .checked_sub(at_progress.into_raw())
+            .map_err(|_| Error::ArithmeticFailure)?;
+        Segmentation::new(floor, progress, NonNeg::zero(), offset.upper())
     }
 }
 
-/// Evaluate an operation's complete request array in one invocation.
+pub(crate) fn point_request<N: FixedNumber>(x: NonNeg<N>) -> SpanRequest<N> {
+    SpanRequest {
+        lo: x,
+        width: NonNeg::zero(),
+    }
+}
+
+pub(crate) fn span_between<N: FixedNumber>(
+    lo: NonNeg<N>,
+    hi: NonNeg<N>,
+) -> Result<Option<SpanRequest<N>>> {
+    if hi <= lo {
+        return Ok(None);
+    }
+    Ok(Some(SpanRequest {
+        lo,
+        width: hi.checked_sub(lo).map_err(|_| Error::ArithmeticFailure)?,
+    }))
+}
+
+/// Each slot represents a distinct geometric role; absent and duplicate spans
+/// are omitted from the actual synchronous engine invocation.
+pub(crate) fn evaluate_optional_spans<N: FixedNumber, const COUNT: usize>(
+    engine: &dyn CharacteristicEngine<N>,
+    requests: [Option<SpanRequest<N>>; COUNT],
+) -> Result<[Option<SpanResponse<N>>; COUNT]> {
+    let mut batch = [point_request(NonNeg::zero()); COUNT];
+    let mut responses = [SpanResponse::zero(); COUNT];
+    let mut indices = [None; COUNT];
+    let mut count = 0;
+    for (slot, request) in requests.into_iter().enumerate() {
+        if let Some(request) = request {
+            request
+                .lo
+                .checked_add(request.width)
+                .map_err(|_| Error::ArithmeticFailure)?;
+            let index = batch[..count]
+                .iter()
+                .position(|existing| *existing == request)
+                .unwrap_or_else(|| {
+                    let index = count;
+                    batch[index] = request;
+                    count += 1;
+                    index
+                });
+            indices[slot] = Some(index);
+        }
+    }
+    if count > 0 {
+        engine.spans(&batch[..count], &mut responses[..count])?;
+    }
+    Ok(indices.map(|index| index.map(|index| responses[index])))
+}
+
 pub(crate) fn evaluate_spans<N: FixedNumber, const COUNT: usize>(
     engine: &dyn CharacteristicEngine<N>,
     requests: [SpanRequest<N>; COUNT],
@@ -323,37 +301,58 @@ pub(crate) fn evaluate_spans<N: FixedNumber, const COUNT: usize>(
     Ok(responses)
 }
 
-/// Integrate `base_price + gain * (f(x) - f(anchor))` over the supplied span.
-fn anchored_area<N: SignedFixed>(
-    span: SpanResponse<N>,
-    width: NonNeg<N>,
-    anchor: Bounds<NonNeg<N>>,
-    base_price: Bounds<N>,
-    gain: N,
-) -> Result<Bounds<N>> {
-    let rectangle = scale(anchor.into_raw(), width.get())?;
-    let growth = span
-        .area
-        .into_raw()
-        .checked_sub(rectangle)
-        .map_err(|_| Error::ArithmeticFailure)?;
-    let scaled_growth = scale(growth, gain)?;
-    let base_area = scale(base_price, width.get())?;
-    scaled_growth
-        .checked_add(base_area)
+pub(crate) fn main_price<N: SignedFixed>(at_x: Bounds<NonNeg<N>>, offset: N) -> Result<Bounds<N>> {
+    at_x.into_raw()
+        .checked_add_exact(offset)
         .map_err(|_| Error::ArithmeticFailure)
 }
 
-/// Geometry proves every schedule price is at least its floor, and therefore
-/// every integral is at least its floor rectangle. Intersect with that proved
-/// lower bound when independent endpoint enclosures lose their correlation.
-/// An upper edge below the bound contradicts the characteristic contract.
-pub(crate) fn floor_enclosure<N: SignedFixed>(
-    bounds: Bounds<N>,
-    minimum: NonNeg<N>,
+pub(crate) fn ramp_price<N: SignedFixed>(
+    at_x: Bounds<NonNeg<N>>,
+    at_end: Bounds<NonNeg<N>>,
+    offset: N,
+    scalar: AboveOne<N>,
 ) -> Result<Bounds<N>> {
-    Bounds::new(bounds.lower().max(minimum.get()), bounds.upper())
-        .map_err(|_| Error::NegativeOutput)
+    // k*f(x) + b - (k-1)*f(E), avoiding a repeated uncertain f(E).
+    let gain = scalar
+        .get()
+        .checked_sub(N::ONE)
+        .map_err(|_| Error::ArithmeticFailure)?;
+    scale(at_x.into_raw(), scalar.get())?
+        .checked_add_exact(offset)
+        .map_err(|_| Error::ArithmeticFailure)?
+        .checked_sub(scale(at_end.into_raw(), gain)?)
+        .map_err(|_| Error::ArithmeticFailure)
+}
+
+pub(crate) fn main_area<N: SignedFixed>(
+    span: SpanResponse<N>,
+    width: NonNeg<N>,
+    offset: N,
+) -> Result<Bounds<N>> {
+    span.area
+        .into_raw()
+        .checked_add(Bounds::product(offset, width.get()).map_err(|_| Error::ArithmeticFailure)?)
+        .map_err(|_| Error::ArithmeticFailure)
+}
+
+pub(crate) fn ramp_area<N: SignedFixed>(
+    span: SpanResponse<N>,
+    width: NonNeg<N>,
+    at_end: Bounds<NonNeg<N>>,
+    offset: N,
+    scalar: AboveOne<N>,
+) -> Result<Bounds<N>> {
+    let gain = scalar
+        .get()
+        .checked_sub(N::ONE)
+        .map_err(|_| Error::ArithmeticFailure)?;
+    let ramp_offset = Bounds::exact(offset)
+        .checked_sub(scale(at_end.into_raw(), gain)?)
+        .map_err(|_| Error::ArithmeticFailure)?;
+    scale(span.area.into_raw(), scalar.get())?
+        .checked_add(scale(ramp_offset, width.get())?)
+        .map_err(|_| Error::ArithmeticFailure)
 }
 
 pub(crate) fn scale<N: SignedFixed>(bounds: Bounds<N>, factor: N) -> Result<Bounds<N>> {
@@ -378,4 +377,15 @@ pub(crate) fn add_bounds<N: FixedNumber>(
     (left.bounded() + right.bounded())
         .bounds()
         .map_err(|_| Error::ArithmeticFailure)
+}
+
+/// Valid schedules have nonnegative prices. Intersect only this universal bound;
+/// main enclosures must never depend on the floor or ramp geometry.
+pub(crate) fn nonnegative_enclosure<N: SignedFixed>(
+    bounds: Bounds<N>,
+) -> Result<Bounds<NonNeg<N>>> {
+    Bounds::new(bounds.lower().max(N::ZERO), bounds.upper())
+        .map_err(|_| Error::NegativeOutput)?
+        .try_nonnegative()
+        .map_err(|_| Error::NegativeOutput)
 }

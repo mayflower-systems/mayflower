@@ -1,8 +1,8 @@
 <!--
 title: Linear AVM Floor Investment
 summary:
-  Linear implementation of surplus-funded floor raises with live-price
-  preservation and reserve-backed ramp reshaping.
+  Linear implementation of surplus-funded floor raises with unchanged main
+  placement and reserve-backed ramp reshaping.
 tags:
   - linear-avm
   - floor
@@ -12,52 +12,44 @@ tags:
 The linear implementation of
 [floor investment](Floor-Investment). Surplus funding does not
 prescribe one unique reshape. It permits any valid linear segmented candidate
-that preserves the live price and whose required area is covered by effective
-reserve.
+that preserves the entire main schedule and whose required area is covered by
+effective reserve.
 
 ---
 
 ## State-variable changes
 
-Floor investment always raises $f$. The ramp intercept and main intercept depend
-on the selected candidate geometry:
+Floor investment raises $f$ while preserving the main intercept $b_2$:
 
-| Variable | Constraint                                     |
-| -------- | ---------------------------------------------- |
-| $f$      | **increases** to $f_{\text{new}}$              |
-| $b_1$    | derived from the proposed $x_1$                |
-| $b_2$    | derived from the proposed $x_2$ and continuity |
+| Variable | Constraint |
+| -------- | ---------- |
+| $f$ | **increases** by a positive increment |
+| $b_1$ | derived by anchoring the ramp at the proposed $x_2$ |
+| $b_2$ | unchanged |
 
-The slopes $m_1$ and $m_2$ are immutable.
-
-For fixed slopes $m_1$ and $m_2$:
+The slopes $m_1$ and $m_2$ are immutable. Continuity at the proposed ramp end
+requires:
 
 $$
-b_1^{\text{new}} = f_{\text{new}} - m_1 x_1^{\text{new}}
+b_1^{\text{new}} = b_2 - (m_1-m_2)x_2^{\text{new}}
 $$
 
-and continuity at the proposed ramp end requires:
+The supplied ramp width determines $x_1^{\text{new}}$. Its floor join is checked
+against:
 
 $$
-b_2^{\text{new}} = (m_1-m_2)x_2^{\text{new}} + b_1^{\text{new}}
+f_{\text{new}} = m_1 x_1^{\text{new}} + b_1^{\text{new}}
 $$
 
-The special case $x_2^{\text{new}}=x_2^{\text{old}}$ can leave both line
-intercepts unchanged, but this is not required. The ramp may also collapse with
-$x_1^{\text{new}}=x_2^{\text{new}}$, including at a point beyond the old $x_2$.
+with only a bounded upward gap permitted in fixed-point arithmetic. The ramp
+may shorten or collapse, and $x_2$ may stay fixed or advance. Both boundaries
+must remain at or behind current characteristic progress.
 
-## Live-price constraint
+## Main-price preservation
 
-At current supply $x$, the semantic action requires:
-
-$$
-f_{\text{new}} \le y_{\text{old}}(x), \qquad
-y_{\text{new}}(x)=y_{\text{old}}(x)
-$$
-
-This direct check replaces the old restriction
-$f_{\text{new}}\le y(x_2^{\text{old}})$. Crossing the old boundary is
-geometrically legal; changing the price at live supply is not.
+Every main price remains $m_2 x + b_2$, independent of the proposed floor and
+ramp. Since the new ramp end cannot exceed progress, the current price remains
+on this unchanged main. No main-price tolerance is needed.
 
 ---
 
@@ -69,11 +61,11 @@ $$
 \Delta R = \int_0^x y_{\text{new}}(s)\,ds - \int_0^x y_{\text{old}}(s)\,ds
 $$
 
-For the fixed-$x_2$, fixed-intercept special case below, only the floor portion
-changes and this simplifies to:
+For the fixed-$x_2$, fixed-intercept special case below, the floor replaces a
+portion of the old ramp. The area change simplifies to:
 
 $$
-\Delta R = \frac{1}{m_1}\!\left[\,f_{\text{new}}\,(f_{\text{new}} - b_1) - f\,(f - b_1)\,\right]
+\Delta R = \frac{(f_{\text{new}}-b_1)^2-(f-b_1)^2}{2m_1}
 $$
 
 This is the amount of surplus consumed. If the available surplus is less than
@@ -110,13 +102,14 @@ $y(600) = 0.00015 \times 600 + 0.10 = 0.19$. Unchanged.
 Surplus consumed:
 
 $$
-\Delta R = \frac{1}{0.0003}\!\left[\,0.12 \times 0.08 - 0.10 \times 0.06\,\right] = \frac{0.0096 - 0.006}{0.0003} = 12
+\Delta R = \frac{0.08^2-0.06^2}{2 \times 0.0003}
+         = \frac{0.0028}{0.0006} = \frac{14}{3}
 $$
 
 The floor rose 20% (from $0.10$ to $0.12$), the floor region widened from $200$
-to $266.\overline{6}$, and $12$ units of capital were absorbed from surplus.
+to $266.\overline{6}$, and $4.\overline{6}$ units of capital were absorbed from surplus.
 Other legal proposals may move or collapse the ramp while satisfying the same
-live-price and backing rules.
+main-preservation and backing rules.
 
 ---
 
