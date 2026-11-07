@@ -80,16 +80,50 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
         (seed % limit as u128) as i128
     };
     for case in 0..128 {
-        let start = if case % 16 == 0 { 0 } else { sample(4 * scale) };
+        // Keep the independently stored offset representable while varying
+        // slope, scalar, and boundaries across the number library's full grid.
+        let (slope, scalar, coordinate_step) = match case % 3 {
+            0 => (1 + sample(4 * scale), 2 * scale, scale),
+            1 => (
+                (1 + sample(4)) * scale,
+                scale + 1 + sample(2 * scale),
+                scale,
+            ),
+            _ => ((1 + sample(4)) * scale, 2 * scale, 1),
+        };
+        let start = if case % 16 == 0 {
+            0
+        } else {
+            sample(4 * scale / coordinate_step) * coordinate_step
+        };
         let curve = Curve {
             floor: 1 + sample(8 * scale),
-            slope: 1 + sample(4 * scale),
-            scalar: scale + 1 + sample(2 * scale),
+            slope,
+            scalar,
             start,
-            end: start + if case % 8 == 0 { 0 } else { sample(4 * scale) },
+            end: start
+                + if case % 8 == 0 {
+                    0
+                } else {
+                    sample(4 * scale / coordinate_step) * coordinate_step
+                },
         };
-        let segmentation =
-            Segmentation::new(nn(curve.floor), nn(curve.end), nn(curve.end - curve.start)).unwrap();
+        let offset = curve.floor
+            + match case % 3 {
+                0 => slope * (curve.end / scale - 2 * curve.start / scale),
+                1 => {
+                    (slope / scale)
+                        * ((scalar - scale) * (curve.end / scale) - scalar * (curve.start / scale))
+                }
+                _ => (slope / scale) * (curve.end - 2 * curve.start),
+            };
+        let segmentation = Segmentation::new(
+            nn(curve.floor),
+            nn(curve.end),
+            nn(curve.end - curve.start),
+            from_raw(offset),
+        )
+        .unwrap();
         let engine = LocalCharacteristic::new(LinearCharacteristic::new(pos(curve.slope)));
         let scalar = AboveOne::new(from_raw(curve.scalar)).unwrap();
         let calculator = ScheduleCalculator::new(segmentation, scalar);
@@ -139,11 +173,18 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
         for remaining in [
             0,
             curve.start,
-            (curve.start + curve.end) / 2,
+            curve.start + ((curve.end - curve.start) / (2 * scale)) * scale,
             curve.end,
             curve.end + scale,
         ] {
-            let contracted_state = segmentation.contract_to(nn(remaining)).unwrap();
+            let progress = curve.end + 2 * scale;
+            let state = MarketState::new(segmentation, Accounting::new(nn(progress), nn(progress)))
+                .unwrap();
+            let contracted_state = AvmCalculator::new(scalar)
+                .quote_redeem(&state, pos(progress - remaining), &engine)
+                .unwrap()
+                .next_state
+                .segmentation();
             let expected = Curve {
                 start: curve.start.min(remaining),
                 end: curve.end.min(remaining),
@@ -192,7 +233,7 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
             .verify_floor_raise(
                 &state,
                 FloorRaiseProposal {
-                    floor: nn(shifted.floor),
+                    floor_increase_by: pos(shifted.floor - curve.floor),
                     ramp_end: nn(shifted.end),
                     ramp_width: nn(shifted.end - shifted.start),
                 },
@@ -200,17 +241,25 @@ fn check_grid<N: SignedFixed + Debug>(scale: i128, from_raw: fn(i128) -> N, to_r
                 &engine,
             )
             .unwrap();
-        check_bounds(
-            (
-                to_raw(raised.main_change.lower()),
-                to_raw(raised.main_change.upper()),
-            ),
-            (0, 0),
-            8,
+        assert_eq!(
+            raised.next_state.segmentation().main_offset(),
+            from_raw(offset)
         );
-        // Each endpoint enclosure costs at most one quantum. The start/end
-        // movements are at most seven/three units from progress; propagating
-        // their bounds through gains below three/two fits within 64 quanta.
+        let raised_calculator = ScheduleCalculator::new(raised.next_state.segmentation(), scalar);
+        assert_eq!(
+            calculator.y(nn(progress + 1), &engine).unwrap(),
+            raised_calculator.y(nn(progress + 1), &engine).unwrap(),
+        );
+        assert_eq!(
+            calculator
+                .integrate(nn(progress + 1), nn(scale + 1), &engine)
+                .unwrap(),
+            raised_calculator
+                .integrate(nn(progress + 1), nn(scale + 1), &engine)
+                .unwrap(),
+        );
+        // Bound accumulated uncertainty in the residual independently of how
+        // the verifier divides the affected interval into characteristic spans.
         check_bounds(
             (
                 to_raw(raised.backing_change.lower()),

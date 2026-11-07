@@ -7,7 +7,7 @@ use mayf_avm_calculator::{
 };
 use mayf_characteristic::CharacteristicError;
 use mayf_characteristic_linear_driver::LinearCharacteristic;
-use mayf_fixed_drivers::I64F64;
+use mayf_fixed_drivers::{I64F64, I64Scaled};
 use mayf_fixed_number::{
     AboveOne, Bounds, DirectedRounding, FixedNumber, NonNeg, Pos, SignedFixed,
 };
@@ -47,7 +47,7 @@ fn negative(value: NonNeg<N>) -> N {
 
 fn proposal() -> FloorRaiseProposal<N> {
     FloorRaiseProposal {
-        floor: nn(16),
+        floor_increase_by: pos(15),
         ramp_end: nn(5),
         ramp_width: nn(2),
     }
@@ -55,7 +55,7 @@ fn proposal() -> FloorRaiseProposal<N> {
 
 fn raised() -> MarketState<N> {
     MarketState::new(
-        Segmentation::new(nn(16), nn(5), nn(2)).unwrap(),
+        Segmentation::new(nn(16), nn(5), nn(2), nn(1).get()).unwrap(),
         Accounting::new(nn(6), nn(6)),
     )
     .unwrap()
@@ -136,6 +136,52 @@ fn ordinary_sales_retain_the_prefix_and_resume_buying_on_main() {
     );
 }
 
+#[test]
+fn rounded_contraction_funds_the_retained_ramp_before_paying_the_seller() {
+    type Tenths = I64Scaled<10>;
+    let n = |raw| NonNeg::new(Tenths::from_scaled_i64(raw)).unwrap();
+    let engine = LocalCharacteristic::new(LinearCharacteristic::new(Pos::try_from(n(13)).unwrap()));
+    let calculator = AvmCalculator::new(AboveOne::new(n(15).get()).unwrap());
+    let state = MarketState::new(
+        Segmentation::new(n(10), n(10), n(10), n(17).get()).unwrap(),
+        Accounting::new(n(10), n(10)),
+    )
+    .unwrap();
+    let sale = calculator
+        .quote_redeem(&state, Pos::try_from(n(7)).unwrap(), &engine)
+        .unwrap();
+    let offset = sale.next_state.segmentation().main_offset().to_scaled_i64();
+    assert_eq!(offset, 13);
+    // Exact ideal offset is 1.245. Stored offset 1.3 lifts the retained ramp
+    // by 0.055, costing 0.0165 reserve. Before the sale backing is 2.025;
+    // after the sale it is 0.41925. All comparisons use independent integers.
+    let payout = sale.reserve.lower().get().to_scaled_i64();
+    assert!(payout > 0);
+    assert!(payout * 10_000 + 41_925 <= 202_500);
+    assert_eq!(sale.next_state.accounting(), Accounting::new(n(3), n(3)));
+    let buy = calculator
+        .quote_issue(&sale.next_state, Pos::try_from(n(1)).unwrap(), &engine)
+        .unwrap();
+    // The new buy follows main: integral(1.3 + 1.3x, 0.3, 0.1) = 0.1755.
+    assert!(buy.reserve.lower().get().to_scaled_i64() * 1_000 <= 1_755);
+    assert!(buy.reserve.upper().get().to_scaled_i64() * 1_000 >= 1_755);
+
+    // On this deliberately coarse grid, re-anchoring a long retained ramp
+    // cannot be certified as funded by a tiny sale. Do not return a new state.
+    let engine = LocalCharacteristic::new(LinearCharacteristic::new(Pos::try_from(n(1)).unwrap()));
+    let state = MarketState::new(
+        Segmentation::new(n(10), n(1_000), n(1_000), n(60).get()).unwrap(),
+        Accounting::new(n(1_000), n(1_000)),
+    )
+    .unwrap();
+    assert_eq!(
+        calculator
+            .quote_redeem(&state, Pos::try_from(n(1)).unwrap(), &engine)
+            .err(),
+        Some(Error::ContractionPrecisionLoss),
+    );
+}
+
 #[derive(Default)]
 struct ObservedEngine {
     batches: RefCell<Vec<Vec<SpanRequest<N>>>>,
@@ -161,7 +207,7 @@ impl CharacteristicEngine<N> for ObservedEngine {
 }
 
 #[test]
-fn market_calculations_use_one_neutral_batch_and_floor_operations_use_none() {
+fn market_calculations_batch_engine_calls_and_keep_floor_operations_local() {
     let calculator = calculator();
     let engine = ObservedEngine::default();
     let burn = calculator.quote_redeem_at_floor(&raised(), pos(3)).unwrap();
@@ -175,39 +221,12 @@ fn market_calculations_use_one_neutral_batch_and_floor_operations_use_none() {
         exercise.next_state.accounting(),
         Accounting::new(nn(6), nn(5))
     );
+    assert!(engine.batches.borrow().is_empty());
     assert_eq!(
         calculator
             .quote_redeem_at_floor(&burn.next_state, pos(1))
             .err(),
         Some(Error::InsufficientFloorTail)
-    );
-    let contracted = raised().segmentation().contract_to(nn(4)).unwrap();
-    assert!(engine.batches.borrow().is_empty());
-
-    // Collapsed ramps move both boundaries over the same interval only once.
-    let collapsed = MarketState::new(
-        Segmentation::new(nn(8), nn(1), nn(0)).unwrap(),
-        Accounting::new(nn(3), nn(3)),
-    )
-    .unwrap();
-    calculator
-        .verify_floor_raise(
-            &collapsed,
-            FloorRaiseProposal {
-                floor: nn(16),
-                ramp_end: nn(2),
-                ramp_width: nn(0),
-            },
-            FloorRaisePolicy::new(nn(0), nn(12).get()),
-            &engine,
-        )
-        .unwrap();
-    assert_eq!(
-        engine.take_batch(),
-        vec![SpanRequest {
-            lo: nn(1),
-            width: nn(1)
-        }]
     );
     for (state, backing) in [(burn.next_state, 102), (exercise.next_state, 134)] {
         assert_eq!(state.segmentation(), raised().segmentation());
@@ -215,88 +234,44 @@ fn market_calculations_use_one_neutral_batch_and_floor_operations_use_none() {
             calculator.price(&state, &engine).unwrap(),
             Bounds::exact(nn(49))
         );
-        assert_eq!(engine.take_batch().len(), 2);
+        // Main evaluation is independent of all ramp and floor parameters.
+        assert_eq!(
+            engine.take_batch(),
+            vec![SpanRequest {
+                lo: nn(6),
+                width: nn(0)
+            }]
+        );
         assert_eq!(
             calculator.backing(&state, &engine).unwrap(),
             Bounds::exact(nn(backing))
         );
-        assert_eq!(engine.take_batch().len(), 2);
+        engine.take_batch();
     }
-
     calculator.quote_issue(&raised(), pos(1), &engine).unwrap();
-    let batch = engine.take_batch();
-    assert_eq!(batch.len(), 2);
-    assert!(batch.iter().any(|s| s.lo == nn(6) && s.width == nn(1)));
-
-    // A partial-ramp sale needs its two redeemed intervals and the ramp's
-    // starting price, not another integral over the entire original ramp.
-    calculator.quote_redeem(&raised(), pos(2), &engine).unwrap();
-    let batch = engine.take_batch();
-    assert_eq!(batch.len(), 3);
-    for (lo, width) in [(4, 1), (3, 0), (5, 1)] {
-        assert!(batch.contains(&SpanRequest {
-            lo: nn(lo),
-            width: nn(width)
-        }));
+    assert_eq!(
+        engine.take_batch(),
+        vec![SpanRequest {
+            lo: nn(6),
+            width: nn(1)
+        }]
+    );
+    for amount in [2, 5] {
+        calculator
+            .quote_redeem(&raised(), pos(amount), &engine)
+            .unwrap();
+        // The sale and its contraction share the same synchronous engine batch.
+        let batch = engine.take_batch();
+        for (index, request) in batch.iter().enumerate() {
+            assert!(!batch[..index].contains(request));
+        }
     }
-    // Reaching the floor redeems the full ramp, which already supplies its anchor.
-    calculator.quote_redeem(&raised(), pos(5), &engine).unwrap();
-    assert_eq!(engine.take_batch().len(), 2);
     let initial =
         MarketState::new(Segmentation::launch(nn(1)), Accounting::new(nn(6), nn(6))).unwrap();
     calculator
         .verify_floor_raise(&initial, proposal(), FloorRaisePolicy::exact(), &engine)
         .unwrap();
-    let batch = engine.take_batch();
-    assert_eq!(batch.len(), 2);
-    for width in [3, 5] {
-        assert!(batch.contains(&SpanRequest {
-            lo: nn(0),
-            width: nn(width)
-        }));
-    }
-
-    // An unchanged ramp end contributes no change and requires no point query.
-    calculator
-        .verify_floor_raise(
-            &raised(),
-            FloorRaiseProposal {
-                floor: fraction(57, 2),
-                ramp_end: nn(5),
-                ramp_width: nn(1),
-            },
-            FloorRaisePolicy::new(nn(0), fraction(175, 4).get()),
-            &engine,
-        )
-        .unwrap();
-    assert_eq!(
-        engine.take_batch(),
-        vec![SpanRequest {
-            lo: nn(3),
-            width: nn(1)
-        }]
-    );
-
-    // With both boundaries fixed, the permitted vertical change is a rectangle.
-    calculator
-        .verify_floor_raise(
-            &raised(),
-            FloorRaiseProposal {
-                floor: nn(17),
-                ..proposal()
-            },
-            FloorRaisePolicy::new(nn(1), nn(6).get()),
-            &engine,
-        )
-        .unwrap();
-    assert!(engine.batches.borrow().is_empty());
-
-    let schedule = ScheduleCalculator::new(contracted, scalar());
-    assert_eq!(
-        schedule.y(nn(4), &engine).unwrap(),
-        Bounds::exact(fraction(57, 2))
-    );
-    assert_eq!(engine.take_batch().len(), 1);
+    engine.take_batch();
 }
 
 #[test]
@@ -334,7 +309,7 @@ fn floor_raise_limits_are_signed_and_include_all_circulating_backing() {
         )
         .unwrap();
     assert_eq!(funded.backing_change, Bounds::exact(nn(30).get()));
-    assert_eq!(funded.main_change, Bounds::exact(N::ZERO));
+    assert_eq!(funded.next_state.segmentation().main_offset(), nn(1).get());
 
     let surplus = FloorRaiseProposal {
         ramp_end: fraction(185, 32),
@@ -362,57 +337,69 @@ fn floor_raise_limits_are_signed_and_include_all_circulating_backing() {
             &engine,
         )
         .unwrap();
-    assert_eq!(accepted.main_change, Bounds::exact(N::ZERO));
+    assert_eq!(
+        accepted.next_state.segmentation().main_offset(),
+        nn(1).get()
+    );
     assert_eq!(
         accepted.backing_change,
         Bounds::exact(negative(fraction(2025, 256)))
     );
 
-    let lowered_main = FloorRaiseProposal {
-        floor: fraction(255, 16),
+    // A slightly lower proposed floor leaves an upward gap at ramp start.
+    // It changes only the floor rectangle, never the independently stored main.
+    let gap_candidate = FloorRaiseProposal {
+        floor_increase_by: Pos::try_from(fraction(239, 16)).unwrap(),
         ..proposal()
     };
     assert_eq!(
         calculator
             .verify_floor_raise(
                 &issued,
-                lowered_main,
+                gap_candidate,
                 FloorRaisePolicy::new(fraction(1, 32), negative(nn(1))),
                 &engine,
             )
             .err(),
-        Some(Error::MainCurveChanged)
+        Some(Error::FloorJoinOutsideTolerance)
     );
     let accepted = calculator
         .verify_floor_raise(
             &issued,
-            lowered_main,
-            FloorRaisePolicy::new(fraction(1, 16), negative(fraction(3, 8))),
+            gap_candidate,
+            FloorRaisePolicy::new(fraction(1, 16), negative(fraction(3, 16))),
             &engine,
         )
         .unwrap();
     assert_eq!(
         accepted.backing_change,
-        Bounds::exact(negative(fraction(3, 8)))
+        Bounds::exact(negative(fraction(3, 16)))
     );
+    let before = ScheduleCalculator::new(issued.segmentation(), scalar());
+    let after = ScheduleCalculator::new(accepted.next_state.segmentation(), scalar());
+    for x in [nn(5), nn(6), fraction(103, 16), nn(100)] {
+        assert_eq!(before.y(x, &engine).unwrap(), after.y(x, &engine).unwrap());
+        assert_eq!(
+            before.integrate(x, fraction(13, 16), &engine).unwrap(),
+            after.integrate(x, fraction(13, 16), &engine).unwrap()
+        );
+    }
 
-    // Overlapping price bounds do not certify an unchanged main.
-    let uncertain = FloorRaiseProposal {
-        floor: NonNeg::new(nn(16).get().checked_sub(N::from_scaled_i128(12)).unwrap()).unwrap(),
-        ramp_width: NonNeg::new(nn(2).get().checked_add(N::QUANTUM).unwrap()).unwrap(),
-        ..proposal()
-    };
-    let candidate = ScheduleCalculator::new(
-        Segmentation::new(uncertain.floor, uncertain.ramp_end, uncertain.ramp_width).unwrap(),
-        scalar(),
-    );
-    let endpoint = candidate.y(nn(5), &engine).unwrap();
-    assert!(endpoint.contains(nn(41)) && !endpoint.is_exact());
+    // A floor above the ramp start would make a downward jump; a generous
+    // tolerance must not make that candidate admissible.
     assert_eq!(
         calculator
-            .verify_floor_raise(&issued, uncertain, FloorRaisePolicy::exact(), &engine)
+            .verify_floor_raise(
+                &issued,
+                FloorRaiseProposal {
+                    floor_increase_by: Pos::try_from(fraction(241, 16)).unwrap(),
+                    ..proposal()
+                },
+                FloorRaisePolicy::new(nn(1), nn(1).get()),
+                &engine,
+            )
             .err(),
-        Some(Error::MainCurveChanged)
+        Some(Error::FloorJoinOutsideTolerance)
     );
 }
 
@@ -425,15 +412,16 @@ fn floor_raise_residuals_match_whole_schedule_accounting() {
         (14, 14, 21, 20, 18, 23, 28, 14), // Exact-area narrowing after a floor burn.
         (2, 2, 3, 3, 3, 4, 5, 5),         // Both boundaries advance; backing grows.
         (2, 2, 3, 3, 4, 6, 6, 6),         // Both boundaries advance; backing shrinks.
-        (2, 2, 3, 4, 3, 4, 7, 9),         // Permitted positive main shift, supply > progress.
-        (2, 2, 3, 3, 4, 5, 7, 5),         // Permitted negative main shift, supply < progress.
+        (2, 2, 3, 3, 3, 4, 7, 9),         // Extra circulation adds floor backing.
+        (2, 2, 3, 3, 3, 4, 7, 5),         // Floor burns remove that extra rectangle.
         (2, 2, 2, 3, 3, 3, 5, 4),         // Both ramps have zero width.
-        (2, 2, 3, 3, 2, 3, 5, 4),         // Neither boundary moves.
     ] {
-        let old = Segmentation::new(nn(old_floor), nn(old_end), nn(old_end - old_start)).unwrap();
+        let offset = N::checked_from_i128(old_floor + old_end - 2 * old_start).unwrap();
+        let old =
+            Segmentation::new(nn(old_floor), nn(old_end), nn(old_end - old_start), offset).unwrap();
         let state = MarketState::new(old, Accounting::new(nn(progress), nn(supply))).unwrap();
         let candidate = FloorRaiseProposal {
-            floor: nn(floor),
+            floor_increase_by: Pos::try_from(nn(floor - old_floor)).unwrap(),
             ramp_end: nn(end),
             ramp_width: nn(end - start),
         };
@@ -450,20 +438,20 @@ fn floor_raise_residuals_match_whole_schedule_accounting() {
             DirectedRounding::Floor,
         )
         .unwrap();
-        let main_change = floor + end - 2 * start - (old_floor + old_end - 2 * old_start);
         let raise = calculator
             .verify_floor_raise(
                 &state,
                 candidate,
-                FloorRaisePolicy::new(nn(main_change.abs()), area_change),
+                FloorRaisePolicy::new(nn(0), area_change),
                 &engine,
             )
             .unwrap();
-        assert_eq!(
-            raise.main_change,
-            Bounds::exact(N::checked_from_i128(main_change).unwrap())
-        );
+        assert_eq!(raise.next_state.segmentation().main_offset(), offset);
         assert_eq!(raise.backing_change, Bounds::exact(area_change));
+        assert_eq!(
+            raise.backing,
+            Bounds::exact(fraction(backing_twice(floor, start, end), 2)),
+        );
         assert_eq!(
             calculator.price(&raise.next_state, &engine).unwrap(),
             Bounds::exact(nn(progress + floor + end - 2 * start))
@@ -480,7 +468,7 @@ fn floor_raise_residuals_match_whole_schedule_accounting() {
                     .verify_floor_raise(
                         &state,
                         candidate,
-                        FloorRaisePolicy::new(nn(main_change.abs()), tighter),
+                        FloorRaisePolicy::new(nn(0), tighter),
                         &engine,
                     )
                     .err(),
@@ -493,7 +481,7 @@ fn floor_raise_residuals_match_whole_schedule_accounting() {
 #[test]
 fn invalid_market_geometry_and_unrepresentable_quotes_return_errors() {
     assert_eq!(
-        Segmentation::new(nn(1), nn(2), nn(3)),
+        Segmentation::new(nn(1), nn(2), nn(3), nn(1).get()),
         Err(Error::RampWidthExceedsEnd)
     );
     assert_eq!(

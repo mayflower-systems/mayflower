@@ -3,16 +3,18 @@
 use mayf_fixed_number::{AboveOne, Bounds, NonNeg, Pos, SignedFixed};
 
 use crate::calculator::{
-    ScheduleCalculator, add_bounds, constant_area, evaluate_spans, floor_enclosure, scale,
+    ScheduleCalculator, add_bounds, constant_area, evaluate_optional_spans, main_area, main_price,
+    ramp_area, ramp_price, span_between,
 };
 use crate::{
     Accounting, CharacteristicEngine, Error, MarketState, Result, Segmentation, SpanRequest,
-    SpanResponse,
 };
 
-/// A gross reserve quote and the state to persist after successful settlement.
+/// A reserve quote and the state to persist after successful settlement.
 /// Charge the upper reserve bound for issuance; pay the lower for redemption.
-/// Normalization, whole-token rounding, fees, and custody belong to the caller.
+/// Redemption reserves any extra backing caused by rounding a contracted main
+/// offset upward. Normalization, whole-token rounding, fees, and custody belong
+/// to the caller.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TradeQuote<N: SignedFixed> {
     pub next_state: MarketState<N>,
@@ -22,12 +24,16 @@ pub struct TradeQuote<N: SignedFixed> {
 /// Untrusted proposed geometry. Verification checks its shape and transition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FloorRaiseProposal<N: SignedFixed> {
-    pub floor: NonNeg<N>,
+    /// Positive change from the current floor; a decrease is unrepresentable.
+    pub floor_increase_by: Pos<N>,
     pub ramp_end: NonNeg<N>,
     pub ramp_width: NonNeg<N>,
 }
 
-/// Acceptance limits in normalized price and reserve units.
+/// Acceptance limits in normalized floor-join price and reserve units.
+///
+/// The ramp may start at or above the floor, with the full upward gap enclosed
+/// by `max_floor_join_gap`. Main placement is preserved exactly.
 ///
 /// The signed area allowance specifies both direction and maximum magnitude:
 /// positive permits backing growth in `[0, allowance]`, negative permits a
@@ -38,14 +44,14 @@ pub struct FloorRaiseProposal<N: SignedFixed> {
 /// or growth from reserve surplus, and independently establishes funding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FloorRaisePolicy<N: SignedFixed> {
-    max_price_change: NonNeg<N>,
+    max_floor_join_gap: NonNeg<N>,
     area_change_tolerance: N,
 }
 
 impl<N: SignedFixed> FloorRaisePolicy<N> {
-    pub const fn new(max_price_change: NonNeg<N>, area_change_tolerance: N) -> Self {
+    pub const fn new(max_floor_join_gap: NonNeg<N>, area_change_tolerance: N) -> Self {
         Self {
-            max_price_change,
+            max_floor_join_gap,
             area_change_tolerance,
         }
     }
@@ -54,8 +60,8 @@ impl<N: SignedFixed> FloorRaisePolicy<N> {
         Self::new(NonNeg::zero(), N::ZERO)
     }
 
-    pub const fn max_price_change(&self) -> NonNeg<N> {
-        self.max_price_change
+    pub const fn max_floor_join_gap(&self) -> NonNeg<N> {
+        self.max_floor_join_gap
     }
 
     pub const fn area_change_tolerance(&self) -> N {
@@ -68,8 +74,15 @@ impl<N: SignedFixed> FloorRaisePolicy<N> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FloorRaiseQuote<N: SignedFixed> {
     pub next_state: MarketState<N>,
-    pub main_change: Bounds<N>,
+    /// Total proposed backing, including the independent physical floor tail.
+    pub backing: Bounds<NonNeg<N>>,
     pub backing_change: Bounds<N>,
+}
+
+/// Numerical evidence for a candidate, before its acceptance policy is checked.
+pub(crate) struct FloorRaiseEvaluation<N: SignedFixed> {
+    pub quote: FloorRaiseQuote<N>,
+    pub join_gap: Bounds<N>,
 }
 
 /// Stateless AVM arithmetic with an immutable ramp scalar.
@@ -77,7 +90,7 @@ pub struct FloorRaiseQuote<N: SignedFixed> {
 /// The caller supplies state snapshots and a numerical characteristic engine.
 /// Each operation plans all required spans before invoking that engine at most
 /// once. The engine receives no segmentation, accounting, or policy data.
-/// Floor-only operations never invoke it.
+/// Explicit floor issuance and redemption never invoke it.
 ///
 /// A program wrapper owns number selection, authorization, funding, fees, and
 /// persistence. It must bind a market to the same characteristic parameters
@@ -180,17 +193,14 @@ impl<N: SignedFixed> AvmCalculator<N> {
             .circulating_supply()
             .checked_sub(amount)
             .map_err(|_| Error::ArithmeticFailure)?;
-        let next_state = MarketState::new(
-            state.segmentation().contract_to(remaining)?,
-            Accounting::new(remaining, circulating_supply),
-        )?;
-
-        // Always quote the old schedule. Contraction preserves its retained
-        // prefix but changes the main segment above the remaining progress.
+        let (on_schedule_reserve, segmentation) =
+            self.schedule(state)
+                .redeem(remaining, accounting.progress(), characteristic)?;
+        let next_state =
+            MarketState::new(segmentation, Accounting::new(remaining, circulating_supply))?;
         let reserve = add_bounds(
             constant_area(state.segmentation().floor(), at_floor)?,
-            self.schedule(state)
-                .integrate(remaining, on_schedule, characteristic)?,
+            on_schedule_reserve,
         )?;
         Ok(TradeQuote {
             next_state,
@@ -247,9 +257,9 @@ impl<N: SignedFixed> AvmCalculator<N> {
         })
     }
 
-    /// Verify proposed geometry using one numerical batch, without solving for
-    /// any parameter. Both main placement and backing are compared centrally.
-    /// Valid raises can narrow the ramp; width is not a monotonic invariant.
+    /// Verify a floor increase without changing main placement. The changed area
+    /// stops at the new ramp end; the unchanged main tail is evaluated only for
+    /// the total backing needed by a caller's reserve-funding check.
     pub fn verify_floor_raise(
         &self,
         state: &MarketState<N>,
@@ -257,173 +267,124 @@ impl<N: SignedFixed> AvmCalculator<N> {
         policy: FloorRaisePolicy<N>,
         characteristic: &dyn CharacteristicEngine<N>,
     ) -> Result<FloorRaiseQuote<N>> {
-        let old = state.segmentation();
-        if proposal.floor <= old.floor() {
-            return Err(Error::FloorNotRaised);
+        let evaluation = self.evaluate_floor_raise(state, proposal, characteristic)?;
+        if evaluation.join_gap.lower() < N::ZERO
+            || evaluation.join_gap.upper() > policy.max_floor_join_gap.get()
+        {
+            return Err(Error::FloorJoinOutsideTolerance);
         }
-        let candidate = Segmentation::new(proposal.floor, proposal.ramp_end, proposal.ramp_width)?;
+        let allowed_lower = policy.area_change_tolerance.min(N::ZERO);
+        let allowed_upper = policy.area_change_tolerance.max(N::ZERO);
+        if evaluation.quote.backing_change.lower() < allowed_lower
+            || evaluation.quote.backing_change.upper() > allowed_upper
+        {
+            return Err(Error::AreaChangeOutsideTolerance);
+        }
+        Ok(evaluation.quote)
+    }
+
+    pub(crate) fn evaluate_floor_raise(
+        &self,
+        state: &MarketState<N>,
+        proposal: FloorRaiseProposal<N>,
+        characteristic: &dyn CharacteristicEngine<N>,
+    ) -> Result<FloorRaiseEvaluation<N>> {
+        let old = state.segmentation();
+        let floor = old
+            .floor()
+            .checked_add(proposal.floor_increase_by)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let candidate = Segmentation::new(
+            floor,
+            proposal.ramp_end,
+            proposal.ramp_width,
+            old.main_offset(),
+        )?;
         if candidate.ramp_end() < old.ramp_end() || candidate.ramp_start()? < old.ramp_start()? {
             return Err(Error::RampMovedBackward);
         }
         let next_state = MarketState::new(candidate, state.accounting())?;
-        let progress = state.accounting().progress();
-        let start_movement = SpanRequest {
-            lo: old.ramp_start()?,
-            width: candidate
-                .ramp_start()?
-                .checked_sub(old.ramp_start()?)
-                .map_err(|_| Error::ArithmeticFailure)?,
+        let old_ramp_request = span_between(old.ramp_start()?, old.ramp_end())?;
+        // The new ramp also supplies its endpoint values for the join check,
+        // including when its width is zero.
+        let new_ramp_request = SpanRequest {
+            lo: candidate.ramp_start()?,
+            width: candidate.ramp_width(),
         };
-        let end_movement = SpanRequest {
-            lo: old.ramp_end(),
-            width: candidate
-                .ramp_end()
-                .checked_sub(old.ramp_end())
-                .map_err(|_| Error::ArithmeticFailure)?,
-        };
-        let (start, end) =
-            evaluate_anchor_changes(characteristic, progress, start_movement, end_movement)?;
-        let floor_increase = candidate
-            .floor()
-            .checked_sub(old.floor())
-            .map_err(|_| Error::ArithmeticFailure)?;
-        let floor_backing =
-            constant_area(floor_increase, state.accounting().circulating_supply())?.into_raw();
-
-        // Moving an anchor removes area from its vertically anchored tail.
-        // The main's shared neutral integral cancels, leaving only these two
-        // boundary movements. The formula includes any permitted main change.
-        let (main_change, backing_change) = if start_movement == end_movement {
-            // Both ramps are collapsed, so their identical contributions have
-            // net coefficient -1. Reuse the result without widening its bounds.
-            (
-                Bounds::exact(floor_increase.get())
-                    .checked_sub(start.height)
-                    .map_err(|_| Error::ArithmeticFailure)?,
-                floor_backing
-                    .checked_sub(start.area)
-                    .map_err(|_| Error::ArithmeticFailure)?,
-            )
+        let bridge_request = span_between(old.ramp_end(), candidate.ramp_end())?;
+        let tail_request = span_between(candidate.ramp_end(), state.accounting().progress())?;
+        let [old_ramp, new_ramp, bridge, tail] = evaluate_optional_spans(
+            characteristic,
+            [
+                old_ramp_request,
+                Some(new_ramp_request),
+                bridge_request,
+                tail_request,
+            ],
+        )?;
+        let new_ramp = new_ramp.ok_or(Error::InvalidCharacteristicBatch)?;
+        let at_start = if candidate.ramp_width() == NonNeg::zero() {
+            main_price(new_ramp.y_at_lo, candidate.main_offset())?
         } else {
-            let ramp_gain = NonNeg::from(self.ramp_scalar);
-            let main_gain = ramp_gain
-                .checked_sub(NonNeg::one())
-                .map_err(|_| Error::ArithmeticFailure)?;
-            let main_change = Bounds::exact(floor_increase.get())
-                .checked_add(scale(end.height, main_gain.get())?)
-                .map_err(|_| Error::ArithmeticFailure)?
-                .checked_sub(scale(start.height, ramp_gain.get())?)
-                .map_err(|_| Error::ArithmeticFailure)?;
-            let backing_change = floor_backing
-                .checked_add(scale(end.area, main_gain.get())?)
-                .map_err(|_| Error::ArithmeticFailure)?
-                .checked_sub(scale(start.area, ramp_gain.get())?)
-                .map_err(|_| Error::ArithmeticFailure)?;
-            (main_change, backing_change)
+            ramp_price(
+                new_ramp.y_at_lo,
+                new_ramp.y_at_hi,
+                candidate.main_offset(),
+                self.ramp_scalar,
+            )?
         };
-        let minimum_price_change = policy
-            .max_price_change
-            .get()
-            .checked_neg()
+        let join_gap = at_start
+            .checked_sub_exact(floor.get())
             .map_err(|_| Error::ArithmeticFailure)?;
-        if main_change.lower() < minimum_price_change
-            || main_change.upper() > policy.max_price_change.get()
-        {
-            return Err(Error::MainCurveChanged);
-        }
 
-        let allowed_lower = policy.area_change_tolerance.min(N::ZERO);
-        let allowed_upper = policy.area_change_tolerance.max(N::ZERO);
-        if backing_change.lower() < allowed_lower || backing_change.upper() > allowed_upper {
-            return Err(Error::AreaChangeOutsideTolerance);
+        let mut old_prefix = constant_area(old.floor(), state.floor_tail()?)?.into_raw();
+        if let (Some(request), Some(response)) = (old_ramp_request, old_ramp) {
+            old_prefix = old_prefix
+                .checked_add(ramp_area(
+                    response,
+                    request.width,
+                    response.y_at_hi,
+                    old.main_offset(),
+                    self.ramp_scalar,
+                )?)
+                .map_err(|_| Error::ArithmeticFailure)?;
         }
-        Ok(FloorRaiseQuote {
-            next_state,
-            main_change,
-            backing_change,
+        if let (Some(request), Some(response)) = (bridge_request, bridge) {
+            old_prefix = old_prefix
+                .checked_add(main_area(response, request.width, old.main_offset())?)
+                .map_err(|_| Error::ArithmeticFailure)?;
+        }
+        let mut new_prefix = constant_area(floor, next_state.floor_tail()?)?.into_raw();
+        if candidate.ramp_width() != NonNeg::zero() {
+            new_prefix = new_prefix
+                .checked_add(ramp_area(
+                    new_ramp,
+                    candidate.ramp_width(),
+                    new_ramp.y_at_hi,
+                    candidate.main_offset(),
+                    self.ramp_scalar,
+                )?)
+                .map_err(|_| Error::ArithmeticFailure)?;
+        }
+        let backing_change = new_prefix
+            .checked_sub(old_prefix)
+            .map_err(|_| Error::ArithmeticFailure)?;
+        let backing = if let (Some(request), Some(response)) = (tail_request, tail) {
+            new_prefix
+                .checked_add(main_area(response, request.width, candidate.main_offset())?)
+                .map_err(|_| Error::ArithmeticFailure)?
+        } else {
+            new_prefix
+        };
+        Ok(FloorRaiseEvaluation {
+            quote: FloorRaiseQuote {
+                next_state,
+                backing_change,
+                backing: backing
+                    .try_nonnegative()
+                    .map_err(|_| Error::NegativeOutput)?,
+            },
+            join_gap,
         })
     }
-}
-
-/// Effect of moving the origin of `f(x) - f(anchor)` forward.
-#[derive(Clone, Copy)]
-struct AnchorChange<N: SignedFixed> {
-    height: Bounds<N>,
-    area: Bounds<N>,
-}
-
-impl<N: SignedFixed> AnchorChange<N> {
-    fn zero() -> Self {
-        Self {
-            height: Bounds::exact(N::ZERO),
-            area: Bounds::exact(N::ZERO),
-        }
-    }
-}
-
-fn evaluate_anchor_changes<N: SignedFixed>(
-    characteristic: &dyn CharacteristicEngine<N>,
-    progress: NonNeg<N>,
-    start: SpanRequest<N>,
-    end: SpanRequest<N>,
-) -> Result<(AnchorChange<N>, AnchorChange<N>)> {
-    let zero = AnchorChange::zero();
-    match (start.width != NonNeg::zero(), end.width != NonNeg::zero()) {
-        (false, false) => Ok((zero, zero)),
-        (true, false) => {
-            let [response] = evaluate_spans(characteristic, [start])?;
-            Ok((anchor_change(start, response, progress)?, zero))
-        }
-        (false, true) => {
-            let [response] = evaluate_spans(characteristic, [end])?;
-            Ok((zero, anchor_change(end, response, progress)?))
-        }
-        (true, true) if start == end => {
-            let [response] = evaluate_spans(characteristic, [start])?;
-            let change = anchor_change(start, response, progress)?;
-            Ok((change, change))
-        }
-        (true, true) => {
-            let [start_response, end_response] = evaluate_spans(characteristic, [start, end])?;
-            Ok((
-                anchor_change(start, start_response, progress)?,
-                anchor_change(end, end_response, progress)?,
-            ))
-        }
-    }
-}
-
-fn anchor_change<N: SignedFixed>(
-    request: SpanRequest<N>,
-    response: SpanResponse<N>,
-    progress: NonNeg<N>,
-) -> Result<AnchorChange<N>> {
-    let hi = request
-        .lo
-        .checked_add(request.width)
-        .map_err(|_| Error::ArithmeticFailure)?;
-    let remaining = progress
-        .checked_sub(hi)
-        .map_err(|_| Error::ArithmeticFailure)?;
-    // Monotonicity proves both the height increase and the area above f(lo)
-    // are nonnegative, even if independent endpoint bounds straddle zero.
-    let height = response
-        .y_at_hi
-        .into_raw()
-        .checked_sub(response.y_at_lo.into_raw())
-        .map_err(|_| Error::ArithmeticFailure)?;
-    let height = floor_enclosure(height, NonNeg::zero())?;
-    let rectangle = scale(response.y_at_lo.into_raw(), request.width.get())?;
-    let span_area = response
-        .area
-        .into_raw()
-        .checked_sub(rectangle)
-        .map_err(|_| Error::ArithmeticFailure)?;
-    let span_area = floor_enclosure(span_area, NonNeg::zero())?;
-    // G(lo, hi) = integral(lo, hi-lo) - f(lo)*(hi-lo)
-    //             + (progress-hi)*(f(hi)-f(lo)).
-    let area = span_area
-        .checked_add(scale(height, remaining.get())?)
-        .map_err(|_| Error::ArithmeticFailure)?;
-    Ok(AnchorChange { height, area })
 }
