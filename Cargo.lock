@@ -1077,6 +1077,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-avm-engine-linear-sol"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "mayf-avm-calculator",
+ "mayf-characteristic-linear-driver",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+]
+
+[[package]]
+name = "mayf-avm-engine-linear-sol-cpi"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "solana-address 2.9.0",
+ "solana-instruction 3.5.1",
+]
+
+[[package]]
 name = "mayf-avm-prog"
 version = "0.1.0"
 dependencies = [

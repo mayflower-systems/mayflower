@@ -1,0 +1,235 @@
+{
+  "address": "AWzdC1NqcyWzTPtmKBR9vWdkJPsgML4F2oDu5fMCCr9r",
+  "metadata": {
+    "name": "mayf_avm_engine_linear_sol",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Mayflower AVM engine linear Solana program",
+    "repository": "https://github.com/mayflower-systems/mayflower"
+  },
+  "instructions": [
+    {
+      "name": "calculate_spans",
+      "docs": [
+        "Evaluate neutral characteristic spans and return their bounds in order."
+      ],
+      "discriminator": [
+        153,
+        97,
+        174,
+        93,
+        213,
+        190,
+        207,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "linear_characteristic_param"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CalculateSpansArgs"
+            }
+          }
+        }
+      ],
+      "returns": {
+        "vec": {
+          "defined": {
+            "name": "SpanResponse"
+          }
+        }
+      }
+    },
+    {
+      "name": "create_linear_engine",
+      "discriminator": [
+        203,
+        156,
+        46,
+        120,
+        92,
+        192,
+        163,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "linear_characteristic_param",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateLinearEngineArgs"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "LinearCharacteristicParam",
+      "discriminator": [
+        168,
+        158,
+        201,
+        134,
+        101,
+        136,
+        37,
+        119
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidSlope",
+      "msg": "The characteristic slope must be positive"
+    },
+    {
+      "code": 6001,
+      "name": "BatchTooLarge",
+      "msg": "The span responses would exceed Solana's return-data limit"
+    },
+    {
+      "code": 6002,
+      "name": "ArithmeticFailure",
+      "msg": "The span or its result exceeds the supported fixed-point range"
+    }
+  ],
+  "types": [
+    {
+      "name": "CalculateSpansArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "spans",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "SpanRequest"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateLinearEngineArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slope_q64x64",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LinearCharacteristicParam",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slope_q64x64",
+            "docs": [
+              "Positive, immutable slope of `f(x) = slope * x`, on the `2^-64` grid."
+            ],
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Q64x64Bounds",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lower",
+            "type": "u128"
+          },
+          {
+            "name": "upper",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpanRequest",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lo_q64x64",
+            "type": "u128"
+          },
+          {
+            "name": "width_q64x64",
+            "docs": [
+              "Zero requests a point evaluation with zero area."
+            ],
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpanResponse",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "y_at_lo",
+            "type": {
+              "defined": {
+                "name": "Q64x64Bounds"
+              }
+            }
+          },
+          {
+            "name": "y_at_hi",
+            "type": {
+              "defined": {
+                "name": "Q64x64Bounds"
+              }
+            }
+          },
+          {
+            "name": "area",
+            "type": {
+              "defined": {
+                "name": "Q64x64Bounds"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
