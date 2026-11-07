@@ -1,5 +1,14 @@
-use crate::{EpochCounter, Seconds, models::Identifiable};
+use crate::models::Identifiable;
+use crate::{Result, RewardClearingError};
 
+/// A timestamp or duration in seconds
+pub type Seconds = u64;
+
+/// The index of an epoch in its channel group's schedule
+pub type EpochCounter = u32;
+
+/// One epoch of a channel group's schedule
+/// Deposits, withdrawals, and funding are accepted from its start up to, but not including, its end.
 pub struct Epoch<I: Identifiable> {
     pub channel_group_id: I,
     pub epoch_counter: EpochCounter,
@@ -22,17 +31,32 @@ impl<I: Identifiable> Epoch<I> {
         }
     }
 
-    pub fn end_time_unix_seconds(&self) -> Seconds {
+    pub fn end_time_unix_seconds(&self) -> Result<Seconds> {
         self.start_time_unix_seconds
             .checked_add(self.duration_seconds)
-            .unwrap()
+            .ok_or(RewardClearingError::EpochEndTimeOverflow)
     }
 
-    pub fn is_finished(&self, now: Seconds) -> bool {
-        self.end_time_unix_seconds() <= now
+    pub fn is_finished(&self, now: Seconds) -> Result<bool> {
+        Ok(self.end_time_unix_seconds()? <= now)
     }
 
-    pub fn is_active(&self, now: Seconds) -> bool {
-        !self.is_finished(now) && self.start_time_unix_seconds <= now
+    /// Fails unless `now` is inside the live interval [start, end).
+    pub fn validate_active(&self, now: Seconds) -> Result<()> {
+        if now < self.start_time_unix_seconds {
+            return Err(RewardClearingError::EpochNotStarted);
+        }
+
+        if self.is_finished(now)? {
+            return Err(RewardClearingError::EpochEnded);
+        }
+
+        Ok(())
+    }
+
+    /// Seconds since the epoch started. Fails outside the live interval [start, end).
+    pub fn elapsed_seconds(&self, now: Seconds) -> Result<Seconds> {
+        self.validate_active(now)?;
+        Ok(now - self.start_time_unix_seconds)
     }
 }

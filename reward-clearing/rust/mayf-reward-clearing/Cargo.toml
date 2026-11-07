@@ -14,6 +14,4 @@ name = "mayf_reward_clearing"
 mayf-fixed-number.workspace = true
 
 [dev-dependencies]
-dashu.workspace = true
-mayf-fixed-dashu.workspace = true
 mayf-fixed-drivers.workspace = true

@@ -1,7 +1,6 @@
 use crate::models::Identifiable;
 use crate::models::channel_epoch::ChannelEpoch;
 use crate::models::epoch::Epoch;
-use crate::validation::validate_epoch_is_active;
 use crate::{Amount, Result, Seconds};
 use mayf_fixed_number::FixedNumber;
 
@@ -23,11 +22,53 @@ where
     I: Identifiable,
     N: FixedNumber,
 {
-    validate_epoch_is_active(&args.epoch, args.now)?;
+    args.epoch.validate_active(args.now)?;
 
     args.channel_epoch.validate_epoch(&args.epoch)?;
 
     let channel_epoch_next = args.channel_epoch.add_reward(args.amount)?;
 
     Ok(AddRewardReceipt { channel_epoch_next })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RewardClearingError as E;
+    use crate::test_support::*;
+
+    fn add(
+        channel_epoch: ChannelEpoch<Id, Number>,
+        now: Seconds,
+        amount: Amount,
+    ) -> Result<AddRewardReceipt<Id, Number>> {
+        add_reward(AddRewardArgs {
+            epoch: epoch(),
+            channel_epoch,
+            now,
+            amount,
+        })
+    }
+
+    #[test]
+    fn adds_to_the_reward_pot() {
+        let first = add(channel_epoch(), START, 90).unwrap();
+        let second = add(first.channel_epoch_next, HALFWAY, 10).unwrap();
+        assert_eq!(second.channel_epoch_next.reward_pot_balance, 100);
+    }
+
+    #[test]
+    fn rejects_reward_after_epoch_end() {
+        let result = add(channel_epoch(), START + DURATION, 90);
+        assert_eq!(result.err(), Some(E::EpochEnded));
+    }
+
+    #[test]
+    fn rejects_channel_epoch_from_another_epoch() {
+        let mut channel_epoch = channel_epoch();
+        channel_epoch.epoch_counter = 4;
+
+        let result = add(channel_epoch, START, 90);
+        assert_eq!(result.err(), Some(E::ChannelEpochCounterMismatch));
+    }
 }

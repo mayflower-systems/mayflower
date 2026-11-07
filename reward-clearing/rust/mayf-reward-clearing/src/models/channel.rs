@@ -1,3 +1,4 @@
+/// A reward channel. Its epochs follow its channel group's schedule.
 pub struct Channel<I: PartialEq> {
     pub id: I,
     pub channel_group_id: I,

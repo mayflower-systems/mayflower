@@ -1,5 +1,6 @@
 use crate::{EpochCounter, Seconds, models::Identifiable};
 
+/// Channels that share one epoch schedule
 pub struct ChannelGroup<I: Identifiable> {
     pub id: I,
     pub master_start_time_unix_seconds: Seconds,
