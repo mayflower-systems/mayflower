@@ -3,6 +3,8 @@ name = "mayf-reward-clearing-sol"
 version = "0.1.0"
 description = "Mayflower reward clearing Solana program"
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = false
 
 [lib]

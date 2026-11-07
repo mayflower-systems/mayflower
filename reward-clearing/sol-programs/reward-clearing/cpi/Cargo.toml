@@ -1,0 +1,19 @@
+[package]
+name = "mayf-reward-clearing-sol-cpi"
+version = "0.1.0"
+description = "Mayflower reward clearing Solana program CPI crate"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_reward_clearing_sol_cpi"
+# Cargo can load the workspace before the first generation creates this file.
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+borsh = { workspace = true, features = ["derive"] }
+solana-address = { workspace = true, features = ["decode", "borsh"] }
+solana-instruction.workspace = true
