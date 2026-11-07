@@ -1,0 +1,33 @@
+[package]
+name = "mayf-avm-engine-linear-sol"
+version = "0.1.0"
+description = "Mayflower AVM engine linear Solana program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mayf_avm_engine_linear_sol"
+doctest = false
+
+[features]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+no-entrypoint = []
+env_local = []
+env_prod = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+default = ["no-log-ix-name", "env_local"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+mayf-fixed-drivers = { workspace = true }
+mayf-fixed-number = { workspace = true }
+mayf-avm-calculator.workspace = true
+mayf-characteristic-linear-driver.workspace = true
