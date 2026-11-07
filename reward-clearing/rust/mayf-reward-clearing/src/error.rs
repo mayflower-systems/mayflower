@@ -1,85 +1,107 @@
-//! Semantic error seam for reward-clearing actions.
-//!
-//! The table defines the algorithm's errors and messages. Consumers can use
-//! [`with_reward_clearing_errors`] to generate exhaustive mappings into their
-//! own error types. Application failures and error codes belong to consumers.
+/// Every way a reward-clearing action can fail.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RewardClearingError {
+    // Epoch terms
+    /// The epoch duration is zero
+    InvalidEpochDuration,
+    /// The ramp bonus slope is outside [0, 2]
+    InvalidRampBonusSlope,
+    /// The exit penalty exponent is outside [1, 4]
+    InvalidExitPenaltyExponent,
 
-/// Expand `$callback!` with the complete, ordered error table.
-///
-/// Each row is `Variant = "message"`.
-#[macro_export]
-macro_rules! with_reward_clearing_errors {
-    ($callback:path $(, $($prefix:tt)*)?) => {
-        $callback! {
-            $($($prefix)*)?
-            InvalidEpochDuration                 = "the epoch duration must be greater than zero",
-            InvalidRampBonusSlope                = "the ramp bonus slope must be between zero and two",
-            InvalidExitPenaltyExponent           = "the exit penalty exponent must be between one and four",
-            EpochEndOverflow                     = "the epoch end timestamp overflowed",
-            TimestampBeforeEpoch                 = "the timestamp is before the epoch start",
-            EpochEnded                           = "the epoch has ended",
-            EpochNotEnded                        = "the epoch has not ended",
-            ScheduleNotStarted                   = "the supplied time is before the immutable schedule's master start",
-            EpochCounterOverflow                 = "the wall-clock epoch counter exceeds its u32 range",
-            EpochScheduleMismatch                = "the epoch is not aligned to its immutable schedule",
-            EpochDurationMismatch                = "the epoch terms duration differs from its schedule window",
-            FinalizedAccountingExceedsSettlement = "a finalized epoch remainder exceeds its immutable settlement totals",
-            EpochClaimsOutstanding               = "the finalized epoch still has weighted shares eligible to claim",
-            InvalidEpochAccounting               = "active-epoch principal and shares are inconsistent",
-            InvalidPositionAccounting            = "position totals and the supplied lot are inconsistent",
-            InvalidLotAccounting                 = "a deposit lot violates its local accounting bounds",
-            LotWeightOutOfOrder                  = "the new deposit lot would violate LIFO weight ordering",
-            PositionAlreadyClaimed               = "the position has already claimed",
-            WithdrawalExceedsLotPrincipal        = "the withdrawal exceeds the current lot",
-            WithdrawalTooSmall                   = "the withdrawal amount must be positive",
-            PositionExceedsEpoch                 = "the position exceeds the epoch accounting",
-            LotExceedsPosition                   = "the deposit lot exceeds the position accounting",
-            EmptyLot                             = "an empty deposit lot cannot remain on the stack",
-            DepositTooSmall                      = "the deposit is too small to issue a weighted share",
-            ArithmeticFailure                    = "checked reward-clearing arithmetic failed",
-        }
-    };
+    // Epoch timing
+    /// The time is before the epoch starts
+    EpochNotStarted,
+    /// The time is at or after the epoch's end
+    EpochEnded,
+    /// The time is before the epoch's end
+    EpochNotEnded,
+    /// The epoch's start time plus its duration overflows
+    EpochEndTimeOverflow,
+    /// The next epoch counter overflows
+    EpochCounterOverflow,
+
+    // Models that do not belong together
+    /// The epoch belongs to a different channel group
+    EpochChannelGroupMismatch,
+    /// The channel group's current epoch counter differs from the epoch's
+    ChannelGroupCounterMismatch,
+    /// The channel and the epoch belong to different channel groups
+    ChannelGroupMismatch,
+    /// The channel already opened a channel epoch for this epoch or a later one
+    ChannelEpochAlreadyCreated,
+    /// The channel epoch belongs to a different channel
+    ChannelEpochChannelMismatch,
+    /// The channel epoch's epoch counter differs from the epoch's
+    ChannelEpochCounterMismatch,
+    /// The bidder position belongs to a different channel epoch
+    BidderPositionChannelEpochMismatch,
+    /// A lot belongs to a different bidder position
+    BidderLotPositionMismatch,
+
+    // Lifecycle
+    /// The channel epoch has already been finalized
+    ChannelEpochAlreadyFinalized,
+    /// The channel epoch has not been finalized, so it cannot pay claims yet
+    ChannelEpochNotFinalized,
+    /// The bidder position has claimed, so it is frozen
+    BidderPositionClaimed,
+
+    // Requested amounts
+    /// The deposit is too small to issue any weighted shares
+    DepositTooSmall,
+    /// The withdrawal is zero credits
+    WithdrawalTooSmall,
+    /// The withdrawal is more than the position's credits
+    WithdrawalExceedsPositionCredits,
+
+    // Curves
+    /// The entry weight does not fit the number type
+    EntryWeightOverflow,
+    /// The exit penalty does not fit the number type
+    ExitPenaltyOverflow,
+
+    // Lots
+    /// A new lot's shares do not fit the number type
+    LotSharesOverflow,
+    /// The shares removed from a lot do not fit the number type
+    LotSharesRemovedOverflow,
+    /// A withdrawal takes more credits than the lot holds
+    LotCreditsUnderflow,
+    /// A withdrawal removes more shares than the lot holds
+    LotSharesUnderflow,
+    /// The shares removed across all lots overflow
+    WithdrawnSharesOverflow,
+
+    // Withdrawn credits
+    /// The credits returned after the exit penalty do not fit the number type
+    CreditsReturnedOverflow,
+    /// The credits returned exceed the credits withdrawn
+    CreditsForfeitedUnderflow,
+
+    // Channel epoch balances
+    /// The reward pot balance overflows
+    RewardPotOverflow,
+    /// A claim pays more reward than the reward pot holds
+    RewardPotUnderflow,
+    /// The clearing credits balance overflows
+    CreditBalanceOverflow,
+    /// A withdrawal takes more credits than the clearing credits balance holds
+    CreditBalanceUnderflow,
+    /// The weighted shares balance overflows
+    WeightedSharesOverflow,
+    /// A withdrawal or claim removes more shares than the weighted shares balance holds
+    WeightedSharesUnderflow,
+
+    // Claims
+    /// The reward per weighted share does not fit the number type
+    FinalShareRateOverflow,
+    /// The position has no shares to claim
+    NoSharesToClaim,
+    /// The position's shares overflow when summed across its lots
+    ClaimedSharesOverflow,
+    /// The claim's reward does not fit the number type
+    ClaimRewardOverflow,
 }
 
-macro_rules! define_core_errors {
-    ($($variant:ident = $message:literal,)*) => {
-        /// A failure while calculating a reward-clearing state transition.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        #[repr(u32)]
-        pub enum RewardClearingError {
-            $(
-                #[doc = $message]
-                $variant,
-            )*
-        }
-
-        impl RewardClearingError {
-            /// The human-readable description carried by the error table.
-            pub const fn message(self) -> &'static str {
-                match self {
-                    $(Self::$variant => $message,)*
-                }
-            }
-        }
-    };
-}
-
-with_reward_clearing_errors!(define_core_errors);
-
-impl RewardClearingError {
-    /// Position in this crate's error table.
-    pub const fn ordinal(self) -> u32 {
-        self as u32
-    }
-}
-
-/// Result type used by this crate.
 pub type Result<T> = core::result::Result<T, RewardClearingError>;
-
-impl core::fmt::Display for RewardClearingError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(self.message())
-    }
-}
-
-impl core::error::Error for RewardClearingError {}

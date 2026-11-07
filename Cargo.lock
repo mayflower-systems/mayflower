@@ -1157,8 +1157,6 @@ dependencies = [
 name = "mayf-reward-clearing"
 version = "0.1.0"
 dependencies = [
- "dashu",
- "mayf-fixed-dashu",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
 ]

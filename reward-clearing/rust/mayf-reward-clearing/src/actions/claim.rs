@@ -1,72 +1,167 @@
-use crate::{
-    Amount, FinalizedEpoch, Position, Result, RewardClearingError, Seconds,
-    amount::from_amount,
-    math::{arithmetic, positive},
-    validation::validate_claim,
-};
-use mayf_fixed_number::{FixedNumber, IntegralRounding, NonNeg};
+use mayf_fixed_number::{FixedNumber, IntegralRounding};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ClaimState<N: FixedNumber> {
-    pub epoch: FinalizedEpoch<N>,
-    pub position: Position<N>,
+use crate::Amount;
+use crate::Result;
+use crate::models::Identifiable;
+use crate::models::bidder_position::BidderPosition;
+use crate::models::channel_epoch::ChannelEpoch;
+
+pub struct ClaimArgs<I: Identifiable, N: FixedNumber> {
+    pub bidder_position: BidderPosition<I, N>,
+    pub channel_epoch: ChannelEpoch<I, N>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ClaimArgs {
-    pub now: Seconds,
-}
+pub struct ClaimReceipt<I: Identifiable, N: FixedNumber> {
+    pub bidder_position_next: BidderPosition<I, N>,
+    pub channel_epoch_next: ChannelEpoch<I, N>,
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ClaimReceipt<N: FixedNumber> {
-    pub shares_claimed: NonNeg<N>,
-    /// Whole reward earned by this position. The host chooses how to credit
-    /// or transfer the amount and enforces replay protection in its state.
+    /// Reward the host pays the bidder from the pot
     pub reward_earned: Amount,
-    pub epoch: FinalizedEpoch<N>,
-    pub position: Position<N>,
 }
 
-/// Claim once at the immutable settlement ratio, flooring the entitlement to
-/// whole units. Unpaid units stay in the auction, never in a fractional user
-/// balance. All eligible shares are retired even when the payout is zero.
-pub fn claim<N: IntegralRounding>(
-    state: ClaimState<N>,
-    args: ClaimArgs,
-) -> Result<ClaimReceipt<N>> {
-    let ClaimState { epoch, position } = state;
-    validate_claim(&epoch, &position, args.now)?;
-    let reward_earned = calculate_claim_reward(&epoch, position.shares)?;
-    let unclaimed_shares = arithmetic(epoch.unclaimed_shares.checked_sub(position.shares))?;
-    let unclaimed_reward = epoch
-        .unclaimed_reward
-        .checked_sub(reward_earned)
-        .ok_or(RewardClearingError::ArithmeticFailure)?;
+/// Claim a bidder's part of a finalized channel epoch's reward pot.
+/// The claim freezes the position, so it can never deposit, withdraw, or claim again.
+/// A claim that rounds down to zero reward still retires its shares.
+pub fn claim<N, I>(args: ClaimArgs<I, N>) -> Result<ClaimReceipt<I, N>>
+where
+    I: Identifiable,
+    N: IntegralRounding,
+{
+    args.bidder_position
+        .validate_channel_epoch(&args.channel_epoch)?;
+
+    let (bidder_position_next, shares_claimed) = args.bidder_position.claim()?;
+
+    let (channel_epoch_next, reward_earned) = args.channel_epoch.claim(shares_claimed)?;
+
     Ok(ClaimReceipt {
-        shares_claimed: position.shares,
+        bidder_position_next,
+        channel_epoch_next,
         reward_earned,
-        epoch: FinalizedEpoch {
-            unclaimed_shares,
-            unclaimed_reward,
-            ..epoch
-        },
-        position: Position {
-            claimed: true,
-            ..position
-        },
     })
 }
 
-fn calculate_claim_reward<N: IntegralRounding>(
-    epoch: &FinalizedEpoch<N>,
-    shares: NonNeg<N>,
-) -> Result<Amount> {
-    if shares == NonNeg::zero() {
-        return Ok(0);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RewardClearingError as E;
+    use crate::models::bidder_position::BidderLot;
+    use crate::test_support::*;
+
+    const ALICE: Id = Id(10);
+    const BOB: Id = Id(11);
+
+    /// A channel epoch finalized with a pot of `reward` over 290 shares
+    fn finalized(reward: Amount) -> ChannelEpoch<Id, Number> {
+        let mut channel_epoch = channel_epoch();
+        channel_epoch.reward_pot_balance = reward;
+        channel_epoch.weighted_shares_balance = shares(290);
+        channel_epoch.finalize().unwrap()
     }
-    let divisor = positive(epoch.settlement_shares)?;
-    let pro_rata = arithmetic(
-        from_amount::<N>(epoch.settlement_reward)?.checked_mul_div_floor(shares, divisor),
-    )?;
-    arithmetic(pro_rata.get().checked_floor_to_u64())
+
+    /// A position with one lot
+    fn position(
+        id: Id,
+        whole_shares: u64,
+        channel_epoch: &ChannelEpoch<Id, Number>,
+    ) -> BidderPosition<Id, Number> {
+        BidderPosition {
+            id,
+            channel_epoch_id: channel_epoch.id(),
+            lots: vec![BidderLot {
+                bidder_position_id: id,
+                credits: 100,
+                shares: shares(whole_shares),
+            }],
+            claimed: false,
+        }
+    }
+
+    fn claim_by(
+        bidder_position: BidderPosition<Id, Number>,
+        channel_epoch: ChannelEpoch<Id, Number>,
+    ) -> Result<ClaimReceipt<Id, Number>> {
+        claim(ClaimArgs {
+            bidder_position,
+            channel_epoch,
+        })
+    }
+
+    /// The claims in the wiki's "Revenue Clearing Time Weight" example
+    #[test]
+    fn matches_wiki_worked_example() {
+        let channel_epoch = finalized(90);
+        let alice = position(ALICE, 200, &channel_epoch);
+        let bob = position(BOB, 90, &channel_epoch);
+
+        let alice_claim = claim_by(alice, channel_epoch).unwrap();
+        let bob_claim = claim_by(bob, alice_claim.channel_epoch_next).unwrap();
+
+        // floor(200 * 90 / 290) = 62 and floor(90 * 90 / 290) = 27
+        assert_eq!(alice_claim.reward_earned, 62);
+        assert_eq!(bob_claim.reward_earned, 27);
+        assert!(alice_claim.bidder_position_next.claimed);
+
+        // One reward unit stays in the pot for the protocol, and every share has claimed.
+        let channel_epoch = &bob_claim.channel_epoch_next;
+        assert_eq!(channel_epoch.reward_pot_balance, 1);
+        assert_eq!(channel_epoch.weighted_shares_balance, shares(0));
+    }
+
+    #[test]
+    fn claim_order_does_not_change_payouts() {
+        let channel_epoch = finalized(90);
+        let alice = position(ALICE, 200, &channel_epoch);
+        let bob = position(BOB, 90, &channel_epoch);
+
+        let bob_claim = claim_by(bob, channel_epoch).unwrap();
+        let alice_claim = claim_by(alice, bob_claim.channel_epoch_next).unwrap();
+
+        assert_eq!(bob_claim.reward_earned, 27);
+        assert_eq!(alice_claim.reward_earned, 62);
+    }
+
+    #[test]
+    fn zero_reward_claim_still_retires_shares() {
+        // floor(90 * 1 / 290) = 0
+        let channel_epoch = finalized(1);
+        let bob = position(BOB, 90, &channel_epoch);
+
+        let bob_claim = claim_by(bob, channel_epoch).unwrap();
+
+        assert_eq!(bob_claim.reward_earned, 0);
+        assert!(bob_claim.bidder_position_next.claimed);
+        let channel_epoch = &bob_claim.channel_epoch_next;
+        assert_eq!(channel_epoch.weighted_shares_balance, shares(200));
+    }
+
+    #[test]
+    fn rejects_second_claim() {
+        let channel_epoch = finalized(90);
+        let alice = position(ALICE, 200, &channel_epoch);
+
+        let first = claim_by(alice, channel_epoch).unwrap();
+        let second = claim_by(first.bidder_position_next, first.channel_epoch_next);
+
+        assert_eq!(second.err(), Some(E::BidderPositionClaimed));
+    }
+
+    #[test]
+    fn rejects_claim_before_finalize() {
+        let channel_epoch = channel_epoch();
+        let alice = position(ALICE, 200, &channel_epoch);
+
+        let result = claim_by(alice, channel_epoch);
+        assert_eq!(result.err(), Some(E::ChannelEpochNotFinalized));
+    }
+
+    #[test]
+    fn rejects_position_from_another_channel_epoch() {
+        let channel_epoch = finalized(90);
+        let mut alice = position(ALICE, 200, &channel_epoch);
+        alice.channel_epoch_id.epoch_counter = 4;
+
+        let result = claim_by(alice, channel_epoch);
+        assert_eq!(result.err(), Some(E::BidderPositionChannelEpochMismatch));
+    }
 }

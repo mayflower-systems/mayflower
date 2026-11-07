@@ -4,7 +4,6 @@ use crate::state::{channel::Channel, organization::Organization, tenant::Tenant}
 
 #[derive(Accounts)]
 pub struct ChannelSetDisabledAccounts<'info> {
-    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(has_one = authority)]
@@ -13,7 +12,10 @@ pub struct ChannelSetDisabledAccounts<'info> {
     #[account(has_one = organization)]
     pub tenant: Box<Account<'info, Tenant>>,
 
-    #[account(mut, has_one = tenant)]
+    #[account(
+        mut,
+        has_one = tenant
+    )]
     pub channel: Account<'info, Channel>,
 }
 
