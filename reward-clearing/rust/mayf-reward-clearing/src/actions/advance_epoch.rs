@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub struct AdvanceEpochArgs<I: Identifiable> {
-    pub now_unix_seconds: Seconds,
+    pub now: Seconds,
     pub channel_group: ChannelGroup<I>,
     pub current_epoch: Epoch<I>,
 }
@@ -18,9 +18,12 @@ pub fn advance_epoch<I>(args: AdvanceEpochArgs<I>) -> Result<AdvanceEpochReceipt
 where
     I: Identifiable,
 {
-    if !args.current_epoch.is_finished(args.now_unix_seconds)? {
+    if !args.current_epoch.is_finished(args.now)? {
         return Err(RewardClearingError::EpochNotEnded);
     }
+
+    args.current_epoch
+        .validate_channel_group(&args.channel_group)?;
 
     if args.current_epoch.epoch_counter != args.channel_group.current_epoch_index {
         return Err(RewardClearingError::ChannelGroupCounterMismatch);
@@ -64,7 +67,7 @@ mod tests {
 
     fn channel_group(current_epoch_index: EpochCounter) -> ChannelGroup<Id> {
         ChannelGroup {
-            id: Id(0),
+            id: CHANNEL_GROUP,
             master_start_time_unix_seconds: START,
             epoch_duration_seconds: DURATION,
             current_epoch_index,
@@ -73,7 +76,7 @@ mod tests {
 
     fn advance(channel_group: ChannelGroup<Id>, now: Seconds) -> Result<AdvanceEpochReceipt<Id>> {
         advance_epoch(AdvanceEpochArgs {
-            now_unix_seconds: now,
+            now,
             channel_group,
             current_epoch: epoch(),
         })
@@ -101,5 +104,14 @@ mod tests {
     fn rejects_epoch_counter_mismatch_with_group() {
         let result = advance(channel_group(2), START + DURATION);
         assert_eq!(result.err(), Some(E::ChannelGroupCounterMismatch));
+    }
+
+    #[test]
+    fn rejects_epoch_from_another_channel_group() {
+        let mut channel_group = channel_group(3);
+        channel_group.id = Id(8);
+
+        let result = advance(channel_group, START + DURATION);
+        assert_eq!(result.err(), Some(E::EpochChannelGroupMismatch));
     }
 }

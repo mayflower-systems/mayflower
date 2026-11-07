@@ -1,8 +1,10 @@
+use crate::models::channel_group::ChannelGroup;
 use crate::models::{EpochCounter, Identifiable, Seconds};
 use crate::{Result, RewardClearingError};
 
 /// One epoch of a channel group's schedule
 /// Deposits, withdrawals, and funding are accepted from its start up to, but not including, its end.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Epoch<I: Identifiable> {
     pub channel_group_id: I,
     pub epoch_counter: EpochCounter,
@@ -23,6 +25,14 @@ impl<I: Identifiable> Epoch<I> {
             start_time_unix_seconds,
             duration_seconds,
         }
+    }
+
+    pub fn validate_channel_group(&self, channel_group: &ChannelGroup<I>) -> Result<()> {
+        if self.channel_group_id != channel_group.id {
+            return Err(RewardClearingError::EpochChannelGroupMismatch);
+        }
+
+        Ok(())
     }
 
     pub fn end_time_unix_seconds(&self) -> Result<Seconds> {

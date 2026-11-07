@@ -3,6 +3,7 @@
 mod add_reward;
 mod advance_epoch;
 mod claim;
+mod create_channel_epoch;
 mod deposit_credits;
 mod finalize_channel_epoch;
 mod withdraw_credits;
@@ -10,6 +11,9 @@ mod withdraw_credits;
 pub use add_reward::{AddRewardArgs, AddRewardReceipt, add_reward};
 pub use advance_epoch::{AdvanceEpochArgs, AdvanceEpochReceipt, advance_epoch};
 pub use claim::{ClaimArgs, ClaimReceipt, claim};
+pub use create_channel_epoch::{
+    CreateChannelEpochArgs, CreateChannelEpochReceipt, create_channel_epoch,
+};
 pub use deposit_credits::{DepositCreditsArgs, DepositCreditsReceipt, deposit_credits};
 pub use finalize_channel_epoch::{
     FinalizeChannelEpochArgs, FinalizeChannelEpochReceipt, finalize_channel_epoch,

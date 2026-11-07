@@ -5,6 +5,7 @@ use crate::models::channel_epoch::{ChannelEpoch, ChannelEpochId};
 use crate::{Amount, Result, RewardClearingError, Shares};
 
 /// A position for a bidder on a channel's epoch
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BidderPosition<I: Identifiable, N: FixedNumber> {
     pub id: I,
     pub channel_epoch_id: ChannelEpochId<I>,
@@ -12,9 +13,13 @@ pub struct BidderPosition<I: Identifiable, N: FixedNumber> {
     /// A stack of lots, one per deposit. Withdrawals take from the newest lot first.
     /// Entry weight falls through the epoch, so the newest lot has the fewest shares per credit.
     pub lots: Vec<BidderLot<I, N>>,
+
+    /// Set by a claim. A claimed position is frozen: it cannot deposit, withdraw, or claim again.
+    pub claimed: bool,
 }
 
 /// The credits and shares left from one deposit
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BidderLot<I: Identifiable, N: FixedNumber> {
     pub bidder_position_id: I,
 
@@ -41,6 +46,8 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
         credits: Amount,
         entry_weight: NonNeg<N>,
     ) -> Result<(Self, Shares<N>)> {
+        self.validate()?;
+
         let lot = BidderLot::new(self.id, credits, entry_weight)?;
         let shares_issued = lot.shares;
 
@@ -51,6 +58,8 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
     /// Take credits from the newest lots first, popping each lot that empties.
     /// Returns the next position and the shares removed.
     pub fn withdraw_credits(mut self, credits: Amount) -> Result<(Self, Shares<N>)> {
+        self.validate()?;
+
         if credits == 0 {
             return Err(RewardClearingError::WithdrawalTooSmall);
         }
@@ -80,12 +89,14 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
         Ok((self, shares_removed))
     }
 
-    /// Retire every lot's shares for a claim.
-    /// Returns the next position, with no lots, and the shares claimed.
+    /// Claim every lot's shares and freeze the position.
+    /// Returns the next position and the shares claimed.
     pub fn claim(mut self) -> Result<(Self, Shares<N>)> {
+        self.validate()?;
+
         let mut shares_claimed = Shares::zero();
 
-        for lot in self.lots.drain(..) {
+        for lot in &self.lots {
             shares_claimed = shares_claimed
                 .checked_add(lot.shares)
                 .map_err(|_| RewardClearingError::ClaimedSharesOverflow)?;
@@ -95,7 +106,25 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
             return Err(RewardClearingError::NoSharesToClaim);
         }
 
+        self.claimed = true;
         Ok((self, shares_claimed))
+    }
+
+    /// Fails if the position is frozen by a claim, or holds a lot from another position.
+    fn validate(&self) -> Result<()> {
+        if self.claimed {
+            return Err(RewardClearingError::BidderPositionClaimed);
+        }
+
+        if self
+            .lots
+            .iter()
+            .any(|lot| lot.bidder_position_id != self.id)
+        {
+            return Err(RewardClearingError::BidderLotPositionMismatch);
+        }
+
+        Ok(())
     }
 }
 

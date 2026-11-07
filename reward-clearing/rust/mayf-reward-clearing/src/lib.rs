@@ -11,11 +11,15 @@
 //! # Actions and the host
 //!
 //! Each action takes an `Args` struct of models and inputs. It returns either an
-//! error or a `Receipt` with the next models and any amounts the host must move.
+//! error or a `Receipt` with the models it changed or created, and any amounts the
+//! host must move. The host writes every model in the receipt and nothing else.
+//!
+//! The models are normalized, like rows in database tables linked by ID. Each
+//! action validates everything except authorization: that its models belong
+//! together, the timing, and the amounts.
 //!
 //! The host loads the models, applies each receipt atomically, and moves the tokens.
-//! It also owns identities, authorization, storage, custody, funding fees, and
-//! replay protection, such as finalizing each channel epoch only once.
+//! It owns authorization, storage, custody, and funding fees.
 //!
 //! # Numbers
 //!

@@ -2,13 +2,18 @@ use core::num::NonZeroU64;
 
 use mayf_fixed_number::{DirectedRounding, FixedNumber, IntegralRounding, NonNeg, Pos};
 
+use crate::models::channel::Channel;
 use crate::models::epoch::Epoch;
 use crate::{Amount, EpochTerms, models::Identifiable};
 use crate::{EpochCounter, Result, RewardClearingError, Seconds, Shares};
 
 /// A channel's epoch
-/// There is one ChannelEpoch for each channel for each epoch
+/// There is at most one ChannelEpoch for each channel and epoch
 /// This tracks a cumulative pot of rewards to be distributed out to the bidders when it is finalized
+///
+/// After finalization, each claim pays from `reward_pot_balance` and retires its shares
+/// from `weighted_shares_balance`. Once no shares remain, the rest of the pot goes to the protocol.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChannelEpoch<I: Identifiable, N: FixedNumber> {
     pub channel_id: I,
     pub epoch_counter: EpochCounter,
@@ -16,10 +21,13 @@ pub struct ChannelEpoch<I: Identifiable, N: FixedNumber> {
     pub clearing_credits_balance: Amount,
     pub weighted_shares_balance: Shares<N>,
     pub terms: EpochTerms<N>,
+
+    /// Reward per weighted share, fixed once by finalization. `None` until then.
+    pub final_share_rate: Option<NonNeg<N>>,
 }
 
 /// Identifies a channel epoch by its channel and epoch counter
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChannelEpochId<I: Identifiable> {
     pub channel_id: I,
     pub epoch_counter: EpochCounter,
@@ -43,6 +51,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
             clearing_credits_balance: 0,
             weighted_shares_balance: Shares::zero(),
             terms,
+            final_share_rate: None,
         }
     }
 
@@ -127,7 +136,41 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
         Ok(penalty.min(NonNeg::one()))
     }
 
-    pub fn validate_epoch(&self, epoch: &Epoch<I>) -> Result<()> {
+    /// Fix the reward per weighted share for claims:
+    ///
+    ///   rate = floor(reward_pot / weighted_shares)
+    ///
+    /// The rate is 0 when there are no shares, because nobody can claim.
+    pub fn finalize(mut self) -> Result<Self> {
+        if self.final_share_rate.is_some() {
+            return Err(RewardClearingError::ChannelEpochAlreadyFinalized);
+        }
+
+        let rate = match Pos::try_from(self.weighted_shares_balance) {
+            Err(_) => NonNeg::zero(),
+            Ok(weighted_shares) => NonNeg::<N>::from_u64(self.reward_pot_balance)
+                .and_then(|pot| pot.checked_div_floor(weighted_shares))
+                .map_err(|_| RewardClearingError::FinalShareRateOverflow)?,
+        };
+
+        self.final_share_rate = Some(rate);
+        Ok(self)
+    }
+
+    /// Fails unless this is the channel's channel epoch for `epoch`.
+    /// The epoch counter alone is ambiguous across channel groups,
+    /// so the channel links this channel epoch to the epoch's channel group.
+    pub fn validate_channel_and_epoch(
+        &self,
+        channel: &Channel<I, N>,
+        epoch: &Epoch<I>,
+    ) -> Result<()> {
+        if self.channel_id != channel.id {
+            return Err(RewardClearingError::ChannelEpochChannelMismatch);
+        }
+
+        channel.validate_epoch(epoch)?;
+
         if self.epoch_counter != epoch.epoch_counter {
             return Err(RewardClearingError::ChannelEpochCounterMismatch);
         }
@@ -137,19 +180,31 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
 }
 
 impl<I: Identifiable, N: IntegralRounding> ChannelEpoch<I, N> {
-    /// The reward for claimed shares, rounded down to whole units:
+    /// Pay a claim at the final share rate, rounded down to whole units:
     ///
-    ///   reward = floor(reward_pot * shares / weighted_shares)
+    ///   reward = floor(shares * final_share_rate)
     ///
-    /// The pot and shares stop changing when the epoch ends,
-    /// so every claim uses the same ratio and claim order does not change payouts.
-    pub fn claim_reward(&self, shares: Shares<N>) -> Result<Amount> {
-        let weighted_shares = Pos::try_from(self.weighted_shares_balance)
-            .map_err(|_| RewardClearingError::ZeroWeightedShares)?;
+    /// Every claim uses the same rate, so claim order does not change payouts.
+    /// Returns the next channel epoch and the reward earned.
+    pub fn claim(mut self, shares: Shares<N>) -> Result<(Self, Amount)> {
+        let rate = self
+            .final_share_rate
+            .ok_or(RewardClearingError::ChannelEpochNotFinalized)?;
 
-        NonNeg::<N>::from_u64(self.reward_pot_balance)
-            .and_then(|pot| pot.checked_mul_div_floor(shares, weighted_shares))
+        let reward = shares
+            .checked_mul_floor(rate)
             .and_then(|reward| reward.get().checked_floor_to_u64())
-            .map_err(|_| RewardClearingError::ClaimRewardOverflow)
+            .map_err(|_| RewardClearingError::ClaimRewardOverflow)?;
+
+        self.reward_pot_balance = self
+            .reward_pot_balance
+            .checked_sub(reward)
+            .ok_or(RewardClearingError::RewardPotUnderflow)?;
+        self.weighted_shares_balance = self
+            .weighted_shares_balance
+            .checked_sub(shares)
+            .map_err(|_| RewardClearingError::WeightedSharesUnderflow)?;
+
+        Ok((self, reward))
     }
 }

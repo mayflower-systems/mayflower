@@ -6,11 +6,13 @@ use crate::RewardClearingError;
 use crate::Seconds;
 use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
+use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
 use crate::models::epoch::Epoch;
 
 pub struct WithdrawCreditsArgs<I: Identifiable, N: FixedNumber> {
     pub bidder_position: BidderPosition<I, N>,
+    pub channel: Channel<I, N>,
     pub channel_epoch: ChannelEpoch<I, N>,
     pub epoch: Epoch<I>,
     pub now: Seconds,
@@ -39,7 +41,8 @@ where
     N: IntegralRounding,
 {
     args.epoch.validate_active(args.now)?;
-    args.channel_epoch.validate_epoch(&args.epoch)?;
+    args.channel_epoch
+        .validate_channel_and_epoch(&args.channel, &args.epoch)?;
     args.bidder_position
         .validate_channel_epoch(&args.channel_epoch)?;
 
@@ -95,6 +98,7 @@ mod tests {
     ) -> Result<WithdrawCreditsReceipt<Id, Number>> {
         withdraw_credits(WithdrawCreditsArgs {
             bidder_position: from.bidder_position_next,
+            channel: channel(),
             channel_epoch: from.channel_epoch_next,
             epoch: epoch(),
             now,
@@ -205,6 +209,7 @@ mod tests {
 
         let withdrawn = withdraw_credits(WithdrawCreditsArgs {
             bidder_position: position,
+            channel: channel(),
             channel_epoch,
             epoch: epoch(),
             now: START,
@@ -229,6 +234,24 @@ mod tests {
             let result = withdraw(deposited, START, credits);
             assert_eq!(result.err(), Some(error));
         }
+    }
+
+    #[test]
+    fn rejects_claimed_position() {
+        let mut deposited = first_deposit(channel_epoch(), START, 100).unwrap();
+        deposited.bidder_position_next.claimed = true;
+
+        let result = withdraw(deposited, START, 50);
+        assert_eq!(result.err(), Some(E::BidderPositionClaimed));
+    }
+
+    #[test]
+    fn rejects_lot_from_another_position() {
+        let mut deposited = first_deposit(channel_epoch(), START, 100).unwrap();
+        deposited.bidder_position_next.lots[0].bidder_position_id = Id(9);
+
+        let result = withdraw(deposited, START, 50);
+        assert_eq!(result.err(), Some(E::BidderLotPositionMismatch));
     }
 
     #[test]

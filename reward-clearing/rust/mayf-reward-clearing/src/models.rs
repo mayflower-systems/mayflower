@@ -4,7 +4,6 @@
 pub mod bidder_position;
 pub mod channel;
 pub mod channel_epoch;
-pub mod channel_epoch_final;
 pub mod channel_group;
 pub mod epoch;
 pub mod epoch_terms;
@@ -24,4 +23,4 @@ pub type EpochCounter = u32;
 pub type Shares<N> = NonNeg<N>;
 
 /// An identifier chosen by the host, such as an account address
-pub trait Identifiable: PartialEq + Clone + Copy {}
+pub trait Identifiable: Copy + PartialEq {}

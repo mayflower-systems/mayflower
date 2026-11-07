@@ -5,11 +5,13 @@ use crate::Result;
 use crate::Seconds;
 use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
+use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
 use crate::models::epoch::Epoch;
 
 pub struct DepositCreditsArgs<I: Identifiable, N: FixedNumber> {
     pub bidder_position: BidderPosition<I, N>,
+    pub channel: Channel<I, N>,
     pub channel_epoch: ChannelEpoch<I, N>,
     pub epoch: Epoch<I>,
     pub now: Seconds,
@@ -29,7 +31,8 @@ where
     N: FixedNumber,
 {
     args.epoch.validate_active(args.now)?;
-    args.channel_epoch.validate_epoch(&args.epoch)?;
+    args.channel_epoch
+        .validate_channel_and_epoch(&args.channel, &args.epoch)?;
     args.bidder_position
         .validate_channel_epoch(&args.channel_epoch)?;
 
@@ -125,6 +128,16 @@ mod tests {
     fn rejects_zero_credits() {
         let result = first_deposit(channel_epoch(), START, 0);
         assert_eq!(result.err(), Some(E::DepositTooSmall));
+    }
+
+    #[test]
+    fn rejects_claimed_position() {
+        let channel_epoch = channel_epoch();
+        let mut position = empty_position(&channel_epoch);
+        position.claimed = true;
+
+        let result = deposit(position, channel_epoch, START, 100);
+        assert_eq!(result.err(), Some(E::BidderPositionClaimed));
     }
 
     #[test]
