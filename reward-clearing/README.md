@@ -1,8 +1,13 @@
 # Reward Clearing
 
+The [Solana program](sol-programs/reward-clearing/README.md) uses the
+`prog/`, `bin/`, `cpi/`, and `idl/` layout. Run
+`./reward-clearing/sol-programs/reward-clearing/build.sh` from the repository
+root to build its binary, IDL, and generated CPI crate.
+
 ## State and parameters
 
-The [algorithm state types](rust/mayf-reward-clearing/src/state.rs) carry:
+The [algorithm state types](rust/mayf-reward-clearing/src/models.rs) carry:
 
 | State           | Essential data                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |

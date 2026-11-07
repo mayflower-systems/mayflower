@@ -1,0 +1,1326 @@
+{
+  "address": "RCgecPmsA1YfbwBZ9FkPmGUkKqnEGwvMrpnzUhUthxd",
+  "metadata": {
+    "name": "mayf_reward_clearing_sol",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Mayflower reward clearing Solana program",
+    "repository": "https://github.com/mayflower-systems/mayflower"
+  },
+  "instructions": [
+    {
+      "name": "channel_create",
+      "discriminator": [
+        213,
+        253,
+        72,
+        169,
+        211,
+        191,
+        116,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "organization"
+          ]
+        },
+        {
+          "name": "organization",
+          "relations": [
+            "tenant"
+          ]
+        },
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "reward_token_mint"
+        },
+        {
+          "name": "channel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  99,
+                  104,
+                  97,
+                  110,
+                  110,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tenant"
+              },
+              {
+                "kind": "account",
+                "path": "reward_token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reward_staging_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  115,
+                  116,
+                  97,
+                  103,
+                  105,
+                  110,
+                  103,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "channel"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ChannelCreateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "channel_epoch_add_to_reward_pot",
+      "discriminator": [
+        128,
+        16,
+        205,
+        229,
+        125,
+        214,
+        9,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "transfer_authority",
+          "signer": true
+        },
+        {
+          "name": "epoch",
+          "relations": [
+            "channel_epoch"
+          ]
+        },
+        {
+          "name": "channel_epoch",
+          "writable": true
+        },
+        {
+          "name": "reward_pot_escrow_token_account",
+          "writable": true,
+          "relations": [
+            "channel_epoch"
+          ]
+        },
+        {
+          "name": "reward_token_src",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "channel_epoch_create",
+      "discriminator": [
+        154,
+        192,
+        198,
+        231,
+        244,
+        192,
+        167,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tenant",
+          "relations": [
+            "channel",
+            "current_epoch"
+          ]
+        },
+        {
+          "name": "channel"
+        },
+        {
+          "name": "current_epoch",
+          "docs": [
+            "Validated that this is the current epoch for the tenant"
+          ]
+        },
+        {
+          "name": "new_channel_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  110,
+                  110,
+                  101,
+                  108,
+                  95,
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "channel"
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reward_token_mint",
+          "relations": [
+            "channel"
+          ]
+        },
+        {
+          "name": "clearing_credits_mint",
+          "relations": [
+            "tenant"
+          ]
+        },
+        {
+          "name": "reward_pot_escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  110,
+                  110,
+                  101,
+                  108,
+                  95,
+                  101,
+                  112,
+                  111,
+                  99,
+                  104,
+                  95,
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  112,
+                  111,
+                  116,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "channel"
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "clearing_credits_escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  110,
+                  110,
+                  101,
+                  108,
+                  95,
+                  101,
+                  112,
+                  111,
+                  99,
+                  104,
+                  95,
+                  99,
+                  108,
+                  101,
+                  97,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  99,
+                  114,
+                  101,
+                  100,
+                  105,
+                  116,
+                  115,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "channel"
+              },
+              {
+                "kind": "account",
+                "path": "current_epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "channel_epoch_finalize",
+      "discriminator": [
+        129,
+        26,
+        243,
+        5,
+        250,
+        63,
+        83,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tenant",
+          "relations": [
+            "channel",
+            "completed_epoch"
+          ]
+        },
+        {
+          "name": "channel",
+          "relations": [
+            "completed_channel_epoch"
+          ]
+        },
+        {
+          "name": "completed_epoch"
+        },
+        {
+          "name": "completed_channel_epoch"
+        },
+        {
+          "name": "channel_epoch_final_snapshot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  110,
+                  110,
+                  101,
+                  108,
+                  95,
+                  101,
+                  112,
+                  111,
+                  99,
+                  104,
+                  95,
+                  102,
+                  105,
+                  110,
+                  97,
+                  108,
+                  95,
+                  115,
+                  110,
+                  97,
+                  112,
+                  115,
+                  104,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "completed_channel_epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "clearing_credits_mint",
+          "relations": [
+            "tenant"
+          ]
+        },
+        {
+          "name": "clearing_credits_escrow_token_account",
+          "relations": [
+            "completed_channel_epoch"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "channel_set_default_epoch_terms",
+      "discriminator": [
+        176,
+        169,
+        203,
+        1,
+        170,
+        74,
+        8,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "organization"
+          ]
+        },
+        {
+          "name": "organization",
+          "relations": [
+            "tenant"
+          ]
+        },
+        {
+          "name": "tenant",
+          "relations": [
+            "channel"
+          ]
+        },
+        {
+          "name": "channel",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ChannelSetDefaultEpochTermsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "channel_set_disabled",
+      "discriminator": [
+        84,
+        110,
+        177,
+        66,
+        32,
+        78,
+        65,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "organization"
+          ]
+        },
+        {
+          "name": "organization",
+          "relations": [
+            "tenant"
+          ]
+        },
+        {
+          "name": "tenant",
+          "relations": [
+            "channel"
+          ]
+        },
+        {
+          "name": "channel",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ChannelSetDisabledArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_organization",
+      "discriminator": [
+        60,
+        173,
+        177,
+        39,
+        122,
+        23,
+        68,
+        185
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "organization",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  103,
+                  97,
+                  110,
+                  105,
+                  122,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_tenant",
+      "discriminator": [
+        97,
+        97,
+        222,
+        226,
+        173,
+        96,
+        6,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "organization"
+          ]
+        },
+        {
+          "name": "organization",
+          "writable": true
+        },
+        {
+          "name": "tenant",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  110,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "organization"
+              },
+              {
+                "kind": "account",
+                "path": "organization.next_tenant_index",
+                "account": "Organization"
+              }
+            ]
+          }
+        },
+        {
+          "name": "initial_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tenant"
+              },
+              {
+                "kind": "account",
+                "path": "tenant.current_epoch_index",
+                "account": "Tenant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "clearing_credits_mint"
+        },
+        {
+          "name": "clearing_credits_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  101,
+                  97,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tenant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateTenantArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "epoch_create",
+      "discriminator": [
+        242,
+        185,
+        137,
+        95,
+        234,
+        33,
+        208,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "tenant",
+          "relations": [
+            "current_epoch"
+          ]
+        },
+        {
+          "name": "current_epoch"
+        },
+        {
+          "name": "new_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "tenant"
+              },
+              {
+                "kind": "account",
+                "path": "tenant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Channel",
+      "discriminator": [
+        49,
+        159,
+        99,
+        106,
+        220,
+        87,
+        219,
+        88
+      ]
+    },
+    {
+      "name": "ChannelEpoch",
+      "discriminator": [
+        42,
+        194,
+        102,
+        118,
+        28,
+        161,
+        115,
+        40
+      ]
+    },
+    {
+      "name": "ChannelEpochFinal",
+      "discriminator": [
+        37,
+        105,
+        18,
+        75,
+        194,
+        232,
+        198,
+        104
+      ]
+    },
+    {
+      "name": "Epoch",
+      "discriminator": [
+        93,
+        83,
+        120,
+        89,
+        151,
+        138,
+        152,
+        108
+      ]
+    },
+    {
+      "name": "Organization",
+      "discriminator": [
+        145,
+        38,
+        152,
+        251,
+        91,
+        57,
+        118,
+        160
+      ]
+    },
+    {
+      "name": "Tenant",
+      "discriminator": [
+        61,
+        43,
+        215,
+        51,
+        232,
+        242,
+        209,
+        170
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "Channel",
+      "docs": [
+        "A mint-specific reward channel synchronized by its tenant's UTC schedule."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tenant",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_staging_token_account",
+            "docs": [
+              "Channel-owned vault backing every `UserChannel::staged_reward_balance`.",
+              "Epoch pots never fund another epoch through this account."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "default_epoch_terms",
+            "type": {
+              "defined": {
+                "name": "EpochTerms"
+              }
+            }
+          },
+          {
+            "name": "disabled",
+            "docs": [
+              "Disabling a channel prevents new epochs; existing epochs remain usable."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "self_bump",
+            "docs": [
+              "Creation-time bump retained for channel-owned token transfers."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "default_epoch_terms",
+            "type": {
+              "defined": {
+                "name": "EpochTerms"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelEpoch",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "channel",
+            "docs": [
+              "Link to channel"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch",
+            "docs": [
+              "Link to epoch account that contains all the channels"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "reward_pot_escrow_token_account",
+            "docs": [
+              "Token account that holds the reward pot for this epoch for this channel"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_credits_escrow_token_account",
+            "docs": [
+              "Token account that holds the pledged clearing credits for this epoch for this channel"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "clearing_credits_balance",
+            "docs": [
+              "Recorded balance of the clearing credits for this epoch for this channel"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reward_pot_balance",
+            "docs": [
+              "Recorded balance of the reward pot for this epoch for this channel"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "weighted_shares_balance",
+            "docs": [
+              "Q64.64 fixed point number of weighted shares in this epoch for this channel"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "terms",
+            "docs": [
+              "Terms for this epoch"
+            ],
+            "type": {
+              "defined": {
+                "name": "EpochTerms"
+              }
+            }
+          },
+          {
+            "name": "self_bump",
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelEpochFinal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "channel_epoch",
+            "docs": [
+              "Link to channel epoch that is completed"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "unclaimed_weighted_shares",
+            "docs": [
+              "Mutable raw Q64.64 shares that have not yet claimed. This is the closure",
+              "semaphore: claims decrement it by their exact position shares, and only",
+              "zero permits the finalized account and pot to close."
+            ],
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelSetDefaultEpochTermsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "default_epoch_terms",
+            "type": {
+              "defined": {
+                "name": "EpochTerms"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChannelSetDisabledArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "disabled",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateTenantArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "master_start_time_unix_seconds",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_duration_seconds",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Epoch",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tenant",
+            "type": "pubkey"
+          },
+          {
+            "name": "epoch_counter",
+            "type": "u32"
+          },
+          {
+            "name": "start_time_unix_seconds",
+            "type": "u64"
+          },
+          {
+            "name": "duration_seconds",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochTerms",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ramp_bonus_slope_mbps",
+            "docs": [
+              "Ramp bonus slope in micro-basis points"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "exit_penalty_exponent",
+            "docs": [
+              "Exit penalty exponent"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Organization",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "next_tenant_index",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Tenant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "organization",
+            "type": "pubkey"
+          },
+          {
+            "name": "tenant_index",
+            "type": "u32"
+          },
+          {
+            "name": "clearing_credits_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "master_start_time_unix_seconds",
+            "type": "u64"
+          },
+          {
+            "name": "epoch_duration_seconds",
+            "type": "u32"
+          },
+          {
+            "name": "current_epoch_index",
+            "docs": [
+              "Monotonic epoch index for this tenant."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "self_bump",
+            "docs": [
+              "Creation-time bump used only to sign the permissionless burn."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CHANNEL_EPOCH_CLEARING_CREDITS_ESCROW_SEED",
+      "type": "bytes",
+      "value": "[99, 104, 97, 110, 110, 101, 108, 95, 101, 112, 111, 99, 104, 95, 99, 108, 101, 97, 114, 105, 110, 103, 95, 99, 114, 101, 100, 105, 116, 115, 95, 101, 115, 99, 114, 111, 119]"
+    },
+    {
+      "name": "CHANNEL_EPOCH_FINAL_SNAPSHOT_SEED",
+      "type": "bytes",
+      "value": "[99, 104, 97, 110, 110, 101, 108, 95, 101, 112, 111, 99, 104, 95, 102, 105, 110, 97, 108, 95, 115, 110, 97, 112, 115, 104, 111, 116]"
+    },
+    {
+      "name": "CHANNEL_EPOCH_REWARD_POT_ESCROW_SEED",
+      "type": "bytes",
+      "value": "[99, 104, 97, 110, 110, 101, 108, 95, 101, 112, 111, 99, 104, 95, 114, 101, 119, 97, 114, 100, 95, 112, 111, 116, 95, 101, 115, 99, 114, 111, 119]"
+    },
+    {
+      "name": "CHANNEL_EPOCH_SEED",
+      "type": "bytes",
+      "value": "[99, 104, 97, 110, 110, 101, 108, 95, 101, 112, 111, 99, 104]"
+    },
+    {
+      "name": "CLEARING_TOKEN_ESCROW_SEED",
+      "type": "bytes",
+      "value": "[99, 108, 101, 97, 114, 105, 110, 103, 95, 116, 111, 107, 101, 110, 95, 101, 115, 99, 114, 111, 119]"
+    },
+    {
+      "name": "EPOCH_SEED",
+      "type": "bytes",
+      "value": "[101, 112, 111, 99, 104]"
+    },
+    {
+      "name": "ORGANIZATION_SEED",
+      "type": "bytes",
+      "value": "[111, 114, 103, 97, 110, 105, 122, 97, 116, 105, 111, 110]"
+    },
+    {
+      "name": "REWARD_CHANNEL_SEED",
+      "type": "bytes",
+      "value": "[114, 101, 119, 97, 114, 100, 95, 99, 104, 97, 110, 110, 101, 108]"
+    },
+    {
+      "name": "REWARD_STAGING_SEED",
+      "type": "bytes",
+      "value": "[114, 101, 119, 97, 114, 100, 95, 115, 116, 97, 103, 105, 110, 103, 95, 116, 111, 107, 101, 110, 95, 101, 115, 99, 114, 111, 119]"
+    },
+    {
+      "name": "TENANT_SEED",
+      "type": "bytes",
+      "value": "[116, 101, 110, 97, 110, 116]"
+    }
+  ]
+}
