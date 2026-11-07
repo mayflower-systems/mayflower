@@ -2,10 +2,9 @@ use core::num::NonZeroU64;
 
 use mayf_fixed_number::{DirectedRounding, FixedNumber, IntegralRounding, NonNeg, Pos};
 
-use crate::math::ratio;
 use crate::models::epoch::Epoch;
 use crate::{Amount, EpochTerms, models::Identifiable};
-use crate::{EpochCounter, Result, RewardClearingError, Seconds};
+use crate::{EpochCounter, Result, RewardClearingError, Seconds, Shares};
 
 /// A channel's epoch
 /// There is one ChannelEpoch for each channel for each epoch
@@ -13,9 +12,9 @@ use crate::{EpochCounter, Result, RewardClearingError, Seconds};
 pub struct ChannelEpoch<I: Identifiable, N: FixedNumber> {
     pub channel_id: I,
     pub epoch_counter: EpochCounter,
-    pub reward_pot_balance: u64,
-    pub clearing_credits_balance: u64,
-    pub weighted_shares_balance: NonNeg<N>,
+    pub reward_pot_balance: Amount,
+    pub clearing_credits_balance: Amount,
+    pub weighted_shares_balance: Shares<N>,
     pub terms: EpochTerms<N>,
 }
 
@@ -42,7 +41,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
             epoch_counter,
             reward_pot_balance: 0,
             clearing_credits_balance: 0,
-            weighted_shares_balance: NonNeg::zero(),
+            weighted_shares_balance: Shares::zero(),
             terms,
         }
     }
@@ -56,7 +55,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
     }
 
     /// Add a new lot's credits and weighted shares to the pot's balances.
-    pub fn deposit_credits(mut self, credits: Amount, weighted_shares: NonNeg<N>) -> Result<Self> {
+    pub fn deposit_credits(mut self, credits: Amount, weighted_shares: Shares<N>) -> Result<Self> {
         self.clearing_credits_balance = self
             .clearing_credits_balance
             .checked_add(credits)
@@ -69,7 +68,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
     }
 
     /// Remove withdrawn credits and their weighted shares from the pot's balances.
-    pub fn withdraw_credits(mut self, credits: Amount, weighted_shares: NonNeg<N>) -> Result<Self> {
+    pub fn withdraw_credits(mut self, credits: Amount, weighted_shares: Shares<N>) -> Result<Self> {
         self.clearing_credits_balance = self
             .clearing_credits_balance
             .checked_sub(credits)
@@ -93,8 +92,10 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
             .ok_or(RewardClearingError::InvalidEpochDuration)?;
         let remaining = duration.get() - elapsed;
 
-        let remaining_fraction = ratio(remaining, duration, DirectedRounding::Floor)
-            .map_err(|_| RewardClearingError::EntryWeightOverflow)?;
+        let remaining_fraction =
+            N::checked_from_ratio_round(remaining.into(), duration.into(), DirectedRounding::Floor)
+                .and_then(NonNeg::new)
+                .map_err(|_| RewardClearingError::EntryWeightOverflow)?;
         let bonus = self
             .terms
             .ramp_bonus_slope()
@@ -117,13 +118,11 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
         let duration = NonZeroU64::new(epoch.duration_seconds)
             .ok_or(RewardClearingError::InvalidEpochDuration)?;
 
-        let progress: NonNeg<N> = ratio(elapsed, duration, DirectedRounding::Ceil)
-            .map_err(|_| RewardClearingError::ExitPenaltyOverflow)?;
-        let penalty = progress
-            .get()
-            .checked_pow_ceil(self.terms.exit_penalty_exponent())
-            .and_then(NonNeg::new)
-            .map_err(|_| RewardClearingError::ExitPenaltyOverflow)?;
+        let penalty =
+            N::checked_from_ratio_round(elapsed.into(), duration.into(), DirectedRounding::Ceil)
+                .and_then(|progress| progress.checked_pow_ceil(self.terms.exit_penalty_exponent()))
+                .and_then(NonNeg::new)
+                .map_err(|_| RewardClearingError::ExitPenaltyOverflow)?;
 
         Ok(penalty.min(NonNeg::one()))
     }
@@ -144,7 +143,7 @@ impl<I: Identifiable, N: IntegralRounding> ChannelEpoch<I, N> {
     ///
     /// The pot and shares stop changing when the epoch ends,
     /// so every claim uses the same ratio and claim order does not change payouts.
-    pub fn claim_reward(&self, shares: NonNeg<N>) -> Result<Amount> {
+    pub fn claim_reward(&self, shares: Shares<N>) -> Result<Amount> {
         let weighted_shares = Pos::try_from(self.weighted_shares_balance)
             .map_err(|_| RewardClearingError::ZeroWeightedShares)?;
 

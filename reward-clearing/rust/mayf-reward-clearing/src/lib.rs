@@ -19,22 +19,19 @@
 //!
 //! # Numbers
 //!
-//! Credits and rewards are whole `u64` units ([`Amount`]). Shares, weights, and
-//! fractions are [`NonNeg<N>`](mayf_fixed_number::NonNeg) for the host's
+//! Credits and rewards are whole `u64` units ([`Amount`]). [`Shares`], weights,
+//! and fractions are [`NonNeg<N>`](mayf_fixed_number::NonNeg) for the host's
 //! fixed-number type `N`. Every rounding step favors the protocol. Entry weights,
 //! shares, returned credits, and rewards round down. Exit penalties and the shares
 //! a withdrawal removes round up.
 
 mod actions;
-mod amount;
 mod error;
-mod math;
 pub mod models;
 #[cfg(test)]
 mod test_support;
 
 pub use actions::*;
-pub use amount::Amount;
 pub use error::{Result, RewardClearingError};
-pub use models::epoch::{EpochCounter, Seconds};
 pub use models::epoch_terms::EpochTerms;
+pub use models::{Amount, EpochCounter, Seconds, Shares};

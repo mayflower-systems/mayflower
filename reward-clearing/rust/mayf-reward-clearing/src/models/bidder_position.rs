@@ -2,7 +2,7 @@ use mayf_fixed_number::{FixedNumber, NonNeg, Pos};
 
 use crate::models::Identifiable;
 use crate::models::channel_epoch::{ChannelEpoch, ChannelEpochId};
-use crate::{Amount, Result, RewardClearingError};
+use crate::{Amount, Result, RewardClearingError, Shares};
 
 /// A position for a bidder on a channel's epoch
 pub struct BidderPosition<I: Identifiable, N: FixedNumber> {
@@ -22,7 +22,7 @@ pub struct BidderLot<I: Identifiable, N: FixedNumber> {
     pub credits: Amount,
 
     /// Weighted shares remaining in this lot
-    pub shares: NonNeg<N>,
+    pub shares: Shares<N>,
 }
 
 impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
@@ -40,7 +40,7 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
         mut self,
         credits: Amount,
         entry_weight: NonNeg<N>,
-    ) -> Result<(Self, NonNeg<N>)> {
+    ) -> Result<(Self, Shares<N>)> {
         let lot = BidderLot::new(self.id, credits, entry_weight)?;
         let shares_issued = lot.shares;
 
@@ -50,13 +50,13 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
 
     /// Take credits from the newest lots first, popping each lot that empties.
     /// Returns the next position and the shares removed.
-    pub fn withdraw_credits(mut self, credits: Amount) -> Result<(Self, NonNeg<N>)> {
+    pub fn withdraw_credits(mut self, credits: Amount) -> Result<(Self, Shares<N>)> {
         if credits == 0 {
             return Err(RewardClearingError::WithdrawalTooSmall);
         }
 
         let mut credits_left = credits;
-        let mut shares_removed = NonNeg::zero();
+        let mut shares_removed = Shares::zero();
 
         while credits_left > 0 {
             let lot = self
@@ -82,8 +82,8 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
 
     /// Retire every lot's shares for a claim.
     /// Returns the next position, with no lots, and the shares claimed.
-    pub fn claim(mut self) -> Result<(Self, NonNeg<N>)> {
-        let mut shares_claimed = NonNeg::zero();
+    pub fn claim(mut self) -> Result<(Self, Shares<N>)> {
+        let mut shares_claimed = Shares::zero();
 
         for lot in self.lots.drain(..) {
             shares_claimed = shares_claimed
@@ -123,7 +123,7 @@ impl<I: Identifiable, N: FixedNumber> BidderLot<I, N> {
     ///   shares_removed = min(shares, ceil(withdrawn * shares / credits))
     ///
     /// Returns the remaining lot, or `None` once it is empty, and the shares removed.
-    fn withdraw(self, withdrawn: Amount) -> Result<(Option<Self>, NonNeg<N>)> {
+    fn withdraw(self, withdrawn: Amount) -> Result<(Option<Self>, Shares<N>)> {
         if withdrawn == self.credits {
             return Ok((None, self.shares));
         }

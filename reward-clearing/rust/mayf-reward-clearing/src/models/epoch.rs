@@ -1,11 +1,5 @@
-use crate::models::Identifiable;
+use crate::models::{EpochCounter, Identifiable, Seconds};
 use crate::{Result, RewardClearingError};
-
-/// A timestamp or duration in seconds
-pub type Seconds = u64;
-
-/// The index of an epoch in its channel group's schedule
-pub type EpochCounter = u32;
 
 /// One epoch of a channel group's schedule
 /// Deposits, withdrawals, and funding are accepted from its start up to, but not including, its end.

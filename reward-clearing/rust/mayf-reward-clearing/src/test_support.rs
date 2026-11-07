@@ -7,7 +7,9 @@ use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
 use crate::models::channel_epoch::ChannelEpoch;
 use crate::models::epoch::Epoch;
-use crate::{Amount, DepositCreditsArgs, DepositCreditsReceipt, EpochTerms, Result, Seconds};
+use crate::{
+    Amount, DepositCreditsArgs, DepositCreditsReceipt, EpochTerms, Result, Seconds, Shares,
+};
 
 pub type Number = U64F64;
 
@@ -73,6 +75,6 @@ pub fn first_deposit(
     deposit(position, channel_epoch, now, credits_to_deposit)
 }
 
-pub fn shares(whole: u64) -> NonNeg<Number> {
+pub fn shares(whole: u64) -> Shares<Number> {
     NonNeg::from_u64(whole).unwrap()
 }
