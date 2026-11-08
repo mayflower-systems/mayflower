@@ -2,20 +2,25 @@ use mayf_fixed_number::FixedNumber;
 
 use crate::Amount;
 use crate::Result;
+use crate::RewardClearingError;
 use crate::Seconds;
 use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
 use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
+use crate::models::channel_group::ChannelGroup;
 use crate::models::epoch::Epoch;
 
 pub struct DepositCreditsArgs<I: Identifiable, N: FixedNumber> {
+    pub channel_group: ChannelGroup<I>,
     pub bidder_position: BidderPosition<I, N>,
     pub channel: Channel<I, N>,
     pub channel_epoch: ChannelEpoch<I, N>,
     pub epoch: Epoch<I>,
     pub now: Seconds,
     pub credits_to_deposit: Amount,
+    /// Maximum live lots permitted by the host's storage policy.
+    pub max_lot_count: u32,
 }
 
 pub struct DepositCreditsReceipt<I: Identifiable, N: FixedNumber> {
@@ -30,11 +35,16 @@ where
     I: Identifiable,
     N: FixedNumber,
 {
-    args.epoch.validate_active(args.now)?;
+    args.channel_epoch.validate_unfinalized()?;
+    args.epoch.validate_active(&args.channel_group, args.now)?;
     args.channel_epoch
         .validate_channel_and_epoch(&args.channel, &args.epoch)?;
     args.bidder_position
         .validate_channel_epoch(&args.channel_epoch)?;
+
+    if args.bidder_position.lots.len() >= args.max_lot_count as usize {
+        return Err(RewardClearingError::LotLimitReached);
+    }
 
     let entry_weight = args.channel_epoch.entry_weight(&args.epoch, args.now)?;
 
@@ -57,6 +67,7 @@ mod tests {
     use crate::RewardClearingError as E;
     use crate::models::channel_epoch::ChannelEpochId;
     use crate::test_support::*;
+    use crate::{WithdrawCreditsArgs, withdraw_credits};
 
     #[test]
     fn entry_weight_falls_from_one_plus_slope_to_one() {
@@ -112,6 +123,47 @@ mod tests {
     }
 
     #[test]
+    fn withdrawing_a_lot_makes_room_for_another_deposit() {
+        let mut deposited = first_deposit(channel_epoch(), START, 10).unwrap();
+        for _ in 1..8 {
+            deposited = deposit(
+                deposited.bidder_position_next,
+                deposited.channel_epoch_next,
+                START,
+                10,
+            )
+            .unwrap();
+        }
+
+        let extra = deposit(
+            deposited.bidder_position_next.clone(),
+            deposited.channel_epoch_next.clone(),
+            START,
+            10,
+        );
+        assert_eq!(extra.err(), Some(E::LotLimitReached));
+
+        let withdrawn = withdraw_credits(WithdrawCreditsArgs {
+            channel_group: channel_group(),
+            bidder_position: deposited.bidder_position_next,
+            channel: channel(),
+            channel_epoch: deposited.channel_epoch_next,
+            epoch: epoch(),
+            now: START,
+            credits_to_withdraw: 10,
+        })
+        .unwrap();
+        let replenished = deposit(
+            withdrawn.bidder_position_next,
+            withdrawn.channel_epoch_next,
+            START,
+            10,
+        )
+        .unwrap();
+        assert_eq!(replenished.bidder_position_next.lots.len(), 8);
+    }
+
+    #[test]
     fn rejects_deposit_outside_live_interval() {
         let cases = [
             (START - 1, E::EpochNotStarted),
@@ -143,13 +195,22 @@ mod tests {
     #[test]
     fn rejects_position_from_another_channel_epoch() {
         let channel_epoch = channel_epoch();
-        let mut position = empty_position(&channel_epoch);
-        position.channel_epoch_id = ChannelEpochId {
-            channel_id: Id(9),
-            epoch_counter: 3,
-        };
+        let mismatches = [
+            ChannelEpochId {
+                channel_id: Id(9),
+                ..channel_epoch.id()
+            },
+            ChannelEpochId {
+                epoch_counter: channel_epoch.epoch_counter + 1,
+                ..channel_epoch.id()
+            },
+        ];
+        for channel_epoch_id in mismatches {
+            let mut position = empty_position(&channel_epoch);
+            position.channel_epoch_id = channel_epoch_id;
 
-        let result = deposit(position, channel_epoch, START, 100);
-        assert_eq!(result.err(), Some(E::BidderPositionChannelEpochMismatch));
+            let result = deposit(position, channel_epoch.clone(), START, 100);
+            assert_eq!(result.err(), Some(E::BidderPositionChannelEpochMismatch));
+        }
     }
 }

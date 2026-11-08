@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 
 mod clock;
 mod constants;
+mod error;
 mod instructions;
 mod state;
 
@@ -19,8 +20,11 @@ pub mod mayf_reward_clearing_sol {
         create_organization_handler(ctx)
     }
 
-    pub fn create_tenant(ctx: Context<CreateTenantAccounts>, args: CreateTenantArgs) -> Result<()> {
-        create_tenant_handler(ctx, args)
+    pub fn create_channel_group(
+        ctx: Context<CreateChannelGroupAccounts>,
+        args: CreateChannelGroupArgs,
+    ) -> Result<()> {
+        create_channel_group_handler(ctx, args)
     }
 
     pub fn channel_create(
@@ -61,5 +65,27 @@ pub mod mayf_reward_clearing_sol {
 
     pub fn epoch_create(ctx: Context<EpochCreateAccounts>) -> Result<()> {
         epoch_create_handler(ctx)
+    }
+
+    pub fn bidder_position_create(ctx: Context<BidderPositionCreateAccounts>) -> Result<()> {
+        bidder_position_create_handler(ctx)
+    }
+
+    pub fn bidder_position_deposit(
+        ctx: Context<BidderPositionDepositAccounts>,
+        amount: u64,
+    ) -> Result<()> {
+        bidder_position_deposit_handler(ctx, amount)
+    }
+
+    pub fn bidder_position_withdraw(
+        ctx: Context<BidderPositionWithdrawAccounts>,
+        amount: u64,
+    ) -> Result<()> {
+        bidder_position_withdraw_handler(ctx, amount)
+    }
+
+    pub fn bidder_position_claim(ctx: Context<BidderPositionClaimAccounts>) -> Result<()> {
+        bidder_position_claim_handler(ctx)
     }
 }

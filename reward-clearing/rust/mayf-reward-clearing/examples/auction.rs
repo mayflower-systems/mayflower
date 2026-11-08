@@ -1,19 +1,19 @@
 //! The wiki's "Revenue Clearing Time Weight" example.
 //!
-//! A channel opens a channel epoch. Alice deposits at the start. Bob deposits halfway and withdraws 40 credits.
+//! Creating a channel also opens its first channel epoch. Alice deposits at the start.
+//! Bob deposits halfway and withdraws 40 credits.
 //! A funder adds 90 reward units to the pot. The channel epoch is finalized,
 //! and then Alice and Bob claim.
 
 use mayf_fixed_drivers::U64F64;
 use mayf_fixed_number::NonNeg;
 use mayf_reward_clearing::models::Identifiable;
-use mayf_reward_clearing::models::bidder_position::BidderPosition;
-use mayf_reward_clearing::models::channel::Channel;
-use mayf_reward_clearing::models::epoch::Epoch;
 use mayf_reward_clearing::{
-    AddRewardArgs, ClaimArgs, CreateChannelEpochArgs, DepositCreditsArgs, EpochTerms,
-    FinalizeChannelEpochArgs, RewardClearingError, Seconds, WithdrawCreditsArgs, add_reward, claim,
-    create_channel_epoch, deposit_credits, finalize_channel_epoch, withdraw_credits,
+    AddRewardArgs, ClaimArgs, CreateBidderPositionArgs, CreateChannelArgs, CreateChannelGroupArgs,
+    DepositCreditsArgs, EpochTerms, FinalizeChannelEpochArgs, MIN_EPOCH_DURATION_SECONDS,
+    RewardClearingError, Seconds, WithdrawCreditsArgs, add_reward, claim, create_bidder_position,
+    create_channel, create_channel_group, deposit_credits, finalize_channel_epoch,
+    withdraw_credits,
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -22,71 +22,79 @@ impl Identifiable for Id {}
 
 const CHANNEL_GROUP: Id = Id(0);
 const START: Seconds = 0;
-const DURATION: Seconds = 100;
-const HALFWAY: Seconds = 50;
-
-fn epoch() -> Epoch<Id> {
-    Epoch::new(CHANNEL_GROUP, 0, START, DURATION)
-}
-
-fn channel() -> Channel<Id, U64F64> {
-    Channel {
-        id: Id(1),
-        channel_group_id: CHANNEL_GROUP,
-        reward_id: Id(2),
-        // Ramp bonus slope 1 and exit penalty exponent 2
-        default_terms: EpochTerms::new(U64F64::ONE, 2).expect("the reference terms are valid"),
-        last_seen_epoch_counter: None,
-    }
-}
+const DURATION: Seconds = MIN_EPOCH_DURATION_SECONDS;
+const HALFWAY: Seconds = START + DURATION / 2;
 
 fn main() -> Result<(), RewardClearingError> {
-    let channel_epoch = create_channel_epoch(CreateChannelEpochArgs {
-        channel: channel(),
+    let created_group = create_channel_group(CreateChannelGroupArgs {
+        channel_group_id: CHANNEL_GROUP,
+        master_start_time_unix_seconds: START,
+        epoch_duration_seconds: DURATION,
+    })?;
+    let group = created_group.new_channel_group;
+    let epoch = created_group.initial_epoch;
+    let created = create_channel(CreateChannelArgs {
+        channel_id: Id(1),
+        reward_id: Id(2),
+        // Ramp bonus slope 1 and exit penalty exponent 2
+        default_terms: EpochTerms::new(U64F64::ONE, 2)?,
+        channel_group: group.clone(),
         now: START,
-        active_epoch: epoch(),
-    })?
-    .new_channel_epoch;
+        active_epoch: epoch.clone(),
+    })?;
+    let channel = created.new_channel;
+    let channel_epoch = created.new_channel_epoch;
 
-    let alice = BidderPosition {
-        id: Id(10),
-        channel_epoch_id: channel_epoch.id(),
-        lots: Vec::new(),
-        claimed: false,
-    };
-    let bob = BidderPosition {
-        id: Id(11),
-        channel_epoch_id: channel_epoch.id(),
-        lots: Vec::new(),
-        claimed: false,
-    };
+    let alice = create_bidder_position(CreateBidderPositionArgs {
+        position_id: Id(10),
+        channel_group: group.clone(),
+        channel: channel.clone(),
+        channel_epoch: channel_epoch.clone(),
+        epoch: epoch.clone(),
+        now: START,
+    })?
+    .bidder_position;
 
     // Alice deposits 100 credits at weight 2.
     let alice_deposit = deposit_credits(DepositCreditsArgs {
+        channel_group: group.clone(),
+        max_lot_count: 8,
         bidder_position: alice,
-        channel: channel(),
+        channel: channel.clone(),
         channel_epoch,
-        epoch: epoch(),
+        epoch: epoch.clone(),
         now: START,
         credits_to_deposit: 100,
     })?;
 
     // Bob deposits 100 credits at weight 1.5.
+    let bob = create_bidder_position(CreateBidderPositionArgs {
+        position_id: Id(11),
+        channel_group: group.clone(),
+        channel: channel.clone(),
+        channel_epoch: alice_deposit.channel_epoch_next.clone(),
+        epoch: epoch.clone(),
+        now: HALFWAY,
+    })?
+    .bidder_position;
     let bob_deposit = deposit_credits(DepositCreditsArgs {
+        channel_group: group.clone(),
+        max_lot_count: 8,
         bidder_position: bob,
-        channel: channel(),
+        channel: channel.clone(),
         channel_epoch: alice_deposit.channel_epoch_next,
-        epoch: epoch(),
+        epoch: epoch.clone(),
         now: HALFWAY,
         credits_to_deposit: 100,
     })?;
 
     // Bob withdraws 40 credits at a 25% penalty.
     let bob_withdrawal = withdraw_credits(WithdrawCreditsArgs {
+        channel_group: group.clone(),
         bidder_position: bob_deposit.bidder_position_next,
-        channel: channel(),
+        channel: channel.clone(),
         channel_epoch: bob_deposit.channel_epoch_next,
-        epoch: epoch(),
+        epoch: epoch.clone(),
         now: HALFWAY,
         credits_to_withdraw: 40,
     })?;
@@ -95,17 +103,18 @@ fn main() -> Result<(), RewardClearingError> {
 
     // A funder adds 90 reward units, after the host takes its funding fee.
     let funded = add_reward(AddRewardArgs {
-        epoch: epoch(),
-        channel: channel(),
+        channel_group: group,
+        epoch: epoch.clone(),
+        channel: channel.clone(),
         channel_epoch: bob_withdrawal.channel_epoch_next,
         now: HALFWAY,
         amount: 90,
     })?;
 
     let finalized = finalize_channel_epoch(FinalizeChannelEpochArgs {
-        channel: channel(),
+        channel,
         channel_epoch: funded.channel_epoch_next,
-        epoch: epoch(),
+        epoch,
         now: START + DURATION,
     })?;
 

@@ -4,6 +4,8 @@ pub enum RewardClearingError {
     // Epoch terms
     /// The epoch duration is zero
     InvalidEpochDuration,
+    /// A channel group's epoch duration is less than one hour
+    EpochDurationTooShort,
     /// The ramp bonus slope is outside [0, 2]
     InvalidRampBonusSlope,
     /// The exit penalty exponent is outside [1, 4]
@@ -40,6 +42,8 @@ pub enum RewardClearingError {
     BidderLotPositionMismatch,
 
     // Lifecycle
+    /// The channel is disabled and cannot open new epochs
+    ChannelDisabled,
     /// The channel epoch has already been finalized
     ChannelEpochAlreadyFinalized,
     /// The channel epoch has not been finalized, so it cannot pay claims yet
@@ -62,6 +66,8 @@ pub enum RewardClearingError {
     ExitPenaltyOverflow,
 
     // Lots
+    /// The position has reached the host's limit on live lots
+    LotLimitReached,
     /// A new lot's shares do not fit the number type
     LotSharesOverflow,
     /// The shares removed from a lot do not fit the number type
@@ -94,8 +100,6 @@ pub enum RewardClearingError {
     WeightedSharesUnderflow,
 
     // Claims
-    /// The reward per weighted share does not fit the number type
-    FinalShareRateOverflow,
     /// The position has no shares to claim
     NoSharesToClaim,
     /// The position's shares overflow when summed across its lots

@@ -20,7 +20,7 @@ pub struct FinalizeChannelEpochReceipt<I: Identifiable, N: FixedNumber> {
 }
 
 /// Finalize a channel epoch once its epoch has ended.
-/// This fixes the reward per weighted share that every claim uses.
+/// This freezes the reward pot and total shares that every claim uses.
 /// A channel epoch can be finalized only once.
 /// The host burns the remaining clearing credits.
 pub fn finalize_channel_epoch<N, I>(
@@ -46,6 +46,7 @@ where
 mod tests {
     use super::*;
     use crate::RewardClearingError as E;
+    use crate::models::channel_epoch::FinalizedTotals;
     use crate::test_support::*;
 
     const END: Seconds = START + DURATION;
@@ -63,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn fixes_the_reward_per_share() {
+    fn freezes_the_reward_pot_and_weighted_shares() {
         // 100 credits at the start earn 200 shares. A pot of 400 pays 2 per share.
         let mut channel_epoch = first_deposit(channel_epoch(), START, 100)
             .unwrap()
@@ -72,20 +73,26 @@ mod tests {
 
         let finalized = finalize(channel_epoch, END).unwrap();
         assert_eq!(
-            finalized.channel_epoch_next.final_share_rate,
-            Some(shares(2))
+            finalized.channel_epoch_next.final_totals,
+            Some(FinalizedTotals {
+                reward_pot: 400,
+                weighted_shares: shares(200),
+            })
         );
     }
 
     #[test]
-    fn epoch_without_shares_finalizes_at_zero() {
+    fn epoch_without_shares_still_finalizes() {
         let mut channel_epoch = channel_epoch();
         channel_epoch.reward_pot_balance = 400;
 
         let finalized = finalize(channel_epoch, END).unwrap();
         assert_eq!(
-            finalized.channel_epoch_next.final_share_rate,
-            Some(shares(0))
+            finalized.channel_epoch_next.final_totals,
+            Some(FinalizedTotals {
+                reward_pot: 400,
+                weighted_shares: shares(0),
+            })
         );
     }
 
@@ -100,5 +107,57 @@ mod tests {
     fn rejects_finalize_before_epoch_end() {
         let result = finalize(channel_epoch(), END - 1);
         assert_eq!(result.err(), Some(E::EpochNotEnded));
+    }
+
+    #[test]
+    fn finalization_closes_all_live_epoch_actions() {
+        use crate::{
+            AddRewardArgs, CreateBidderPositionArgs, WithdrawCreditsArgs, add_reward,
+            create_bidder_position, withdraw_credits,
+        };
+
+        for reward in [0, 400] {
+            let deposited = first_deposit(channel_epoch(), START, 100).unwrap();
+            let mut funded = deposited.channel_epoch_next;
+            funded.reward_pot_balance = reward;
+            let finalized = finalize(funded, END).unwrap().channel_epoch_next;
+
+            // The saved finalized state is authoritative, even if a host supplies
+            // a time that would otherwise permit changes to the epoch.
+            for now in [START, END] {
+                let errors = [
+                    create_bidder_position(CreateBidderPositionArgs {
+                        position_id: deposited.bidder_position_next.id,
+                        channel_group: channel_group(),
+                        channel: channel(),
+                        channel_epoch: finalized.clone(),
+                        epoch: epoch(),
+                        now,
+                    })
+                    .err(),
+                    add_reward(AddRewardArgs {
+                        channel_group: channel_group(),
+                        epoch: epoch(),
+                        channel: channel(),
+                        channel_epoch: finalized.clone(),
+                        now,
+                        amount: 1,
+                    })
+                    .err(),
+                    first_deposit(finalized.clone(), now, 1).err(),
+                    withdraw_credits(WithdrawCreditsArgs {
+                        channel_group: channel_group(),
+                        bidder_position: deposited.bidder_position_next.clone(),
+                        channel: channel(),
+                        channel_epoch: finalized.clone(),
+                        epoch: epoch(),
+                        now,
+                        credits_to_withdraw: 1,
+                    })
+                    .err(),
+                ];
+                assert_eq!(errors, [Some(E::ChannelEpochAlreadyFinalized); 4]);
+            }
+        }
     }
 }

@@ -23,6 +23,6 @@ pub struct CreateOrganization<'info> {
 
 pub fn create_organization_handler(ctx: Context<CreateOrganization>) -> Result<()> {
     ctx.accounts.organization.authority = ctx.accounts.authority.key();
-    ctx.accounts.organization.next_tenant_index = 0;
+    ctx.accounts.organization.next_channel_group_index = 0;
     Ok(())
 }

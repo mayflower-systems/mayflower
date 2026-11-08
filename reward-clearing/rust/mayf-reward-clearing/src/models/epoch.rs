@@ -35,6 +35,15 @@ impl<I: Identifiable> Epoch<I> {
         Ok(())
     }
 
+    /// Fails unless this is the channel group's current epoch.
+    pub fn validate_current(&self, channel_group: &ChannelGroup<I>) -> Result<()> {
+        self.validate_channel_group(channel_group)?;
+        if self.epoch_counter != channel_group.current_epoch_index {
+            return Err(RewardClearingError::ChannelGroupCounterMismatch);
+        }
+        Ok(())
+    }
+
     pub fn end_time_unix_seconds(&self) -> Result<Seconds> {
         self.start_time_unix_seconds
             .checked_add(self.duration_seconds)
@@ -45,8 +54,13 @@ impl<I: Identifiable> Epoch<I> {
         Ok(self.end_time_unix_seconds()? <= now)
     }
 
-    /// Fails unless `now` is inside the live interval [start, end).
-    pub fn validate_active(&self, now: Seconds) -> Result<()> {
+    /// Fails unless this is the group's current epoch and `now` is in [start, end).
+    pub fn validate_active(&self, channel_group: &ChannelGroup<I>, now: Seconds) -> Result<()> {
+        self.validate_current(channel_group)?;
+        self.validate_live_interval(now)
+    }
+
+    fn validate_live_interval(&self, now: Seconds) -> Result<()> {
         if now < self.start_time_unix_seconds {
             return Err(RewardClearingError::EpochNotStarted);
         }
@@ -60,7 +74,7 @@ impl<I: Identifiable> Epoch<I> {
 
     /// Seconds since the epoch started. Fails outside the live interval [start, end).
     pub fn elapsed_seconds(&self, now: Seconds) -> Result<Seconds> {
-        self.validate_active(now)?;
+        self.validate_live_interval(now)?;
         Ok(now - self.start_time_unix_seconds)
     }
 }

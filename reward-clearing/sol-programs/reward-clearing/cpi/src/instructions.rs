@@ -20,6 +20,38 @@ pub mod args {
     use super::*;
 
     #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionClaim;
+
+    impl InstructionArgs for BidderPositionClaim {
+        const DISCRIMINATOR: [u8; 8] = [216, 136, 87, 58, 21, 37, 116, 249];
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionCreate;
+
+    impl InstructionArgs for BidderPositionCreate {
+        const DISCRIMINATOR: [u8; 8] = [225, 232, 121, 179, 79, 235, 118, 122];
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionDeposit {
+        pub amount: u64,
+    }
+
+    impl InstructionArgs for BidderPositionDeposit {
+        const DISCRIMINATOR: [u8; 8] = [163, 192, 90, 123, 195, 45, 120, 164];
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionWithdraw {
+        pub amount: u64,
+    }
+
+    impl InstructionArgs for BidderPositionWithdraw {
+        const DISCRIMINATOR: [u8; 8] = [186, 242, 235, 128, 119, 131, 157, 210];
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
     pub struct ChannelCreate {
         pub args: ChannelCreateArgs,
     }
@@ -70,19 +102,19 @@ pub mod args {
     }
 
     #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct CreateChannelGroup {
+        pub args: CreateChannelGroupArgs,
+    }
+
+    impl InstructionArgs for CreateChannelGroup {
+        const DISCRIMINATOR: [u8; 8] = [58, 250, 243, 142, 233, 80, 83, 75];
+    }
+
+    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
     pub struct CreateOrganization;
 
     impl InstructionArgs for CreateOrganization {
         const DISCRIMINATOR: [u8; 8] = [60, 173, 177, 39, 122, 23, 68, 185];
-    }
-
-    #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
-    pub struct CreateTenant {
-        pub args: CreateTenantArgs,
-    }
-
-    impl InstructionArgs for CreateTenant {
-        const DISCRIMINATOR: [u8; 8] = [97, 97, 222, 226, 173, 96, 6, 160];
     }
 
     #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -99,54 +131,70 @@ pub mod args {
 /// Payloads are encoded by [`args`], not by this enum's ordinal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MayfRewardClearingInstruction {
+    BidderPositionClaim,
+    BidderPositionCreate,
+    BidderPositionDeposit,
+    BidderPositionWithdraw,
     ChannelCreate,
     ChannelEpochAddToRewardPot,
     ChannelEpochCreate,
     ChannelEpochFinalize,
     ChannelSetDefaultEpochTerms,
     ChannelSetDisabled,
+    CreateChannelGroup,
     CreateOrganization,
-    CreateTenant,
     EpochCreate,
 }
 
 impl MayfRewardClearingInstruction {
     pub const ALL: &'static [Self] = &[
+        Self::BidderPositionClaim,
+        Self::BidderPositionCreate,
+        Self::BidderPositionDeposit,
+        Self::BidderPositionWithdraw,
         Self::ChannelCreate,
         Self::ChannelEpochAddToRewardPot,
         Self::ChannelEpochCreate,
         Self::ChannelEpochFinalize,
         Self::ChannelSetDefaultEpochTerms,
         Self::ChannelSetDisabled,
+        Self::CreateChannelGroup,
         Self::CreateOrganization,
-        Self::CreateTenant,
         Self::EpochCreate,
     ];
 
     pub const fn name(self) -> &'static str {
         match self {
+            Self::BidderPositionClaim => "bidder_position_claim",
+            Self::BidderPositionCreate => "bidder_position_create",
+            Self::BidderPositionDeposit => "bidder_position_deposit",
+            Self::BidderPositionWithdraw => "bidder_position_withdraw",
             Self::ChannelCreate => "channel_create",
             Self::ChannelEpochAddToRewardPot => "channel_epoch_add_to_reward_pot",
             Self::ChannelEpochCreate => "channel_epoch_create",
             Self::ChannelEpochFinalize => "channel_epoch_finalize",
             Self::ChannelSetDefaultEpochTerms => "channel_set_default_epoch_terms",
             Self::ChannelSetDisabled => "channel_set_disabled",
+            Self::CreateChannelGroup => "create_channel_group",
             Self::CreateOrganization => "create_organization",
-            Self::CreateTenant => "create_tenant",
             Self::EpochCreate => "epoch_create",
         }
     }
 
     pub const fn discriminator(self) -> [u8; 8] {
         match self {
+            Self::BidderPositionClaim => args::BidderPositionClaim::DISCRIMINATOR,
+            Self::BidderPositionCreate => args::BidderPositionCreate::DISCRIMINATOR,
+            Self::BidderPositionDeposit => args::BidderPositionDeposit::DISCRIMINATOR,
+            Self::BidderPositionWithdraw => args::BidderPositionWithdraw::DISCRIMINATOR,
             Self::ChannelCreate => args::ChannelCreate::DISCRIMINATOR,
             Self::ChannelEpochAddToRewardPot => args::ChannelEpochAddToRewardPot::DISCRIMINATOR,
             Self::ChannelEpochCreate => args::ChannelEpochCreate::DISCRIMINATOR,
             Self::ChannelEpochFinalize => args::ChannelEpochFinalize::DISCRIMINATOR,
             Self::ChannelSetDefaultEpochTerms => args::ChannelSetDefaultEpochTerms::DISCRIMINATOR,
             Self::ChannelSetDisabled => args::ChannelSetDisabled::DISCRIMINATOR,
+            Self::CreateChannelGroup => args::CreateChannelGroup::DISCRIMINATOR,
             Self::CreateOrganization => args::CreateOrganization::DISCRIMINATOR,
-            Self::CreateTenant => args::CreateTenant::DISCRIMINATOR,
             Self::EpochCreate => args::EpochCreate::DISCRIMINATOR,
         }
     }
@@ -168,16 +216,226 @@ impl MayfRewardClearingInstruction {
 pub mod accounts {
     use super::*;
 
+    /// Accounts for `bidder_position_claim`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionClaim {
+        pub authority: Address,
+        pub channel_epoch: Address,
+        pub bidder_position: Address,
+        pub reward_pot_escrow_token_account: Address,
+        pub reward_destination: Address,
+    }
+
+    impl BidderPositionClaim {
+        /// Build the list from caller-chosen accounts.
+        pub fn new(
+            authority: Address,
+            channel_epoch: Address,
+            bidder_position: Address,
+            reward_pot_escrow_token_account: Address,
+            reward_destination: Address,
+        ) -> Self {
+            Self {
+                authority,
+                channel_epoch,
+                bidder_position,
+                reward_pot_escrow_token_account,
+                reward_destination,
+            }
+        }
+
+        /// Account metas in the order the program expects.
+        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
+            vec![
+                AccountMeta::new(self.authority, true),
+                AccountMeta::new(self.channel_epoch, false),
+                AccountMeta::new(self.bidder_position, false),
+                AccountMeta::new(self.reward_pot_escrow_token_account, false),
+                AccountMeta::new(self.reward_destination, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            ]
+        }
+    }
+
+    /// Accounts for `bidder_position_create`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionCreate {
+        pub payer: Address,
+        pub authority: Address,
+        pub channel_group: Address,
+        pub channel: Address,
+        pub epoch: Address,
+        pub channel_epoch: Address,
+        pub bidder_position: Address,
+    }
+
+    impl BidderPositionCreate {
+        /// Build the list from caller-chosen accounts.
+        pub fn new(
+            payer: Address,
+            authority: Address,
+            channel_group: Address,
+            channel: Address,
+            epoch: Address,
+            channel_epoch: Address,
+            bidder_position: Address,
+        ) -> Self {
+            Self {
+                payer,
+                authority,
+                channel_group,
+                channel,
+                epoch,
+                channel_epoch,
+                bidder_position,
+            }
+        }
+
+        /// Account metas in the order the program expects.
+        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
+            vec![
+                AccountMeta::new(self.payer, true),
+                AccountMeta::new_readonly(self.authority, true),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new_readonly(self.channel, false),
+                AccountMeta::new_readonly(self.epoch, false),
+                AccountMeta::new_readonly(self.channel_epoch, false),
+                AccountMeta::new(self.bidder_position, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            ]
+        }
+    }
+
+    /// Accounts for `bidder_position_deposit`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionDeposit {
+        pub payer: Address,
+        pub authority: Address,
+        pub channel_group: Address,
+        pub channel: Address,
+        pub epoch: Address,
+        pub channel_epoch: Address,
+        pub bidder_position: Address,
+        pub clearing_credits_escrow_token_account: Address,
+        pub clearing_credits_source: Address,
+    }
+
+    impl BidderPositionDeposit {
+        /// Build the list from caller-chosen accounts.
+        pub fn new(
+            payer: Address,
+            authority: Address,
+            channel_group: Address,
+            channel: Address,
+            epoch: Address,
+            channel_epoch: Address,
+            bidder_position: Address,
+            clearing_credits_escrow_token_account: Address,
+            clearing_credits_source: Address,
+        ) -> Self {
+            Self {
+                payer,
+                authority,
+                channel_group,
+                channel,
+                epoch,
+                channel_epoch,
+                bidder_position,
+                clearing_credits_escrow_token_account,
+                clearing_credits_source,
+            }
+        }
+
+        /// Account metas in the order the program expects.
+        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
+            vec![
+                AccountMeta::new(self.payer, true),
+                AccountMeta::new_readonly(self.authority, true),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new_readonly(self.channel, false),
+                AccountMeta::new_readonly(self.epoch, false),
+                AccountMeta::new(self.channel_epoch, false),
+                AccountMeta::new(self.bidder_position, false),
+                AccountMeta::new(self.clearing_credits_escrow_token_account, false),
+                AccountMeta::new(self.clearing_credits_source, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            ]
+        }
+    }
+
+    /// Accounts for `bidder_position_withdraw`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct BidderPositionWithdraw {
+        pub authority: Address,
+        pub channel_group: Address,
+        pub channel: Address,
+        pub epoch: Address,
+        pub channel_epoch: Address,
+        pub bidder_position: Address,
+        pub clearing_credits_mint: Address,
+        pub clearing_credits_escrow_token_account: Address,
+        pub clearing_credits_destination: Address,
+    }
+
+    impl BidderPositionWithdraw {
+        /// Build the list from caller-chosen accounts.
+        pub fn new(
+            authority: Address,
+            channel_group: Address,
+            channel: Address,
+            epoch: Address,
+            channel_epoch: Address,
+            bidder_position: Address,
+            clearing_credits_mint: Address,
+            clearing_credits_escrow_token_account: Address,
+            clearing_credits_destination: Address,
+        ) -> Self {
+            Self {
+                authority,
+                channel_group,
+                channel,
+                epoch,
+                channel_epoch,
+                bidder_position,
+                clearing_credits_mint,
+                clearing_credits_escrow_token_account,
+                clearing_credits_destination,
+            }
+        }
+
+        /// Account metas in the order the program expects.
+        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
+            vec![
+                AccountMeta::new_readonly(self.authority, true),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new_readonly(self.channel, false),
+                AccountMeta::new_readonly(self.epoch, false),
+                AccountMeta::new(self.channel_epoch, false),
+                AccountMeta::new(self.bidder_position, false),
+                AccountMeta::new(self.clearing_credits_mint, false),
+                AccountMeta::new(self.clearing_credits_escrow_token_account, false),
+                AccountMeta::new(self.clearing_credits_destination, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            ]
+        }
+    }
+
     /// Accounts for `channel_create`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct ChannelCreate {
         pub payer: Address,
         pub authority: Address,
         pub organization: Address,
-        pub tenant: Address,
+        pub channel_group: Address,
+        pub current_epoch: Address,
         pub reward_token_mint: Address,
+        pub clearing_credits_mint: Address,
         pub channel: Address,
         pub reward_staging_token_account: Address,
+        pub initial_channel_epoch: Address,
+        pub reward_pot_escrow_account: Address,
+        pub clearing_credits_escrow_account: Address,
     }
 
     impl ChannelCreate {
@@ -186,19 +444,29 @@ pub mod accounts {
             payer: Address,
             authority: Address,
             organization: Address,
-            tenant: Address,
+            channel_group: Address,
+            current_epoch: Address,
             reward_token_mint: Address,
+            clearing_credits_mint: Address,
             channel: Address,
             reward_staging_token_account: Address,
+            initial_channel_epoch: Address,
+            reward_pot_escrow_account: Address,
+            clearing_credits_escrow_account: Address,
         ) -> Self {
             Self {
                 payer,
                 authority,
                 organization,
-                tenant,
+                channel_group,
+                current_epoch,
                 reward_token_mint,
+                clearing_credits_mint,
                 channel,
                 reward_staging_token_account,
+                initial_channel_epoch,
+                reward_pot_escrow_account,
+                clearing_credits_escrow_account,
             }
         }
 
@@ -208,10 +476,15 @@ pub mod accounts {
                 AccountMeta::new(self.payer, true),
                 AccountMeta::new_readonly(self.authority, true),
                 AccountMeta::new_readonly(self.organization, false),
-                AccountMeta::new_readonly(self.tenant, false),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new_readonly(self.current_epoch, false),
                 AccountMeta::new_readonly(self.reward_token_mint, false),
+                AccountMeta::new_readonly(self.clearing_credits_mint, false),
                 AccountMeta::new(self.channel, false),
                 AccountMeta::new(self.reward_staging_token_account, false),
+                AccountMeta::new(self.initial_channel_epoch, false),
+                AccountMeta::new(self.reward_pot_escrow_account, false),
+                AccountMeta::new(self.clearing_credits_escrow_account, false),
                 AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
                 AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             ]
@@ -221,8 +494,9 @@ pub mod accounts {
     /// Accounts for `channel_epoch_add_to_reward_pot`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct ChannelEpochAddToRewardPot {
-        pub payer: Address,
         pub transfer_authority: Address,
+        pub channel_group: Address,
+        pub channel: Address,
         pub epoch: Address,
         pub channel_epoch: Address,
         pub reward_pot_escrow_token_account: Address,
@@ -232,16 +506,18 @@ pub mod accounts {
     impl ChannelEpochAddToRewardPot {
         /// Build the list from caller-chosen accounts.
         pub fn new(
-            payer: Address,
             transfer_authority: Address,
+            channel_group: Address,
+            channel: Address,
             epoch: Address,
             channel_epoch: Address,
             reward_pot_escrow_token_account: Address,
             reward_token_src: Address,
         ) -> Self {
             Self {
-                payer,
                 transfer_authority,
+                channel_group,
+                channel,
                 epoch,
                 channel_epoch,
                 reward_pot_escrow_token_account,
@@ -252,8 +528,9 @@ pub mod accounts {
         /// Account metas in the order the program expects.
         pub fn to_account_metas(&self) -> Vec<AccountMeta> {
             vec![
-                AccountMeta::new(self.payer, true),
                 AccountMeta::new_readonly(self.transfer_authority, true),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new_readonly(self.channel, false),
                 AccountMeta::new_readonly(self.epoch, false),
                 AccountMeta::new(self.channel_epoch, false),
                 AccountMeta::new(self.reward_pot_escrow_token_account, false),
@@ -267,9 +544,8 @@ pub mod accounts {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct ChannelEpochCreate {
         pub payer: Address,
-        pub tenant: Address,
+        pub channel_group: Address,
         pub channel: Address,
-        /// Validated that this is the current epoch for the tenant
         pub current_epoch: Address,
         pub new_channel_epoch: Address,
         pub reward_token_mint: Address,
@@ -282,7 +558,7 @@ pub mod accounts {
         /// Build the list from caller-chosen accounts.
         pub fn new(
             payer: Address,
-            tenant: Address,
+            channel_group: Address,
             channel: Address,
             current_epoch: Address,
             new_channel_epoch: Address,
@@ -293,7 +569,7 @@ pub mod accounts {
         ) -> Self {
             Self {
                 payer,
-                tenant,
+                channel_group,
                 channel,
                 current_epoch,
                 new_channel_epoch,
@@ -308,8 +584,8 @@ pub mod accounts {
         pub fn to_account_metas(&self) -> Vec<AccountMeta> {
             vec![
                 AccountMeta::new(self.payer, true),
-                AccountMeta::new_readonly(self.tenant, false),
-                AccountMeta::new_readonly(self.channel, false),
+                AccountMeta::new_readonly(self.channel_group, false),
+                AccountMeta::new(self.channel, false),
                 AccountMeta::new_readonly(self.current_epoch, false),
                 AccountMeta::new(self.new_channel_epoch, false),
                 AccountMeta::new_readonly(self.reward_token_mint, false),
@@ -325,12 +601,9 @@ pub mod accounts {
     /// Accounts for `channel_epoch_finalize`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct ChannelEpochFinalize {
-        pub payer: Address,
-        pub tenant: Address,
         pub channel: Address,
         pub completed_epoch: Address,
         pub completed_channel_epoch: Address,
-        pub channel_epoch_final_snapshot: Address,
         pub clearing_credits_mint: Address,
         pub clearing_credits_escrow_token_account: Address,
     }
@@ -338,22 +611,16 @@ pub mod accounts {
     impl ChannelEpochFinalize {
         /// Build the list from caller-chosen accounts.
         pub fn new(
-            payer: Address,
-            tenant: Address,
             channel: Address,
             completed_epoch: Address,
             completed_channel_epoch: Address,
-            channel_epoch_final_snapshot: Address,
             clearing_credits_mint: Address,
             clearing_credits_escrow_token_account: Address,
         ) -> Self {
             Self {
-                payer,
-                tenant,
                 channel,
                 completed_epoch,
                 completed_channel_epoch,
-                channel_epoch_final_snapshot,
                 clearing_credits_mint,
                 clearing_credits_escrow_token_account,
             }
@@ -362,15 +629,11 @@ pub mod accounts {
         /// Account metas in the order the program expects.
         pub fn to_account_metas(&self) -> Vec<AccountMeta> {
             vec![
-                AccountMeta::new(self.payer, true),
-                AccountMeta::new_readonly(self.tenant, false),
                 AccountMeta::new_readonly(self.channel, false),
                 AccountMeta::new_readonly(self.completed_epoch, false),
-                AccountMeta::new_readonly(self.completed_channel_epoch, false),
-                AccountMeta::new(self.channel_epoch_final_snapshot, false),
-                AccountMeta::new_readonly(self.clearing_credits_mint, false),
-                AccountMeta::new_readonly(self.clearing_credits_escrow_token_account, false),
-                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+                AccountMeta::new(self.completed_channel_epoch, false),
+                AccountMeta::new(self.clearing_credits_mint, false),
+                AccountMeta::new(self.clearing_credits_escrow_token_account, false),
                 AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             ]
         }
@@ -381,7 +644,7 @@ pub mod accounts {
     pub struct ChannelSetDefaultEpochTerms {
         pub authority: Address,
         pub organization: Address,
-        pub tenant: Address,
+        pub channel_group: Address,
         pub channel: Address,
     }
 
@@ -390,13 +653,13 @@ pub mod accounts {
         pub fn new(
             authority: Address,
             organization: Address,
-            tenant: Address,
+            channel_group: Address,
             channel: Address,
         ) -> Self {
             Self {
                 authority,
                 organization,
-                tenant,
+                channel_group,
                 channel,
             }
         }
@@ -406,7 +669,7 @@ pub mod accounts {
             vec![
                 AccountMeta::new_readonly(self.authority, true),
                 AccountMeta::new_readonly(self.organization, false),
-                AccountMeta::new_readonly(self.tenant, false),
+                AccountMeta::new_readonly(self.channel_group, false),
                 AccountMeta::new(self.channel, false),
             ]
         }
@@ -417,7 +680,7 @@ pub mod accounts {
     pub struct ChannelSetDisabled {
         pub authority: Address,
         pub organization: Address,
-        pub tenant: Address,
+        pub channel_group: Address,
         pub channel: Address,
     }
 
@@ -426,13 +689,13 @@ pub mod accounts {
         pub fn new(
             authority: Address,
             organization: Address,
-            tenant: Address,
+            channel_group: Address,
             channel: Address,
         ) -> Self {
             Self {
                 authority,
                 organization,
-                tenant,
+                channel_group,
                 channel,
             }
         }
@@ -442,8 +705,58 @@ pub mod accounts {
             vec![
                 AccountMeta::new_readonly(self.authority, true),
                 AccountMeta::new_readonly(self.organization, false),
-                AccountMeta::new_readonly(self.tenant, false),
+                AccountMeta::new_readonly(self.channel_group, false),
                 AccountMeta::new(self.channel, false),
+            ]
+        }
+    }
+
+    /// Accounts for `create_channel_group`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct CreateChannelGroup {
+        pub payer: Address,
+        pub authority: Address,
+        pub organization: Address,
+        pub channel_group: Address,
+        pub initial_epoch: Address,
+        pub clearing_credits_mint: Address,
+        pub clearing_credits_escrow: Address,
+    }
+
+    impl CreateChannelGroup {
+        /// Build the list from caller-chosen accounts.
+        pub fn new(
+            payer: Address,
+            authority: Address,
+            organization: Address,
+            channel_group: Address,
+            initial_epoch: Address,
+            clearing_credits_mint: Address,
+            clearing_credits_escrow: Address,
+        ) -> Self {
+            Self {
+                payer,
+                authority,
+                organization,
+                channel_group,
+                initial_epoch,
+                clearing_credits_mint,
+                clearing_credits_escrow,
+            }
+        }
+
+        /// Account metas in the order the program expects.
+        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
+            vec![
+                AccountMeta::new(self.payer, true),
+                AccountMeta::new_readonly(self.authority, true),
+                AccountMeta::new(self.organization, false),
+                AccountMeta::new(self.channel_group, false),
+                AccountMeta::new(self.initial_epoch, false),
+                AccountMeta::new_readonly(self.clearing_credits_mint, false),
+                AccountMeta::new(self.clearing_credits_escrow, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             ]
         }
     }
@@ -477,61 +790,11 @@ pub mod accounts {
         }
     }
 
-    /// Accounts for `create_tenant`.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub struct CreateTenant {
-        pub payer: Address,
-        pub authority: Address,
-        pub organization: Address,
-        pub tenant: Address,
-        pub initial_epoch: Address,
-        pub clearing_credits_mint: Address,
-        pub clearing_credits_escrow: Address,
-    }
-
-    impl CreateTenant {
-        /// Build the list from caller-chosen accounts.
-        pub fn new(
-            payer: Address,
-            authority: Address,
-            organization: Address,
-            tenant: Address,
-            initial_epoch: Address,
-            clearing_credits_mint: Address,
-            clearing_credits_escrow: Address,
-        ) -> Self {
-            Self {
-                payer,
-                authority,
-                organization,
-                tenant,
-                initial_epoch,
-                clearing_credits_mint,
-                clearing_credits_escrow,
-            }
-        }
-
-        /// Account metas in the order the program expects.
-        pub fn to_account_metas(&self) -> Vec<AccountMeta> {
-            vec![
-                AccountMeta::new(self.payer, true),
-                AccountMeta::new_readonly(self.authority, true),
-                AccountMeta::new(self.organization, false),
-                AccountMeta::new(self.tenant, false),
-                AccountMeta::new(self.initial_epoch, false),
-                AccountMeta::new_readonly(self.clearing_credits_mint, false),
-                AccountMeta::new(self.clearing_credits_escrow, false),
-                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
-                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-            ]
-        }
-    }
-
     /// Accounts for `epoch_create`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct EpochCreate {
         pub payer: Address,
-        pub tenant: Address,
+        pub channel_group: Address,
         pub current_epoch: Address,
         pub new_epoch: Address,
     }
@@ -540,13 +803,13 @@ pub mod accounts {
         /// Build the list from caller-chosen accounts.
         pub fn new(
             payer: Address,
-            tenant: Address,
+            channel_group: Address,
             current_epoch: Address,
             new_epoch: Address,
         ) -> Self {
             Self {
                 payer,
-                tenant,
+                channel_group,
                 current_epoch,
                 new_epoch,
             }
@@ -556,7 +819,7 @@ pub mod accounts {
         pub fn to_account_metas(&self) -> Vec<AccountMeta> {
             vec![
                 AccountMeta::new(self.payer, true),
-                AccountMeta::new_readonly(self.tenant, false),
+                AccountMeta::new(self.channel_group, false),
                 AccountMeta::new_readonly(self.current_epoch, false),
                 AccountMeta::new(self.new_epoch, false),
                 AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
@@ -569,6 +832,53 @@ pub mod accounts {
 
 /// Instruction builders scoped to one program deployment.
 pub trait MayfRewardClearingInstructions: MayfRewardClearingPda {
+    /// Build the `bidder_position_claim` instruction.
+    fn bidder_position_claim(&self, accounts: &self::accounts::BidderPositionClaim) -> Instruction {
+        Instruction {
+            program_id: self.program(),
+            accounts: accounts.to_account_metas(),
+            data: self::args::BidderPositionClaim.to_instruction_data(),
+        }
+    }
+
+    /// Build the `bidder_position_create` instruction.
+    fn bidder_position_create(
+        &self,
+        accounts: &self::accounts::BidderPositionCreate,
+    ) -> Instruction {
+        Instruction {
+            program_id: self.program(),
+            accounts: accounts.to_account_metas(),
+            data: self::args::BidderPositionCreate.to_instruction_data(),
+        }
+    }
+
+    /// Build the `bidder_position_deposit` instruction.
+    fn bidder_position_deposit(
+        &self,
+        accounts: &self::accounts::BidderPositionDeposit,
+        amount: u64,
+    ) -> Instruction {
+        Instruction {
+            program_id: self.program(),
+            accounts: accounts.to_account_metas(),
+            data: self::args::BidderPositionDeposit { amount }.to_instruction_data(),
+        }
+    }
+
+    /// Build the `bidder_position_withdraw` instruction.
+    fn bidder_position_withdraw(
+        &self,
+        accounts: &self::accounts::BidderPositionWithdraw,
+        amount: u64,
+    ) -> Instruction {
+        Instruction {
+            program_id: self.program(),
+            accounts: accounts.to_account_metas(),
+            data: self::args::BidderPositionWithdraw { amount }.to_instruction_data(),
+        }
+    }
+
     /// Build the `channel_create` instruction.
     fn channel_create(
         &self,
@@ -642,25 +952,25 @@ pub trait MayfRewardClearingInstructions: MayfRewardClearingPda {
         }
     }
 
+    /// Build the `create_channel_group` instruction.
+    fn create_channel_group(
+        &self,
+        accounts: &self::accounts::CreateChannelGroup,
+        args: CreateChannelGroupArgs,
+    ) -> Instruction {
+        Instruction {
+            program_id: self.program(),
+            accounts: accounts.to_account_metas(),
+            data: self::args::CreateChannelGroup { args }.to_instruction_data(),
+        }
+    }
+
     /// Build the `create_organization` instruction.
     fn create_organization(&self, accounts: &self::accounts::CreateOrganization) -> Instruction {
         Instruction {
             program_id: self.program(),
             accounts: accounts.to_account_metas(),
             data: self::args::CreateOrganization.to_instruction_data(),
-        }
-    }
-
-    /// Build the `create_tenant` instruction.
-    fn create_tenant(
-        &self,
-        accounts: &self::accounts::CreateTenant,
-        args: CreateTenantArgs,
-    ) -> Instruction {
-        Instruction {
-            program_id: self.program(),
-            accounts: accounts.to_account_metas(),
-            data: self::args::CreateTenant { args }.to_instruction_data(),
         }
     }
 
