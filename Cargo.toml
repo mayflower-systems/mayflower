@@ -30,7 +30,6 @@ mayf-fixed-drivers = { path = "fixed-number/mayf-fixed-drivers", version = "0.1.
 mayf-micro-basis-points = { path = "fixed-number/mayf-micro-basis-points", version = "0.1.0" }
 mayf-sol-log-sink-id = { path = "sol-log-sink/mayf-sol-log-sink-id", version = "1.0.0" }
 mayf-sol-log-sink-cpi = { path = "sol-log-sink/mayf-sol-log-sink-cpi", version = "1.0.0" }
-referral-tree = { path = "referral/rust/referral-tree", version = "0.1.0" }
 mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
 mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0" }
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }

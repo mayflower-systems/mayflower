@@ -1473,14 +1473,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "referral-tree"
-version = "0.1.0"
-dependencies = [
- "mayf-fixed-drivers",
- "mayf-fixed-number",
-]
-
-[[package]]
 name = "regex"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
