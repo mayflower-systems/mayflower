@@ -15,10 +15,10 @@ assets, or reward schedule. The caller picks a fixed-point type that implements
 `mayf_fixed_number::FixedNumber`, and an integer clock unit. Every action takes
 the current state and returns replacement state.
 
-The Mayflower consumer, `mayf-referral`, fixes its numeric policy: compact
-`U64F64` rates widen exactly onto the `U192F64` accounting grid. It exposes
-concrete tree configuration and state types while this library remains generic
-for other consumers and arithmetic implementations.
+The Mayflower kernel, `mayf-referral`, applies the same attribution and sharing
+rules to credit emissions. It runs them on each lane's reward index instead of a
+clock, so they pay credits directly. This library remains the generic reference
+for the rules, over any fixed-point type.
 
 ## Terms
 
@@ -325,5 +325,5 @@ code.
 
 ## Related crate
 
-The `mayf-referral` crate supplies the membership records: identities,
-permanent paths, admission offers, and per-scope deposits.
+The `mayf-referral` crate is Mayflower's kernel: membership, join offers,
+gauge-weighted emission, and per-lane rewards that follow these rules.
