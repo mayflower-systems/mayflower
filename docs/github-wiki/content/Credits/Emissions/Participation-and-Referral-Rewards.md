@@ -12,8 +12,9 @@ tags:
 After [channel weights](Emission-Channel-Weighting) allocate the
 common stream among channels, each channel divides its allocation among eligible
 participants using the shared [Referral Network](Referral-Network). The
-network's tree is shared across channels; points, accumulated rewards, and
-mutualization policies are tracked separately for each channel.
+network's tree is shared across channels; points and accumulated rewards are
+tracked separately for each channel, while a member's sharing fraction applies
+in every channel.
 
 ## Eligible points
 
@@ -55,20 +56,24 @@ their original 100-point deposits.
 
 ## Voluntary mutualization
 
-A member can choose a sharing fraction from 0% to 100% for a channel. The
-fraction applies to its core earnings plus incoming gifts. Direct children
-divide that amount by their own points in that channel, and can share receipts
-onward. A zero-own-point child receives no gift, though it can earn from
-its downline. When direct children have no own points, the parent retains the
-available amount.
+A member can choose one sharing fraction from 0% to 100%, and it applies in
+every channel. In each channel, the fraction applies to the member's core
+earnings in that channel. Direct children divide that amount by their own points
+in that channel. A child keeps its gift whole and does not share it onward, so a
+gift passes down exactly one level. A zero-own-point child receives no gift,
+though it can earn from its downline. When direct children have no own points,
+the parent retains its core earnings.
 
-Continuing the example, if Alice shares 50% with Bob and Bob shares 25% of his
-available earnings with Charlie, final retained rewards are Alice 6, Bob 12, and
-Charlie 12 credits. The total is the same 30 credits.
+Continuing the example, if Alice shares 50% of her core earnings with Bob and
+Bob shares 25% of his with Charlie, Alice gifts Bob 6 credits and Bob gifts
+Charlie 2.5. Bob keeps Alice's gift whole. Final retained rewards are Alice 6,
+Bob 13.5, and Charlie 10.5 credits. The total is the same 30 credits.
 [Mutualization](Mutualization) explains the calculation and
 its rounding.
 
-Points and sharing choices are settled under their old values before a change.
-The new values apply only to subsequent accrual. A member's final retained
+Points are settled under their old values before a change, and new points apply
+only to subsequent accrual. A sharing change takes effect in each channel at
+that channel's next settlement; it never reaches back into credits already
+earned. A member's final retained
 credit—not its gross source attribution or the amount it shares away—is the
 amount it can collect.

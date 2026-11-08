@@ -1,8 +1,8 @@
 <!--
 title: Mutualization
 summary:
-  How members voluntarily share their core earnings and incoming gifts with
-  direct children, in proportion to those children's own points.
+  How members voluntarily share their core earnings with direct children, in
+  proportion to those children's own points.
 tags:
   - referral
   - tokenomics
@@ -10,26 +10,26 @@ tags:
 
 Mutualization is voluntary sharing down a [referral tree](Referral-Network).
 After core attribution assigns a member earnings from its own points and
-downline, the member can share a chosen fraction of its available earnings
-with its direct children. Available earnings include both core earnings and any
-gift received from the member's parent. A child can share part of its receipt
-onward.
+downline, the member can share a chosen fraction of those core earnings with
+its direct children. A gift received from the member's parent is kept whole and
+is never shared onward, so a gift passes down exactly one level.
 
 ## How a gift is divided
 
-Let a parent have available earnings $A$, sharing fraction $\mu$, and direct
+Let a parent have core earnings $E$, sharing fraction $\mu$, and direct
 children with own points $p_1,p_2,\ldots$. Let $Z=\sum_c p_c$. When $Z>0$, child
 $c$ receives, in ideal arithmetic,
 
-$$G_c=\mu A\frac{p_c}{Z}.$$
+$$G_c=\mu E\frac{p_c}{Z}.$$
 
-The parent retains $(1-\mu)A$. Children's **own** points determine their
-proportions; their downlines' points do not enter this particular split. A
+The parent retains $(1-\mu)E$, plus the whole of any gift from its own parent.
+Children's **own** points determine their proportions; their downlines' points
+do not enter this particular split. A
 child with zero own points receives no parent gift, although its downline can
-still generate core earnings for it. If $Z=0$, the parent retains all available
+still generate core earnings for it. If $Z=0$, the parent retains all its
 earnings.
 
-The parent's gift is paid from its own available allocation. Sharing changes who
+The parent's gift is paid from its own core earnings. Sharing changes who
 retains existing earnings; it does not increase the reward budget. A gift goes
 downward and does not pay overrides a second time.
 
@@ -42,12 +42,12 @@ and 8.
 
 1. Alice chooses to share 50%. Bob is her only direct child with own points, so
    Alice retains 6 and gives Bob 6.
-2. Bob now has 16 available: 10 core earnings plus Alice's gift of 6. He chooses
-   to share 25%. Charlie is his only direct child with own points, so Bob
-   retains 12 and gives Charlie 4.
-3. Charlie has 12 available: 8 core earnings plus Bob's gift of 4. If Charlie
-   shares nothing, the final retained earnings are Alice 6, Bob 12, and
-   Charlie 12.
+2. Bob chooses to share 25% of his 10 core earnings. Charlie is his only direct
+   child with own points, so Bob gives Charlie 2.5. Bob keeps the other 7.5 and
+   Alice's gift of 6 whole, so he retains 13.5.
+3. Charlie retains 10.5: 8 core earnings plus Bob's gift of 2.5. Bob's gift came
+   from his own core earnings, not from Alice's gift. The final retained
+   earnings are Alice 6, Bob 13.5, and Charlie 10.5.
 
 The three retained amounts sum to the original 30 reward units. If Alice has
 another direct child with the same own points as Bob, her gift is divided
@@ -56,16 +56,19 @@ their proportions of that particular gift.
 
 ## Sharing offers change over time
 
-Each node owner chooses its sharing fraction separately for each emission
-channel. The fraction starts at zero and can be changed for future earnings in
-that channel. Earnings accrued before a change use the earlier fraction and
-point balances. A new child or newly activated deposit participates from that
-point forward; it does not receive earlier gifts. If a parent had no direct
-children with positive own points during an interval, it retains that interval's
-available earnings.
+Each node owner chooses one sharing fraction, and it applies in every emission
+channel. In each channel, the parent shares that fraction of what it earned in
+that channel, and its children divide the gift by their own points in that
+channel. The credits a member keeps from every channel gather in one balance.
+The fraction starts at zero and can be changed for future earnings. A change
+applies in each channel from that channel's next settlement; earnings accrued
+before then use the earlier fraction. A new child or newly activated deposit
+participates from that point forward; it does not receive earlier gifts. If a
+parent had no direct children with positive own points during an interval, it
+retains that interval's core earnings.
 
 A sharing percentage alone does not determine a child's reward. The parent's
-available earnings set the size of the pool, and all direct children's own
+core earnings set the size of the pool, and all direct children's own
 points determine how that pool is divided. A parent can have children it
 controls itself; their points participate in the same division and reduce the
 fraction available to other children.

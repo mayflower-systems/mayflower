@@ -36,14 +36,14 @@ flowchart TB
     C -. "10% of Charlie's points" .-> B
     C -. "10% of Charlie's points" .-> A
     B -. "10% of Bob's points" .-> A
-    A == "optional share of Alice's earnings" ==> B
-    B == "optional share of Bob's available earnings" ==> C
+    A == "optional share of Alice's core earnings" ==> B
+    B == "optional share of Bob's core earnings" ==> C
 ```
 
 Overrides are calculated from each source's own points. A gift is a portion of the
-parent's available earnings, divided among its direct children by their own
-points. Gifts can be shared onward but do not generate a second round of
-overrides.
+parent's core earnings, divided among its direct children by their own
+points. A child keeps its gift: gifts are not shared onward and do not generate
+a second round of overrides.
 
 ## From rewards to final earnings
 

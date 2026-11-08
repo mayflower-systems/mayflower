@@ -22,10 +22,9 @@ two channels have weights of 75 and 25 credits, they receive 75% and 25% of
 subsequent emission in ideal arithmetic. A channel with no weight receives none
 while another channel has weight.
 
-If no credits are pledged to any channel, the stream is divided equally among
-all registered channels. A channel with no eligible points still receives its
-allocation, but that amount is unallocated within the empty channel rather than
-redistributed to the others.
+A channel with no eligible points still receives its allocation, but that
+amount is unallocated within the empty channel rather than redistributed to the
+others.
 
 ## Holding and changing a pledge
 

@@ -47,27 +47,30 @@ than an automatic default.
 
 ## Voluntary sharing
 
-Each node owner chooses a sharing fraction $\mu$ from 0% to 100% for each
-channel, initially 0%. It applies to that member's core earnings plus incoming
-gifts, divided among direct children in proportion to their own points. If those
-children have no own points, the member retains the full amount. A member's
-sharing policy can change for future earnings; the previous policy determines
+Each node owner chooses one sharing fraction $\mu$ from 0% to 100%, initially
+0%, and it applies in every channel. In each channel, the member shares $\mu$ of
+its core earnings in that channel, divided among direct children in proportion
+to their own points in that channel. The member keeps incoming gifts in full and
+does not share them onward. If those children have no own points, the member
+retains the full amount. A member's sharing policy can change for future
+earnings, from each channel's next settlement; the previous policy determines
 the attribution of earlier earnings.
 
 Overrides and sharing play different roles. An override sends a fixed fraction
 of every source's own attribution upward to each upline member. Mutualization sends a
-member's chosen fraction of available earnings downward to its direct children.
+member's chosen fraction of its core earnings downward to its direct children.
 Both redistribute the same underlying participation or reward; neither creates a
 new budget.
 
 ## Joining offers
 
-A node owner can offer positions beneath its node, subject to the network's
-maximum depth. The offer sets the current joining fee and the increment added to
-that fee after each successful join. The owner may change those values, close
-the offer, or replace it; changes affect future joins and leave existing
-uplines intact. [Link Shopping](Link-Shopping) explains how
-admission terms and sharing affect a prospective member's choice.
+Every node offers positions beneath it, subject to the network's maximum depth.
+The offer sets the current joining fee and the increment added to that fee after
+each successful join. The owner may change those values at any time; changes
+affect future joins and leave existing uplines intact. Top-level seats have no
+parent node; the protocol offers them under its own joining offer, which it may
+also change at any time. [Link Shopping](Link-Shopping) explains how admission
+terms and sharing affect a prospective member's choice.
 
 The network's maximum depth and override rate are fixed for its lifetime. A node
 owner's joining offer and voluntary sharing policy do not change those network

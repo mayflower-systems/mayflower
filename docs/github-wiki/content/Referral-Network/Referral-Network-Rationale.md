@@ -78,9 +78,9 @@ path.
 
 A parent can offer mutualization to attract or retain productive children. The
 sharing fraction alone is not the whole offer. A child's share also depends on
-the parent's available earnings, the child's own points, and the own points of
+the parent's core earnings, the child's own points, and the own points of
 the parent's other direct children. A parent can itself receive gifts from
-above, which increase the available amount it can share onward.
+above, but it keeps them; they do not enlarge the amount it shares onward.
 
 Children a parent controls participate in the same pro-rata division as other
 children. Their presence reduces each other child's fraction of the pool.

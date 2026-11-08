@@ -12,9 +12,9 @@ The Referral Network rewards both participation and productive recruitment. Each
 participant has a position in a referral tree and can contribute points through
 eligible deposits. A deposit's points are divided between the depositor and its
 upline: each upline member receives the same fixed fraction, and the depositor
-retains the rest. A participant can also choose to share part of its earnings
-with its direct children. These rules redistribute a fixed reward allocation;
-they do not create additional points or emission.
+retains the rest. A participant can also choose to share part of its core
+earnings with its direct children. These rules redistribute a fixed reward
+allocation; they do not create additional points or emission.
 
 In Mayflower, the network divides a channel's allocation of
 [Mayflower credits](Mayflower-Credits) among members. Eligible deposited collateral
@@ -39,9 +39,9 @@ outlet's allocation is divided, not the size of the overall emission schedule.
 - **Core points:** the points a member retains from its own deposit plus
   overrides from its whole downline. These determine the member's allocation before
   voluntary sharing.
-- **Mutualization:** a member can share a chosen fraction of its available
-  earnings with direct children, in proportion to their own points. Children can
-  share their receipts onward.
+- **Mutualization:** a member can share a chosen fraction of its core
+  earnings with direct children, in proportion to their own points. Children keep
+  these gifts and do not share them onward.
 
 ## How core allocation works
 
@@ -71,16 +71,17 @@ Mayflower supplies and distributes rewards.
 ## How voluntary sharing works
 
 Each member chooses a sharing fraction from 0% to 100%, initially 0%. The
-fraction applies to its available earnings: its own core earnings plus gifts
-received from its parent. Direct children divide the shared amount according to
-their own points. A child may retain its gift or share part onward under its own
-policy. Gifts do not pay overrides again.
+fraction applies only to its own core earnings. Direct children divide the shared
+amount according to their own points. A child keeps its whole gift and does not
+share it onward, so a gift passes down exactly one level. Gifts do not pay
+overrides again.
 
 A child with zero own points receives no gift from its parent, even if it earns
 overrides from its downline. If all direct children have zero own points, the
-parent retains its available earnings. Sharing fractions can change for future
-earnings; past earnings remain attributed under the policy and point balances in
-effect when they accrued.
+parent retains its core earnings. Sharing fractions can change for future
+earnings, from each channel's next settlement; earlier earnings remain
+attributed under the earlier policy and the point balances in effect when they
+accrued.
 
 ## Why use a network?
 
@@ -91,8 +92,8 @@ parent's own deposit. Shallower positions retain more of their own attribution
 and have more remaining recruiting depth.
 
 Mutualization lets a parent make its position more attractive to children by
-sharing some of its earnings. The amount a child receives depends on the
-parent's earnings, its sharing fraction, and the points of the other direct
+sharing some of its core earnings. The amount a child receives depends on the
+parent's core earnings, its sharing fraction, and the points of the other direct
 children. These economic choices are explained in
 [Strategic Rationale](Referral-Network-Rationale) and
 [Link Shopping](Link-Shopping).
@@ -118,6 +119,7 @@ Membership is required for collateral to count as emission points. Joining
 activates eligible points prospectively; it does not create rewards for earlier
 periods. Using the AVM and pledging credits to channels do not require referral
 membership. The [emission system](Credit-Emissions) uses the same tree
-across channels, with separate points, earnings, and sharing for each channel.
+across channels, with separate points, earnings, and gifts for each channel. A
+member's one sharing fraction applies in every channel.
 Earned credits can be pledged to channels or used in
 [revenue clearing](Revenue-Clearing).

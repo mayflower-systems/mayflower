@@ -25,8 +25,8 @@ $$J(t)=\int\frac{e(t)}{P(t)}\,dt.$$
 A member's core points, which already include overrides, earn according
 to the change in $J$ while those points are active.
 [Mutualization](Mutualization) can share the resulting
-earnings down to children, who can share receipts onward. A member's reward
-entitlement is what it retains after sharing.
+earnings down to direct children, who keep those gifts and do not share them
+onward. A member's reward entitlement is what it retains after sharing.
 
 Time matters. Suppose a channel has 200 points throughout two one-hour periods
 and receives 10 credits in the first hour and 90 in the second. A position with
@@ -36,28 +36,32 @@ their rewards differ. Point-time and a single average rate cannot reconstruct
 the reward history when participation and emission vary independently.
 
 The accounting preserves this history for rewards and for gifts passed to
-children. Channel pledges, eligible points, and sharing policies are applied to
-the intervals in which they were in force. A change first settles the preceding
-interval, then takes effect prospectively. This keeps newly registered channels,
+children. Channel pledges and eligible points are applied to the intervals in
+which they were in force. A change first settles the preceding interval, then
+takes effect prospectively. A sharing change takes effect in each channel at
+that channel's next settlement, so it never reaches back into credits already
+earned. This keeps newly registered channels,
 new members, new deposits, and new policies from claiming earlier allocations.
 
 ## Applying referral sharing to rewards
 
 For an interval in which balances and policies are unchanged, let $b_i$ be
 member $i$'s core points, $p_i$ its own points, and $\Delta J$ the channel's
-reward-per-point increment. Let $\Delta T_{parent(i)}$ be the reward shared by
-its parent per unit of direct-child own points. The member's available reward
-is, in ideal arithmetic,
+reward-per-point increment. The member's core earnings are $E_i=b_i\Delta J$.
+Let $\Delta T_{parent(i)}$ be the reward shared by its parent per unit of
+direct-child own points, so the member receives gifts
+$G_i=p_i\Delta T_{parent(i)}$. For a top member, $G_i=0$. If the member shares
+fraction $\mu_i$ and its direct children have total own points $Z_i>0$, its
+outgoing reward per child point is, in ideal arithmetic,
+$\Delta T_i=\mu_i E_i/Z_i$; otherwise it shares nothing. Its retained reward is
 
-$$A_i=b_i\Delta J+p_i\Delta T_{parent(i)}.$$
+$$H_i=E_i-Z_i\Delta T_i+G_i.$$
 
-For a top member, the incoming term is zero. If the member shares fraction
-$\mu_i$ and its direct children have total own points $Z_i>0$, its outgoing
-reward per child point is $\Delta T_i=\mu_i A_i/Z_i$; otherwise it shares
-nothing. Its retained reward is $A_i-Z_i\Delta T_i$. Children receive their own
-points multiplied by that outgoing index and can share their receipts onward.
-This is the referral rule applied to actual reward history, separately from
-ordinary point-time.
+The member shares only its core earnings. Children receive their own points
+multiplied by that outgoing index and keep those gifts whole, so a gift passes
+down exactly one level. The same $\mu_i$ applies in every channel, while $b_i$,
+$p_i$, $Z_i$, and $\Delta J$ belong to the channel. This is the referral rule
+applied to actual reward history, separately from ordinary point-time.
 
 ## Point indexes and residuals
 
@@ -81,8 +85,9 @@ extra claim.
 
 ## Collection and supply
 
-A member can collect its final retained reward entitlement for a channel in
-whole credit base units. Collection debits that entitlement and issues the
+A member's final retained reward entitlement from every channel gathers in one
+balance, because there is one credits token. The member can collect it in whole
+credit base units. Collection debits that entitlement and issues the
 corresponding credits. Fractional entitlement remains accounted for until enough
 is available to collect a whole unit. A source's gross point attribution is not
 an independent claim: the one claim is the retained referral entitlement after

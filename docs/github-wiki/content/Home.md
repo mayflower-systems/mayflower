@@ -113,12 +113,10 @@ constant positive decay has a finite ideal tail; pausing decay at a positive
 rate permits indefinite issuance. A non-increasing rate therefore does not imply
 an immutable lifetime-supply ceiling.
 
-**Channel weighting.** Pledged credits set proportional outlet shares whenever
-any channel has weight. If every outlet has zero weight, all registered outlets
-share equally. Emission with no outlets remains unallocated; an outlet with no
-points also records its allocation as unallocated. Later arrivals cannot claim
-those intervals. Pledge changes settle the elapsed interval first, so adding or
-withdrawing a pledge affects only subsequent allocation.
+**Channel weighting.** Pledged credits set proportional outlet shares. An outlet
+with no points records its allocation as unallocated, and later arrivals cannot
+claim those intervals. Pledge changes settle the elapsed interval first, so
+adding or withdrawing a pledge affects only subsequent allocation.
 
 **Membership and points.** Reserve requires membership for emission points. Each
 deposited AVA base unit contributes one point after enrollment, and each market
@@ -144,15 +142,17 @@ owned intermediaries above a new outside recruit. Higher layers retain more of
 their own attribution and have more recruiting depth; admission terms determine
 access to those positions.
 
-**Mutualization.** A parent may share a chosen fraction of its core earnings
-plus incoming gifts. Direct children divide that pool by their own points in the
-same outlet, and may share receipts onward. Self-owned children can receive
-gifts; their presence dilutes the offer to other children. Sharing policies
-apply prospectively after settlement, while an accepted upline is permanent.
+**Mutualization.** A parent may share a chosen fraction of its core
+earnings. The same fraction applies in every outlet. In each outlet, direct
+children divide the shared amount by their own points in that outlet. Children
+keep received gifts whole and never share them onward. Self-owned children can
+receive gifts; their presence dilutes the offer to other children. A sharing
+change applies in each outlet from that outlet's next settlement, while an
+accepted upline is permanent.
 Gifts redistribute existing earnings and never pay overrides again.
 
-**Settlement.** Point balances and policies settle under their previous values
-before a change takes effect. Emission-weighted accounting preserves how
+**Settlement.** Point balances settle under their previous values before a
+change takes effect. Emission-weighted accounting preserves how
 participation and rewards varied over time; referral sharing divides earned
 rewards without creating another reward budget.
 [Emission accounting](Emission-Accounting) explains how collected

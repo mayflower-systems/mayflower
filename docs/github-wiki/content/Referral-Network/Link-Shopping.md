@@ -15,22 +15,27 @@ means comparing both the position and the parent's voluntary sharing policy.
 
 ## Admission offers
 
-A node owner can publish one active offer for new members to join directly
-beneath that node, provided another participating level is available. The offer
-specifies a current joining fee and a nonnegative increment. A successful join
-pays the current fee to the parent node's owner, then increases that offer's fee
-by the increment for the next join. A zero fee or zero increment is possible.
+Every node has an open offer for new members to join directly beneath it,
+provided another participating level is available. The offer specifies a current
+joining fee and a nonnegative increment. A successful join pays the current fee
+to the parent node's owner, then increases the fee by the increment for the next
+join. A new member sets the offer of its own node when it joins.
+
+A top-level seat has no parent. The protocol sells top-level seats under its own
+offer, which works the same way: each join pays the current fee to the protocol,
+then raises the fee by the increment. The protocol can change that offer at any
+time.
 
 For example, an offer with a fee of 10 units and an increment of 2 charges
 successive joiners 10, 12, and 14 units if its owner makes no intervening
 change. A prospective member specifies the maximum fee it is willing to pay when
 joining; the join fails if the current fee exceeds that maximum.
 
-The node owner can change the fee or increment for future joins, close the
-offer, or replace it with a new one. These actions do not change the upline of
-members who have already joined. The admission fee is separate from the member's
-points, overrides, and voluntary sharing: paying it does not create an
-additional emission allocation.
+The node owner can change the fee and the increment at any time. A change
+applies to future joins and does not change the upline of members who have
+already joined. The admission fee is separate from the member's points,
+overrides, and voluntary sharing: paying it does not create an additional
+emission allocation.
 
 ## Position and depth
 
@@ -44,22 +49,21 @@ its own-point attribution, a member at depth 1 retains 90%, and a member at
 depth 2 retains 80%. A depth-1 member can earn overrides from a child at depth 2.
 A depth-2 member has no remaining participating depth for children.
 
-Depth is one part of the offer. Availability and the admission price depend on
-the active offer for that position. A member may have a position with no own
-points and earn from a productive downline, but its position and the downline's
-deposits determine those earnings.
+Depth is one part of the offer, and the parent's current fee is another. A
+member may have a position with no own points and earn from a productive
+downline, but its position and the downline's deposits determine those earnings.
 
 ## Parent's sharing offer
 
-A parent may share a fraction of its available earnings with its direct
+A parent may share a fraction of its core earnings with its direct
 children. In ideal arithmetic, a child with own points $p$ receives
 
-$$\text{gift}=\mu A\frac{p}{Z},$$
+$$\text{gift}=\mu E\frac{p}{Z},$$
 
-where $\mu$ is the parent's sharing fraction, $A$ is the parent's available
+where $\mu$ is the parent's sharing fraction, $E$ is the parent's core
 earnings for the period, and $Z$ is the sum of the direct children's own points.
-The available amount includes the parent's core earnings and gifts it receives
-from above.
+Gifts the parent receives from above are not part of $E$; the parent keeps them.
+A child likewise keeps its whole gift and does not share it onward.
 
 A higher sharing fraction allocates more of a given pool to children, but a
 percentage alone does not determine the amount a child receives. The pool can
