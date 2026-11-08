@@ -4,9 +4,12 @@ members = [
     "fixed-number/*",
     "sol-log-sink/*",
     "reward-clearing/rust/*",
-    "reward-clearing/sol/*",
+    "reward-clearing/sol-programs/*/prog",
+    "reward-clearing/sol-programs/*/cpi",
     "referral/rust/*",
     "avm/rust/*",
+    "avm/sol-programs/*/prog",
+    "avm/sol-programs/*/cpi",
     "sol-tools/rust/*",
 ]
 
@@ -33,9 +36,12 @@ mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0"
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
 mayf-characteristic-linear-driver = { path = "avm/rust/mayf-characteristic-linear-driver", version = "0.1.0" }
 mayf-avm-calculator = { path = "avm/rust/mayf-avm-calculator", version = "0.1.0" }
+mayf-avm-engine-linear-sol = { path = "avm/sol-programs/linear-engine/prog", version = "0.1.0" }
+mayf-avm-engine-linear-sol-cpi = { path = "avm/sol-programs/linear-engine/cpi", version = "0.1.0" }
 mayf-spl-token = { path = "sol-tools/rust/mayf-spl-token", version = "0.1.0" }
 mayf-reward-clearing = { path = "reward-clearing/rust/mayf-reward-clearing", version = "0.1.0" }
-mayf-reward-clearing-sol = { path = "reward-clearing/sol/mayf-reward-clearing-sol", version = "0.1.0" }
+mayf-reward-clearing-sol = { path = "reward-clearing/sol-programs/reward-clearing/prog", version = "0.1.0" }
+mayf-reward-clearing-sol-cpi = { path = "reward-clearing/sol-programs/reward-clearing/cpi", version = "0.1.0" }
 
 # Third-party crates.
 # Declare every third-party crate here, once, with an exact `=` pin.
@@ -49,6 +55,7 @@ anchor-lang = "=1.1.2"
 anchor-lang-idl = "=0.1.4"
 anchor-spl = "=1.1.2"
 anyhow = "=1.0.104"
+borsh = "=1.8.1"
 clap = "=4.6.7"
 crypto-bigint = { version = "=0.5.5", default-features = false }
 dashu = { version = "=0.4.4", default-features = false }
@@ -56,6 +63,7 @@ fixed = { version = "=1.28.0", default-features = false }
 serde_json = "=1.0.154"
 solana-account-view = { version = "=2.1.0", default-features = false }
 solana-address = { version = "=2.9.0", default-features = false }
+solana-instruction = "=3.5.1"
 # The fixed-size CPI helper borrows data; the allocating `slice-cpi` API is disabled.
 solana-instruction-view = { version = "=2.1.0", default-features = false, features = ["cpi"] }
 solana-message = "=4.6.0"

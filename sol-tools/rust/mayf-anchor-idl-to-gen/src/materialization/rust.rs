@@ -1389,7 +1389,7 @@ fn errors(out: &mut String, program: &ProgramData, name: &str) {
 
 // ---------------------------------------------------------------- naming
 
-/// `initialize_tenant` -> `InitializeTenant`.
+/// `initialize_channel_group` -> `InitializeChannelGroup`.
 fn to_camel_case(snake: &str) -> String {
     snake
         .split('_')

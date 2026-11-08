@@ -8,9 +8,11 @@ use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
 use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
+use crate::models::channel_group::ChannelGroup;
 use crate::models::epoch::Epoch;
 
 pub struct WithdrawCreditsArgs<I: Identifiable, N: FixedNumber> {
+    pub channel_group: ChannelGroup<I>,
     pub bidder_position: BidderPosition<I, N>,
     pub channel: Channel<I, N>,
     pub channel_epoch: ChannelEpoch<I, N>,
@@ -40,7 +42,8 @@ where
     I: Identifiable,
     N: IntegralRounding,
 {
-    args.epoch.validate_active(args.now)?;
+    args.channel_epoch.validate_unfinalized()?;
+    args.epoch.validate_active(&args.channel_group, args.now)?;
     args.channel_epoch
         .validate_channel_and_epoch(&args.channel, &args.epoch)?;
     args.bidder_position
@@ -97,6 +100,7 @@ mod tests {
         credits_to_withdraw: Amount,
     ) -> Result<WithdrawCreditsReceipt<Id, Number>> {
         withdraw_credits(WithdrawCreditsArgs {
+            channel_group: channel_group(),
             bidder_position: from.bidder_position_next,
             channel: channel(),
             channel_epoch: from.channel_epoch_next,
@@ -208,6 +212,7 @@ mod tests {
         });
 
         let withdrawn = withdraw_credits(WithdrawCreditsArgs {
+            channel_group: channel_group(),
             bidder_position: position,
             channel: channel(),
             channel_epoch,

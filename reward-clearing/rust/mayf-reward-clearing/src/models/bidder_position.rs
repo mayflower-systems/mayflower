@@ -31,6 +31,15 @@ pub struct BidderLot<I: Identifiable, N: FixedNumber> {
 }
 
 impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
+    pub fn new(id: I, channel_epoch_id: ChannelEpochId<I>) -> Self {
+        Self {
+            id,
+            channel_epoch_id,
+            lots: Vec::new(),
+            claimed: false,
+        }
+    }
+
     pub fn validate_channel_epoch(&self, channel_epoch: &ChannelEpoch<I, N>) -> Result<()> {
         if self.channel_epoch_id != channel_epoch.id() {
             return Err(RewardClearingError::BidderPositionChannelEpochMismatch);

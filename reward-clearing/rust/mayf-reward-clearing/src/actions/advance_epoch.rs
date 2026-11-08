@@ -22,21 +22,12 @@ where
         return Err(RewardClearingError::EpochNotEnded);
     }
 
-    args.current_epoch
-        .validate_channel_group(&args.channel_group)?;
-
-    if args.current_epoch.epoch_counter != args.channel_group.current_epoch_index {
-        return Err(RewardClearingError::ChannelGroupCounterMismatch);
-    }
+    args.current_epoch.validate_current(&args.channel_group)?;
 
     // the new epoch starts at the end time of the current epoch
     let start_time_unix_seconds = args.current_epoch.end_time_unix_seconds()?;
 
-    let next_epoch_counter = args
-        .channel_group
-        .current_epoch_index
-        .checked_add(1)
-        .ok_or(RewardClearingError::EpochCounterOverflow)?;
+    let next_epoch_counter = args.channel_group.next_epoch_index()?;
 
     let new_epoch = Epoch::new(
         args.channel_group.id,
@@ -44,6 +35,7 @@ where
         start_time_unix_seconds,
         args.channel_group.epoch_duration_seconds,
     );
+    new_epoch.end_time_unix_seconds()?;
 
     let channel_group_next = ChannelGroup {
         id: args.channel_group.id,
@@ -113,5 +105,24 @@ mod tests {
 
         let result = advance(channel_group, START + DURATION);
         assert_eq!(result.err(), Some(E::EpochChannelGroupMismatch));
+    }
+
+    #[test]
+    fn rejects_an_unrepresentable_successor_end() {
+        use crate::{CreateChannelGroupArgs, MIN_EPOCH_DURATION_SECONDS, create_channel_group};
+
+        let created = create_channel_group(CreateChannelGroupArgs {
+            channel_group_id: CHANNEL_GROUP,
+            master_start_time_unix_seconds: u64::MAX - MIN_EPOCH_DURATION_SECONDS,
+            epoch_duration_seconds: MIN_EPOCH_DURATION_SECONDS,
+        })
+        .unwrap();
+        let result = advance_epoch(AdvanceEpochArgs {
+            now: u64::MAX,
+            channel_group: created.new_channel_group,
+            current_epoch: created.initial_epoch,
+        });
+
+        assert_eq!(result.err(), Some(E::EpochEndTimeOverflow));
     }
 }

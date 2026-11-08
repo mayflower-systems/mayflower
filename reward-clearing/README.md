@@ -1,56 +1,66 @@
 # Reward Clearing
 
+The [Solana program](sol-programs/reward-clearing/README.md) uses the
+`prog/`, `bin/`, `cpi/`, and `idl/` layout. Run
+`./reward-clearing/sol-programs/reward-clearing/build.sh` from the repository
+root to build its binary, IDL, and generated CPI crate.
+
 ## State and parameters
 
-The [algorithm state types](rust/mayf-reward-clearing/src/state.rs) carry:
+The [algorithm state types](rust/mayf-reward-clearing/src/models.rs) carry:
 
 | State           | Essential data                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Epoch schedule  | Immutable master start `t0` and duration `T`, shared by synchronized channels.                                                    |
-| Active epoch    | Schedule/counter, immutable terms, accepted principal `A`, surviving shares `S`, tracked net reward `R`.                          |
-| Lot             | Whole remaining principal `Aij`, remaining shares `Sij`, original entry weight.                                                   |
-| Position        | Aggregate principal and shares, and whether its entitlement has been claimed.                                                     |
-| Finalized epoch | Schedule and terms, immutable settlement totals `S*` and `R*`, remaining unclaimed shares `U` and reward `V`; no principal field. |
+| Channel epoch   | Channel/counter, immutable terms, accepted principal `A`, surviving shares `S`, tracked net reward `R`.                           |
+| Lot             | Whole remaining principal `Aij` and remaining shares `Sij`.                                                                      |
+| Position        | Channel epoch identity, ordered lots, and whether its entitlement has been claimed.                                              |
+| Finalized epoch | Frozen settlement totals `S*` and `R*`, remaining unclaimed shares `U` and reward `V`, held on the existing channel epoch.          |
 
-Tenant and channel identities, channel configuration, user authorities, staged
-balances, lot IDs, and lot collections belong to the program application. A
-different consumer can select its own identities and storage representation. The
-core accepts the position aggregate and its newest lot; the host must select
-that lot correctly and derive the aggregate from the associated position.
+Library models carry generic identities and each position's ordered lot
+collection. The actions select lots and maintain the channel epoch's balances.
+The host chooses its identity and storage representation and handles user
+authorities and token custody.
 
 Parameters are:
 
-- `T > 0`: cadence in seconds; the Solana host requires a new tenant to start
-  strictly in the future.
+- `T ≥ 3,600`: cadence in seconds; the library requires at least one hour.
 - `0 ≤ b ≤ 2`: linear entry bonus slope.
 - `k ∈ {1, 2, 3, 4}`: exit penalty exponent.
-- `0 ≤ f ≤ 1`: live environment reward-funding fee applied by the host before
-  core funding.
 
 Each epoch snapshots `T`, `b`, and `k`. The channel authority may change `b` and
 `k` for subsequent epoch creation; existing epochs keep their terms. Disabling a
-channel prevents new epochs and does not disable existing ones. The fee is
-checked on each funding transaction, rather than fixed for an epoch. The
-reference choices `b = 1` and `k = 2` are examples, not implicit defaults.
+channel prevents new epochs and does not disable existing ones. The reference
+choices `b = 1` and `k = 2` are examples, not implicit defaults.
+
+Every channel is created with its first channel epoch during the group's current
+live epoch. The library's `create_channel` action checks the epoch's group,
+current counter, and live interval, then returns both new states. The Solana host
+creates the channel, first channel epoch, and their escrows atomically. Each
+channel records a mandatory `last_created_epoch_counter: u32` from creation.
+Later `channel_epoch_create` calls open strictly later live epochs; a channel
+can skip epochs in which it does not participate.
 
 Application terms express `b` in micro-basis points (`1_000_000` represents
-one); the numeric projection rounds it down. Fee rates use the validated
-`MicroBasisPoints` type with the same scale. Amounts transferred are whole `u64`
+one); the numeric projection rounds it down. Amounts transferred are whole `u64`
 accounting units; the consumer determines what those units represent and selects
 the numeric driver's precision and range. The implementation widens whole
 amounts only for share or entitlement calculations; it never stores fractional
-principal or reward credit. Funding rejects totals outside that driver's
-representable range before accepting a reward pool that could not later be
-claimed.
+principal or reward credit. The Solana host uses `U64F64`, which can represent
+every whole `u64` reward amount.
 
-Smart constructors and snapshot conversion validate local state: representable
-schedule boundaries, bounded terms, principal/share consistency, valid lot
-weights, and finalized remainders no greater than their frozen totals. The
-program authorization rules validate relationships and authorities at handler
-entry. Global sums below hold for histories built from these transitions; a
-standalone snapshot cannot prove that no other stored positions exist.
+Public actions validate model relationships, lifecycle, timing, and checked
+balance changes. Term conversion validates the configured curve parameters;
+Anchor handles authorization and custody. Global sums below hold for histories
+built from these transitions; a standalone snapshot cannot prove that no other
+stored positions exist.
 
 ## Epoch schedule
+
+`create_channel_group` validates the one-hour minimum and checks that the initial
+epoch's `start + duration` fits in `u64` seconds before returning the group and
+epoch. The start may be in the past, present, or future. `advance_epoch` also
+checks the successor's end before advancing the stored counter.
 
 For authenticated time `now ≥ t0`:
 
@@ -59,33 +69,35 @@ n = \left\lfloor\frac{now-t_0}{T}\right\rfloor,\qquad
 start_n=t_0+nT,\qquad end_n=start_n+T.
 $$
 
-The live interval is `[start_n, end_n)`. The Solana initializer accepts only its
-current counter and checks the caller's expected channel terms. Time before
-`t0`, a counter exceeding `u32`, or overflowing timestamps returns an error.
-Solana uses `Clock::unix_timestamp`; negative timestamps fail its numeric
-conversion.
+The live interval is `[start_n, end_n)`. The group's stored counter advances
+through `epoch_create`, one epoch at a time. The library's
+`Epoch::validate_active(group, now)` requires the epoch to belong to that group,
+match its current counter, and contain `now` in its live interval. Channel and
+channel epoch creation, bidder position creation, deposits, withdrawals, and
+reward funding all use this check.
 
-There is no stored current clock, clock-advance action, or predecessor
-finalization requirement. Missed empty windows need no accounts. Earlier epochs
-may await finalization or claims while the current epoch proceeds. The program
-cannot recreate an ended historical epoch.
+Both checks matter: delayed advancement can leave an ended epoch at the current
+counter, while a clock check alone does not establish group membership or the
+recorded current epoch. Solana supplies authenticated time through
+`Clock::unix_timestamp`; negative timestamps fail its numeric conversion.
+
+Individual channels may skip epochs in which they do not participate. Advancing
+the group does not require earlier channel epochs to be finalized. Historical
+finalization and claims remain available independently of the current counter.
 
 ## Reward funding
 
-For gross whole reward amount `g` and live fee `f`, funding computes:
+`add_reward` accepts a net whole reward amount `N` and checks:
 
 $$
-F=\lceil gf\rceil_{\mathrm{unit}},\qquad N=g-F,\qquad R'=R+N.
+R'=R+N.
 $$
 
-The program's receipt sends `F` to protocol custody and `N` to the epoch. Their
-sum is exactly `g`; principal penalties never enter `R`. The caller supplies a
-maximum acceptable fee rate, checked before the action succeeds. At a 100% fee,
-all funding goes to the protocol. Rounding can also consume a small gross
-deposit entirely at a lower nonzero fee.
-
-The core receives only `N` and returns the increased tracked reward balance. It
-has no protocol fee, fee authority, or funding-quote policy.
+`channel_epoch_add_to_reward_pot` transfers that exact amount into the epoch's
+escrow and persists the returned balance. Principal penalties never enter `R`.
+The current action and Anchor instruction have no funding fee or maximum-fee
+argument. A higher-level program can charge fees before passing the net amount
+to this action.
 
 Funding is accepted only in the live interval. Direct transfers into an epoch
 vault are surplus, not reward funding, and never change its tracked `R`.
@@ -112,30 +124,31 @@ w=1+\operatorname{floor}_{\varepsilon}(bu),\qquad
 s=\operatorname{floor}_{\varepsilon}(aw).
 $$
 
-The core requires the new entry weight to be no greater than the supplied head's
-entry weight. The program requires `s` to meet the caller's minimum shares. It
-pushes `(a, s, w)` and updates `A'=A+a`, `S'=S+s`. Existing lots retain their
-own weights; there is no blended entry time.
+The action computes the entry weight from the epoch terms and authenticated time,
+pushes a lot containing `(a, s)`, and updates `A'=A+a`, `S'=S+s`. Existing lots
+retain their own credits and shares; there is no blended entry time.
 
-The Solana host supports at most 32 live lots per position. IDs increase
-independently of the live count. Fully removing a lot frees capacity; exhausted
-ID space or a full stack rejects another deposit without disabling withdrawal or
-settlement.
+The Solana host sets `MAX_LOT_COUNT: u32 = 8` and stores each position's lots in
+a Borsh `Vec`. `create_bidder_position` only creates positions for a matching,
+unfinalized channel epoch in the group's current live epoch. Position accounts
+start empty and grow on deposit to fit their actual lot count; the payer covers
+the additional rent. A full stack rejects another deposit without disabling
+withdrawal or settlement. Fully removing a lot frees capacity for another deposit.
 
 ## Withdrawals and exit penalty
 
-One withdrawal action consumes only the current head lot. For requested whole
-principal `x`, require `0 < x ≤ Ah`, where `(Ah, Sh)` are that head's remaining
-principal and shares. A request spanning lots requires repeated actions against
-the newly exposed head, not one unbounded traversal.
+One withdrawal action removes positive whole principal `x` from the newest lots
+first. It can span several lots, bounded by the position's lot limit, and rejects
+an amount exceeding the position's remaining credits. For each consumed lot,
+let `x_h` be the credits removed and `(A_h, S_h)` its remaining credits and shares.
 
 Shares removed are:
 
 $$
 \Delta S =
 \begin{cases}
-S_h,&x=A_h,\\
-\min\left(S_h,\operatorname{ceil}_{\varepsilon}(xS_h/A_h)\right),&x<A_h.
+S_h,&x_h=A_h,\\
+\min\left(S_h,\operatorname{ceil}_{\varepsilon}(x_hS_h/A_h)\right),&x_h<A_h.
 \end{cases}
 $$
 
@@ -156,10 +169,16 @@ B=\left\lfloor\operatorname{floor}_{\varepsilon}(x(1-p))\right\rfloor_{\mathrm{u
 \qquad C=x-B.
 $$
 
-The core subtracts `x` and `ΔS` from both the lot/position and epoch aggregates.
-The program checks `B` against the caller's minimum return. A fully consumed lot
-is popped. Removed shares are destroyed; `C` is forfeited, not paid to the
-remaining participants. Exact principal conservation is `B+C=x`.
+The action sums the shares removed across lots and subtracts them and `x` from
+the channel epoch's balances. It computes `B` and `C` once for the entire
+withdrawal. Fully consumed lots are popped. Removed shares are destroyed; `C`
+is forfeited, not paid to the remaining participants. Exact principal conservation
+is `B+C=x`.
+
+The current deposit and withdrawal instructions accept an amount without a
+minimum-share or minimum-return bound. Such quote protections belong in a
+higher-level interface; delayed execution within the live interval uses the
+entry weight or exit penalty at execution time.
 
 At the start, the ideal and executable penalty are zero. At the deadline the
 curve reaches one, but withdrawals are already closed. A newly created wallet or
@@ -167,23 +186,19 @@ fresh lot cannot restart the absolute penalty clock.
 
 ## Settlement and claims
 
-After `now ≥ end`, core settlement reports all tracked principal as forfeited
-and freezes:
+After `now ≥ end`, permissionless `channel_epoch_finalize` calls the library's
+`finalize_channel_epoch` action, burns the recorded clearing credits, and freezes:
 
 $$
 S^*=S,\qquad R^*=R,\qquad U=S^*,\qquad V=R^*.
 $$
 
-The active epoch is consumed. A finalized epoch contains no principal. Merely
-reaching the deadline does not execute this transition or reduce mint supply.
-
-The program checks that live principal and reward custody back tracked amounts.
-It forfeits the entire live clearing balance, including unsolicited excess. Live
-vault balances never enter the core calculation.
-
-When `S* = 0`, the program finalization returns a terminal closure outcome
-immediately: the entire live reward pot belongs to protocol custody. It does not
-create an empty claimable state or carry reward into another epoch.
+The existing channel epoch stores `final_totals: Option<FinalizedTotals<N>>`;
+there is no separate finalization account. `Some` records completion, including
+when either total is zero. The recorded clearing-credit balance remains as
+historical accounting after the burn. Merely reaching the deadline does not
+finalize the epoch or reduce mint supply. Unsolicited vault transfers never
+change the recorded totals.
 
 For `S* > 0`, a participant with surviving aggregate shares `Si = sum_j Sij`
 receives:
@@ -193,34 +208,34 @@ P_i=\left\lfloor\frac{R^* S_i}{S^*}\right\rfloor_{\mathrm{unit}}.
 $$
 
 The core uses a fused multiply/divide with downward rounding, then rounds to a
-whole accounting unit. It does not first approximate `Si/S*` independently.
+whole accounting unit. It does not first approximate a per-share reward rate.
 Every claim uses the same frozen numerator and denominator:
 
 $$
 U'=U-S_i,\qquad V'=V-P_i.
 $$
 
-The core returns `P_i` as earned reward. The program adds it to the
-participant's staged balance with checked integer arithmetic:
-`staged_i' = staged_i + P_i`.
+`bidder_position_claim` requires the position's authority and calls the library's
+`claim` action. The library checks the position's channel and epoch, sums its
+surviving lot shares, and returns both updated states and `P_i`. Anchor transfers
+that reward directly from the escrow to the chosen destination, persists the
+channel epoch, and closes the position account, returning its lamports to the
+authority. The destination may have any owner. Failed transfers roll back the
+claim and closure.
 
-The position is consumed once. Its exact shares are retired even when its
-whole-unit payout is zero. No fractional user entitlement is persisted or
-carried into another epoch. Claims have no deadline. Their backing remains in
-the finalized epoch until claimed, after which it backs the user's staged
-balance. Collection transfers all that user's staged reward and returns its
-balance to zero.
+Each position can claim once. The library marks it claimed, and the host closes
+it. Its exact shares are retired and its lamports returned even when its
+whole-unit payout is zero. Claiming requires surviving shares; an empty position
+cannot close through this instruction. Creation rejects finalized or expired
+epochs, so a closed position cannot be recreated to claim again. Claims have no
+deadline, need no channel-group advancement, and never burn credits again. A
+client may put finalization followed by its claim in the same transaction;
+finalization does not automatically sweep other channel epochs.
 
-Only `U = 0` lets the core report its terminal tracked remainder. The program
-uses that condition to permit account closure. The complete live reward balance,
-including tracked remainder and unsolicited excess, goes to protocol custody. No
-last claimant receives another claimant's fractional remainder. An empty user
-position can be closed after its copied immutable epoch end without requiring an
-active or finalized epoch account to remain available.
-
-Finalization and claims are one-shot transitions. A host must retire their
-consumed state. Replaying a previously computed pure receipt is not a valid
-second operation against unchanged persistence.
+Unclaimed rewards and rounding remainder remain in the reward escrow. No last
+claimant receives another claimant's fractional remainder. If `S* = 0`, no
+position can claim and the entire reward pot remains. These instructions do not
+close channel epochs or sweep protocol remainder.
 
 ## Conservation and rounding
 
@@ -244,17 +259,15 @@ $$
 
 For `m` positive-share positions, `0 ≤ D < m` whole reward base units. This
 bound covers tracked rounding remainder; unsolicited surplus is additional.
-Including funding fees, each gross unit is assigned to participants or the
-protocol:
+Across net funding amounts accepted by the action:
 
 $$
-\sum g=\sum F+\sum_i P_i+D.
+\sum N=\sum_i P_i+D.
 $$
 
-This identity assumes the positive-share case and all claims completed; a
-zero-share epoch assigns its entire net reward to the protocol. Staging moves a
-liability and its backing without changing its amount. Collecting discharges
-that liability.
+This identity assumes the positive-share case and all claims completed. A
+zero-share epoch retains its entire net reward as remainder. Paying a claim
+reduces the reward liability and its escrow backing by the same amount.
 
 Principal accounting has an independent identity: total accepted deposits equal
 returned principal plus withdrawal forfeitures plus principal retained until
@@ -262,27 +275,18 @@ finalization, which is then forfeited. Reward and principal can be different
 assets and must not be added together as one economic quantity.
 
 The directed rounding policy is deliberate: entry weight/shares down, penalty
-and partial share removal up, returned principal and claims down to whole units,
-funding fee up to whole units. There is no mutable-remainder division, implicit
-dust donation to later epochs, or extra minting to absorb rounding.
+and partial share removal up, returned principal and claims down to whole units.
+There is no mutable-remainder division, implicit dust donation to later epochs,
+or extra minting to absorb rounding.
 
 For a fixed total share entitlement, splitting it across claimants cannot
 increase its total payout because `sum floor(xi) ≤ floor(sum xi)`. In the ideal
 lot model, withdrawing the lowest-weight lot sacrifices the fewest shares for a
 given principal reduction; decreasing entry weights make LIFO that choice.
 Native lots expose it without requiring a new identity for each deposit.
-Whole-unit refund rounding is per withdrawal action: crossing lot boundaries can
-lose more return to rounding than withdrawing the same principal from one larger
-lot. Separate identities can therefore offer a tradeoff between extra principal
-returned and additional shares surrendered. These are scoped arithmetic
-properties, not a guarantee of identical payoffs for every wallet arrangement.
-Extra identities also permit more than the Solana host's 32 lots in total;
-timing, external information, revenue control, and collusion affect economic
-outcomes.
-
-For example, take an older 100-unit lot at weight 2 and a newest 1-unit lot at
-weight 1.5. At a 25% penalty, withdrawing two units through LIFO requires two
-one-unit actions: each returns `floor(0.75) = 0`, and together they remove 3.5
-shares. Holding the lots under separate authorities allows one two-unit
-withdrawal from the older lot, returning `floor(1.5) = 1` while removing 4
-shares. Neither outcome dominates without valuing the lost shares.
+Whole-unit refund rounding happens once per withdrawal action, including when
+it spans lots. Splitting a withdrawal into separate actions can reduce the total
+refund: at a 25% penalty, one two-unit withdrawal returns one unit, while two
+one-unit withdrawals each return zero. The host's eight-lot limit is per
+position; extra identities can hold additional positions. These arithmetic
+properties do not guarantee identical outcomes for every wallet arrangement.
