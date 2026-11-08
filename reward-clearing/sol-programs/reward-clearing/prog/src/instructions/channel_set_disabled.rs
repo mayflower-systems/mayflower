@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::state::{channel::Channel, organization::Organization, tenant::Tenant};
+use crate::state::{channel::Channel, channel_group::ChannelGroup, organization::Organization};
 
 #[derive(Accounts)]
 pub struct ChannelSetDisabledAccounts<'info> {
@@ -10,11 +10,11 @@ pub struct ChannelSetDisabledAccounts<'info> {
     pub organization: Box<Account<'info, Organization>>,
 
     #[account(has_one = organization)]
-    pub tenant: Box<Account<'info, Tenant>>,
+    pub channel_group: Box<Account<'info, ChannelGroup>>,
 
     #[account(
         mut,
-        has_one = tenant
+        has_one = channel_group
     )]
     pub channel: Account<'info, Channel>,
 }

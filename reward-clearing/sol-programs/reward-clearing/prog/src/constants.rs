@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 pub const ORGANIZATION_SEED: &[u8] = b"organization";
 
 #[constant]
-pub const TENANT_SEED: &[u8] = b"tenant";
+pub const CHANNEL_GROUP_SEED: &[u8] = b"channel_group";
 
 #[constant]
 pub const CLEARING_TOKEN_ESCROW_SEED: &[u8] = b"clearing_token_escrow";
@@ -25,8 +25,10 @@ pub const CHANNEL_EPOCH_SEED: &[u8] = b"channel_epoch";
 pub const CHANNEL_EPOCH_REWARD_POT_ESCROW_SEED: &[u8] = b"channel_epoch_reward_pot_escrow";
 
 #[constant]
-pub const CHANNEL_EPOCH_CLEARING_CREDITS_ESCROW_SEED: &[u8] =
-    b"channel_epoch_clearing_credits_escrow";
+pub const CHANNEL_EPOCH_CLEARING_CREDITS_ESCROW_SEED: &[u8] = b"channel_epoch_credits_escrow";
 
 #[constant]
-pub const CHANNEL_EPOCH_FINAL_SNAPSHOT_SEED: &[u8] = b"channel_epoch_final_snapshot";
+pub const BIDDER_POSITION_SEED: &[u8] = b"bidder_position";
+
+#[constant]
+pub const MAX_LOT_COUNT: u32 = 8;

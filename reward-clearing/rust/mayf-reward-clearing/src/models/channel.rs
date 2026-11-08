@@ -13,9 +13,13 @@ pub struct Channel<I: Identifiable, N: FixedNumber> {
     pub reward_id: I,
     pub default_terms: EpochTerms<N>,
 
-    /// The epoch counter of the newest channel epoch this channel created, if any.
+    /// Disabling a channel prevents new epochs without affecting existing ones.
+    pub disabled: bool,
+
+    /// The epoch counter of the newest channel epoch this channel created.
+    /// Channel creation opens its first epoch in the same action.
     /// A new channel epoch needs a later counter, so the channel never opens two for one epoch.
-    pub last_seen_epoch_counter: Option<EpochCounter>,
+    pub last_created_epoch_counter: EpochCounter,
 }
 
 impl<I: Identifiable, N: FixedNumber> Channel<I, N> {
@@ -30,15 +34,11 @@ impl<I: Identifiable, N: FixedNumber> Channel<I, N> {
     /// Record that this channel opened a channel epoch for `epoch`.
     /// Fails unless `epoch` is later than the last epoch the channel opened one for.
     pub fn record_channel_epoch(mut self, epoch: &Epoch<I>) -> Result<Self> {
-        let already_created = self
-            .last_seen_epoch_counter
-            .is_some_and(|last_seen| epoch.epoch_counter <= last_seen);
-
-        if already_created {
+        if epoch.epoch_counter <= self.last_created_epoch_counter {
             return Err(RewardClearingError::ChannelEpochAlreadyCreated);
         }
 
-        self.last_seen_epoch_counter = Some(epoch.epoch_counter);
+        self.last_created_epoch_counter = epoch.epoch_counter;
         Ok(self)
     }
 }

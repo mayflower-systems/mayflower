@@ -1,11 +1,13 @@
 use crate::models::Identifiable;
 use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
+use crate::models::channel_group::ChannelGroup;
 use crate::models::epoch::Epoch;
 use crate::{Amount, Result, Seconds};
 use mayf_fixed_number::FixedNumber;
 
 pub struct AddRewardArgs<I: Identifiable, N: FixedNumber> {
+    pub channel_group: ChannelGroup<I>,
     pub epoch: Epoch<I>,
     pub channel: Channel<I, N>,
     pub channel_epoch: ChannelEpoch<I, N>,
@@ -24,7 +26,8 @@ where
     I: Identifiable,
     N: FixedNumber,
 {
-    args.epoch.validate_active(args.now)?;
+    args.channel_epoch.validate_unfinalized()?;
+    args.epoch.validate_active(&args.channel_group, args.now)?;
 
     args.channel_epoch
         .validate_channel_and_epoch(&args.channel, &args.epoch)?;
@@ -55,6 +58,7 @@ mod tests {
         amount: Amount,
     ) -> Result<AddRewardReceipt<Id, Number>> {
         add_reward(AddRewardArgs {
+            channel_group: channel_group(),
             epoch: epoch(),
             channel,
             channel_epoch,

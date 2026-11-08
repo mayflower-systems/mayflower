@@ -20,7 +20,7 @@ cargo build-sbf \
 cargo run --locked -p mayf-anchor-idl-to-gen -- \
     build-idl "$program_dir/prog" --output "$idl_path"
 
-# Tenant and epoch addresses depend on counters stored in program accounts.
+# Channel group and epoch addresses depend on counters stored in program accounts.
 cargo run --locked -p mayf-anchor-idl-to-gen -- \
     generate-rust "$idl_path" \
     --program-name MayfRewardClearing \

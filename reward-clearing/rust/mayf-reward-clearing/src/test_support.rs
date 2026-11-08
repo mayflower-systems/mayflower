@@ -7,9 +7,12 @@ use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
 use crate::models::channel::Channel;
 use crate::models::channel_epoch::ChannelEpoch;
+use crate::models::channel_group::ChannelGroup;
 use crate::models::epoch::Epoch;
 use crate::{
-    Amount, DepositCreditsArgs, DepositCreditsReceipt, EpochTerms, Result, Seconds, Shares,
+    Amount, CreateBidderPositionArgs, CreateChannelArgs, CreateChannelReceipt, DepositCreditsArgs,
+    DepositCreditsReceipt, EpochTerms, Result, Seconds, Shares, create_bidder_position,
+    create_channel,
 };
 
 pub type Number = U64F64;
@@ -29,6 +32,15 @@ pub fn epoch() -> Epoch<Id> {
     Epoch::new(CHANNEL_GROUP, 3, START, DURATION)
 }
 
+pub fn channel_group() -> ChannelGroup<Id> {
+    ChannelGroup {
+        id: CHANNEL_GROUP,
+        master_start_time_unix_seconds: START - 3 * DURATION,
+        epoch_duration_seconds: DURATION,
+        current_epoch_index: 3,
+    }
+}
+
 pub fn terms(ramp_bonus_slope: i32, exit_penalty_exponent: u32) -> EpochTerms<Number> {
     let slope = Number::from_i32(ramp_bonus_slope).unwrap();
     EpochTerms::new(slope, exit_penalty_exponent).unwrap()
@@ -36,13 +48,19 @@ pub fn terms(ramp_bonus_slope: i32, exit_penalty_exponent: u32) -> EpochTerms<Nu
 
 /// A channel in the epoch's channel group, with the wiki's reference terms
 pub fn channel() -> Channel<Id, Number> {
-    Channel {
-        id: CHANNEL,
-        channel_group_id: CHANNEL_GROUP,
+    created_channel(terms(1, 2)).new_channel
+}
+
+fn created_channel(default_terms: EpochTerms<Number>) -> CreateChannelReceipt<Id, Number> {
+    create_channel(CreateChannelArgs {
+        channel_id: CHANNEL,
         reward_id: Id(5),
-        default_terms: terms(1, 2),
-        last_seen_epoch_counter: None,
-    }
+        default_terms,
+        channel_group: channel_group(),
+        active_epoch: epoch(),
+        now: START,
+    })
+    .unwrap()
 }
 
 /// The wiki's reference terms: ramp bonus slope 1 and exit penalty exponent 2.
@@ -55,16 +73,26 @@ pub fn channel_epoch_with_terms(
     ramp_bonus_slope: i32,
     exit_penalty_exponent: u32,
 ) -> ChannelEpoch<Id, Number> {
-    ChannelEpoch::new(CHANNEL, 3, terms(ramp_bonus_slope, exit_penalty_exponent))
+    created_channel(terms(ramp_bonus_slope, exit_penalty_exponent)).new_channel_epoch
 }
 
 pub fn empty_position(channel_epoch: &ChannelEpoch<Id, Number>) -> BidderPosition<Id, Number> {
-    BidderPosition {
-        id: BIDDER,
-        channel_epoch_id: channel_epoch.id(),
-        lots: Vec::new(),
-        claimed: false,
-    }
+    // Positions already exist when a test later supplies a finalized epoch.
+    let initial_epoch = ChannelEpoch::new(
+        channel_epoch.channel_id,
+        channel_epoch.epoch_counter,
+        channel_epoch.terms,
+    );
+    create_bidder_position(CreateBidderPositionArgs {
+        position_id: BIDDER,
+        channel_group: channel_group(),
+        channel: channel(),
+        channel_epoch: initial_epoch,
+        epoch: epoch(),
+        now: START,
+    })
+    .unwrap()
+    .bidder_position
 }
 
 pub fn deposit(
@@ -74,12 +102,14 @@ pub fn deposit(
     credits_to_deposit: Amount,
 ) -> Result<DepositCreditsReceipt<Id, Number>> {
     crate::deposit_credits(DepositCreditsArgs {
+        channel_group: channel_group(),
         bidder_position,
         channel: channel(),
         channel_epoch,
         epoch: epoch(),
         now,
         credits_to_deposit,
+        max_lot_count: 8,
     })
 }
 

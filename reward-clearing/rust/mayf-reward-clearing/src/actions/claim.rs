@@ -46,16 +46,16 @@ mod tests {
     use super::*;
     use crate::RewardClearingError as E;
     use crate::models::bidder_position::BidderLot;
+    use crate::models::channel_epoch::ChannelEpochId;
     use crate::test_support::*;
 
     const ALICE: Id = Id(10);
     const BOB: Id = Id(11);
 
-    /// A channel epoch finalized with a pot of `reward` over 290 shares
-    fn finalized(reward: Amount) -> ChannelEpoch<Id, Number> {
+    fn finalized(reward: Amount, total_shares: u64) -> ChannelEpoch<Id, Number> {
         let mut channel_epoch = channel_epoch();
         channel_epoch.reward_pot_balance = reward;
-        channel_epoch.weighted_shares_balance = shares(290);
+        channel_epoch.weighted_shares_balance = shares(total_shares);
         channel_epoch.finalize().unwrap()
     }
 
@@ -90,7 +90,7 @@ mod tests {
     /// The claims in the wiki's "Revenue Clearing Time Weight" example
     #[test]
     fn matches_wiki_worked_example() {
-        let channel_epoch = finalized(90);
+        let channel_epoch = finalized(90, 290);
         let alice = position(ALICE, 200, &channel_epoch);
         let bob = position(BOB, 90, &channel_epoch);
 
@@ -110,34 +110,74 @@ mod tests {
 
     #[test]
     fn claim_order_does_not_change_payouts() {
-        let channel_epoch = finalized(90);
-        let alice = position(ALICE, 200, &channel_epoch);
-        let bob = position(BOB, 90, &channel_epoch);
+        // (pot, Alice's shares, Bob's shares, Alice's reward, Bob's reward)
+        for (pot, alice_shares, bob_shares, alice_reward, bob_reward) in
+            [(90, 200, 90, 62, 27), (2, 3, 3, 1, 1)]
+        {
+            for alice_first in [true, false] {
+                let channel_epoch = finalized(pot, alice_shares + bob_shares);
+                let frozen = channel_epoch.final_totals;
+                let alice = position(ALICE, alice_shares, &channel_epoch);
+                let bob = position(BOB, bob_shares, &channel_epoch);
+                let (first, second, first_reward, second_reward) = if alice_first {
+                    (alice, bob, alice_reward, bob_reward)
+                } else {
+                    (bob, alice, bob_reward, alice_reward)
+                };
 
-        let bob_claim = claim_by(bob, channel_epoch).unwrap();
-        let alice_claim = claim_by(alice, bob_claim.channel_epoch_next).unwrap();
+                let first = claim_by(first, channel_epoch).unwrap();
+                let second = claim_by(second, first.channel_epoch_next).unwrap();
 
-        assert_eq!(bob_claim.reward_earned, 27);
-        assert_eq!(alice_claim.reward_earned, 62);
+                assert_eq!(first.reward_earned, first_reward);
+                assert_eq!(second.reward_earned, second_reward);
+                let remaining = second.channel_epoch_next;
+                assert_eq!(remaining.weighted_shares_balance, shares(0));
+                assert_eq!(
+                    remaining.reward_pot_balance,
+                    pot - alice_reward - bob_reward
+                );
+                assert_eq!(remaining.final_totals, frozen);
+            }
+        }
+    }
+
+    #[test]
+    fn sole_claimant_receives_the_entire_pot() {
+        // Rounding 1/3 to a fixed-point rate before multiplying by 3 loses a unit.
+        for pot in [1, u64::MAX] {
+            let channel_epoch = finalized(pot, 3);
+            let alice = position(ALICE, 3, &channel_epoch);
+            let claimed = claim_by(alice, channel_epoch).unwrap();
+
+            assert_eq!(claimed.reward_earned, pot);
+            assert_eq!(claimed.channel_epoch_next.reward_pot_balance, 0);
+            assert_eq!(
+                claimed.channel_epoch_next.weighted_shares_balance,
+                shares(0)
+            );
+        }
     }
 
     #[test]
     fn zero_reward_claim_still_retires_shares() {
         // floor(90 * 1 / 290) = 0
-        let channel_epoch = finalized(1);
-        let bob = position(BOB, 90, &channel_epoch);
+        for pot in [0, 1] {
+            let channel_epoch = finalized(pot, 290);
+            let bob = position(BOB, 90, &channel_epoch);
 
-        let bob_claim = claim_by(bob, channel_epoch).unwrap();
+            let bob_claim = claim_by(bob, channel_epoch).unwrap();
 
-        assert_eq!(bob_claim.reward_earned, 0);
-        assert!(bob_claim.bidder_position_next.claimed);
-        let channel_epoch = &bob_claim.channel_epoch_next;
-        assert_eq!(channel_epoch.weighted_shares_balance, shares(200));
+            assert_eq!(bob_claim.reward_earned, 0);
+            assert!(bob_claim.bidder_position_next.claimed);
+            let channel_epoch = &bob_claim.channel_epoch_next;
+            assert_eq!(channel_epoch.weighted_shares_balance, shares(200));
+            assert_eq!(channel_epoch.reward_pot_balance, pot);
+        }
     }
 
     #[test]
     fn rejects_second_claim() {
-        let channel_epoch = finalized(90);
+        let channel_epoch = finalized(90, 290);
         let alice = position(ALICE, 200, &channel_epoch);
 
         let first = claim_by(alice, channel_epoch).unwrap();
@@ -157,11 +197,32 @@ mod tests {
 
     #[test]
     fn rejects_position_from_another_channel_epoch() {
-        let channel_epoch = finalized(90);
-        let mut alice = position(ALICE, 200, &channel_epoch);
-        alice.channel_epoch_id.epoch_counter = 4;
+        let channel_epoch = finalized(90, 290);
+        let mismatches = [
+            ChannelEpochId {
+                channel_id: Id(9),
+                ..channel_epoch.id()
+            },
+            ChannelEpochId {
+                epoch_counter: 4,
+                ..channel_epoch.id()
+            },
+        ];
+        for channel_epoch_id in mismatches {
+            let mut alice = position(ALICE, 200, &channel_epoch);
+            alice.channel_epoch_id = channel_epoch_id;
+
+            let result = claim_by(alice, channel_epoch.clone());
+            assert_eq!(result.err(), Some(E::BidderPositionChannelEpochMismatch));
+        }
+    }
+
+    #[test]
+    fn rejects_shares_exceeding_the_unclaimed_balance() {
+        let channel_epoch = finalized(1, 3);
+        let alice = position(ALICE, 4, &channel_epoch);
 
         let result = claim_by(alice, channel_epoch);
-        assert_eq!(result.err(), Some(E::BidderPositionChannelEpochMismatch));
+        assert_eq!(result.err(), Some(E::WeightedSharesUnderflow));
     }
 }
