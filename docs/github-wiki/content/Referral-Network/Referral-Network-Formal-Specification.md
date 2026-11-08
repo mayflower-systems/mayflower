@@ -9,10 +9,11 @@ tags:
 -->
 
 The [Referral Network](Referral-Network) allocates participation among
-depositors and their uplines, then allows members to share part of their
+depositors and their uplines, then allows members to share part of their core
 allocation with direct children. This note describes one set of points and one
 allocation through a shared tree. An application can apply the same
-relationships to separate sets of points and rewards.
+relationships to separate sets of points and rewards. A member then makes one
+sharing choice, and it applies to each set.
 
 ## Network and parameters
 
@@ -72,28 +73,31 @@ alongside these core earnings.
 ## Voluntary sharing
 
 A member chooses a sharing fraction $\mu_i\in[0,1]$, initially zero. For a given
-period, let $A_i$ be its available allocation: its core allocation for the
-period plus gifts received from its parent. If $Z_i>0$, its ideal gift to direct
-child $c$ and its own retained amount are
+period, let $E_i$ be its core allocation for the period and $G_i$ the gift it
+receives from its parent. If $Z_i>0$, its ideal gift to direct child $c$ and its
+own retained amount are
 
-$$G_{i\to c}=\mu_i A_i\frac{p_c}{Z_i},\qquad H_i=(1-\mu_i)A_i.$$
+$$G_{i\to c}=\mu_i E_i\frac{p_c}{Z_i},\qquad H_i=(1-\mu_i)E_i+G_i.$$
 
-If $Z_i=0$, the member retains all of $A_i$ and makes no gifts. A zero-own-point
-child receives no gift from its parent, but may have its own core allocation
-from its downline and may share that onward. Children divide gifts by **own
-points**, not downline points or the number of children.
+If $Z_i=0$, the member retains all of $E_i+G_i$ and makes no gifts. A
+zero-own-point child receives no gift from its parent, but may have its own core
+allocation from its downline and may share that onward. Children divide gifts by
+**own points**, not downline points or the number of children.
 
-A child can include its incoming gift in the amount it shares with its own
-children. Gifts flow down the tree; they do not pay overrides
-again. For each member, retained allocation plus gifts equals its available
-allocation. Consequently, after all sharing, the sum of retained allocations
-across the forest equals the sum of the core allocations.
+A member shares only its core allocation. It keeps the gift from its parent
+whole and never shares it onward, so a gift passes down exactly one level. Gifts
+do not pay overrides again. For each member, retained allocation plus gifts made
+equals its core allocation plus the gift received. Consequently, after all
+sharing, the sum of retained allocations across the forest equals the sum of the
+core allocations.
 
-Sharing fractions and own points can change over time. The old balances and
-sharing policies determine the allocation up to the change; the new values apply
-prospectively. A new or newly eligible deposit does not receive a share of
-earlier intervals. When $Z_i=0$, the parent retains that period's allocation;
-later children do not receive it retroactively.
+Sharing fractions and own points can change over time. The old balances
+determine the allocation up to a change in points; the new balances apply
+prospectively. A sharing change applies in each set of points from that set's
+next settlement; allocation up to that settlement keeps the earlier fraction. A
+new or newly eligible deposit does not receive a share of earlier intervals.
+When $Z_i=0$, the parent retains that period's allocation; later children do not
+receive it retroactively.
 
 ## Point-time
 
@@ -104,25 +108,27 @@ point-hours, or another consistent time unit.
 
 An equivalent cumulative formulation accounts for delayed settlement. Let $U_i$
 be the cumulative point-time shared by member $i$ per unit of direct-child own
-points. After its parent has accounted for the interval, member $i$ has
-available point-time
+points. Over the interval, member $i$ has core point-time $E_i=b_i\Delta t$.
+After its parent has accounted for the interval, member $i$ also receives
 
-$$A_i=b_i\Delta t+p_i\Delta U_{parent(i)}.$$
+$$G_i=p_i\Delta U_{parent(i)}.$$
 
 For a top participant the incoming term is zero. With fixed-point quantum
 $\varepsilon$, the outgoing index increment and retained point-time are
 
 $$
 \Delta U_i=\begin{cases}
-\left\lfloor A_i\mu_i/Z_i\right\rfloor_\varepsilon,&Z_i>0,\\
+\left\lfloor E_i\mu_i/Z_i\right\rfloor_\varepsilon,&Z_i>0,\\
 0,&Z_i=0,
 \end{cases}
 \qquad
-\Delta H_i=A_i-Z_i\Delta U_i.
+\Delta H_i=E_i-Z_i\Delta U_i+G_i.
 $$
 
-Each child is entitled to $p_c\Delta U_i$. Parent retention plus all child
-rights equals $A_i$ exactly on the accounting grid. The parent retains the
+The index increment depends only on the member's own core point-time, so a
+gift passes down exactly one level. Each child is entitled to $p_c\Delta U_i$.
+Parent retention plus all child rights equals $E_i+G_i$ exactly on the
+accounting grid. The parent retains the
 amount too small to distribute through the index. Per sharing settlement, this
 extra retention is less than $Z_i\varepsilon$; it is retained rather than
 carried into the next sharing pool. Settlement frequency can therefore affect
@@ -143,7 +149,7 @@ The override for each upline member is calculated from the represented $q$ and
 the source's original integer points; the source receives the exact complement.
 This keeps total core attribution equal to total own points. Sharing uses a
 downward-rounded index and gives the donor the exact complement, so retained
-amounts plus funded child rights equal the available amount at each split.
+amounts plus funded child rights equal the donor's core amount at each split.
 
 The same conservation principle applies to reward sharing. Fixed-point rounding
 can leave small amounts with a donor and can make settlement frequency affect

@@ -1,53 +1,35 @@
-//! Semantic failures returned by referral state transitions.
+use mayf_fixed_number::MathError;
 
-/// A failure while validating or applying referral membership or scoped balances.
+/// Every input the kernel rejects
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReferralError {
-    /// The configured depth or override rate is outside the supported membership policy.
-    InvalidConfiguration,
-    /// The current scheduled join price exceeds the buyer's limit.
-    JoinFeeExceeded,
-    /// A persisted node path is malformed.
-    InvalidNodePath,
-    /// A persisted offer cannot have arisen from offer publication.
-    InvalidOffer,
-    /// A persisted lane contains invalid direct or subtree accounting.
-    InvalidLaneAccounting,
-    /// Two values belong to different referral networks.
-    NetworkMismatch,
-    /// A root does not refer to the supplied node.
-    RootNodeMismatch,
-    /// An offer does not refer to the supplied parent node.
-    OfferParentMismatch,
-    /// The parent already has an open active offer.
-    ActiveOfferExists,
-    /// The parent has no active offer.
-    NoActiveOffer,
-    /// The supplied offer is closed.
-    OfferClosed,
-    /// The supplied offer is not the parent's current version.
-    OfferVersionMismatch,
-    /// A replacement attempted to reuse its predecessor's identifier.
-    OfferIdReused,
-    /// A node is already at the maximum permitted depth.
-    MaximumDepth,
-    /// A new node identifier already occurs in its inherited path.
-    DuplicatePathNode,
-    /// A lane does not match the corresponding node path entry.
-    LanePathMismatch,
-    /// A lane belongs to a different accounting scope.
-    LaneScopeMismatch,
-    /// The signer is not the source node's recorded owner.
-    LaneOwnerMismatch,
-    /// A lane deposit must contain a positive amount.
-    LaneDepositTooSmall,
-    /// A lane withdrawal must contain a positive amount.
-    LaneWithdrawalTooSmall,
-    /// A lane withdrawal exceeded the source's direct balance.
-    LaneWithdrawalExceedsDirectBalance,
-    /// Checked integer arithmetic failed.
-    ArithmeticFailure,
+pub enum Error {
+    /// The maximum depth times the override rate is not below 100%, so the deepest members would
+    /// keep nothing
+    OverrideRateTooLargeForDepth,
+    /// The parent is at the network's maximum depth, so it cannot admit children
+    ParentAtMaxDepth,
+    /// The lineage is not the node's: its parent first, each next node the parent of the one
+    /// before, up to a top-level member
+    BrokenLineage,
+    /// A lane node belongs to no node of the member and its lineage, or repeats one
+    StrayLaneNode,
+    /// The withdrawal is more than the member's balance in the lane
+    WithdrawalExceedsBalance,
+    /// The host's fixed-point number type cannot hold a value the kernel computes
+    NumberOutOfRange,
+    /// The host's fixed-point number type rounds in steps coarser than 2^-64. Rounding could
+    /// then move a credit base unit or more each time anyone settles.
+    GridTooCoarse,
 }
 
-/// Result type used by this crate.
-pub type Result<T> = core::result::Result<T, ReferralError>;
+/// [`create_protocol`](crate::program::create_protocol) accepts only number types that hold
+/// every value the kernel computes, and those values never go negative and are never divided by
+/// zero. So after that, a fixed-point failure means the host broke a duty, for example by passing
+/// a clock that went back.
+impl From<MathError> for Error {
+    fn from(_: MathError) -> Self {
+        Self::NumberOutOfRange
+    }
+}
+
+pub type Result<T> = core::result::Result<T, Error>;

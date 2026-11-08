@@ -1170,7 +1170,8 @@ name = "mayf-referral"
 version = "0.1.0"
 dependencies = [
  "mayf-fixed-drivers",
- "referral-tree",
+ "mayf-fixed-number",
+ "mayf-micro-basis-points",
 ]
 
 [[package]]

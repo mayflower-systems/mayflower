@@ -1,6 +1,6 @@
 [package]
 name = "mayf-referral"
-description = "Referral membership, admission offers, and per-scope deposit lanes"
+description = "The Mayflower referral and emissions kernel: membership, gauge-weighted emission, and per-lane rewards"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -11,5 +11,8 @@ publish = false
 name = "mayf_referral"
 
 [dependencies]
+mayf-fixed-number.workspace = true
+mayf-micro-basis-points.workspace = true
+
+[dev-dependencies]
 mayf-fixed-drivers.workspace = true
-referral-tree.workspace = true

@@ -19,8 +19,9 @@ eligible points and referral relationships determine who earns its allocation.
 In a channel, eligible members' deposited collateral supplies points. A member's
 own points are the starting basis for its share of the channel's allocation.
 Each source's attribution is divided between the source and its upline by a
-fixed override rate. Members may voluntarily share part of their available
-earnings with direct children, who can share receipts onward.
+fixed override rate. Members may voluntarily share part of their core
+earnings with direct children, who keep those gifts and do not share them
+onward.
 
 The final amount a member retains after overrides and voluntary sharing is its
 reward. A member can earn from a productive downline even with no deposit of
