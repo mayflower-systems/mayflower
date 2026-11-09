@@ -79,11 +79,23 @@ instructions share a discriminator.
 ### TypeScript
 
 `generate-typescript` writes `index.ts`, `accounts.ts`, `codecs.ts`,
-`errors.ts`, `events.ts`, `instructions.ts`, `models.ts`, and `pda.ts`. Codecs
-are plain `borsh` 2.x schemas, with no generated classes or custom readers.
-Only the Solana boundary uses `bs58` and `@solana/web3.js` v1. Models hold
-bytes as `ReadonlyArray<number>` and public keys as `PublicKeyBytes`;
-`codecs.ts` converts these to and from web3.js `PublicKey` values.
+`errors.ts`, `events.ts`, `instructions.ts`, `models.ts`, and `solana.ts`. The
+generated code imports only `borsh` 2.x and `bs58`. It does not use
+`@solana/web3.js` or Node's `Buffer`, so it runs in any JavaScript runtime.
+
+Codecs are plain `borsh` schemas, with no generated classes or custom readers.
+Models hold bytes as `ReadonlyArray<number>` and public keys as
+`PublicKeyBytes`, because `borsh` decodes every array to plain numbers.
+
+`solana.ts` is the same in every client. It defines the Solana types that the
+builders use:
+
+- `PublicKey` is a `Uint8Array` of 32 bytes.
+- `AccountMeta` and `TransactionInstruction` are plain objects with the same
+  fields as their `@solana/web3.js` v1 namesakes. Instruction data is a
+  `Uint8Array`.
+
+It also converts public keys to and from base58 and `PublicKeyBytes`.
 
 Each instruction gets two builders. For an instruction named `deposit`:
 
@@ -92,14 +104,18 @@ Each instruction gets two builders. For an instruction named `deposit`:
 - `createDepositInstruction` adds the encoded instruction data to that list.
 
 The full builder calls the account-meta builder, so the two cannot disagree on
-order or flags. When a PDA depends on an instruction argument, the account-meta
-builder takes a small `DepositAccountMetaSeeds` object with only those values.
-It needs a program ID only to derive a PDA or to fill an omitted optional
-account, for which Anchor expects the program's own address.
+order or flags. The builders take every account that the IDL does not fix to
+an address from the caller, PDAs included. The account-meta builder needs a
+program ID only to fill an omitted optional account, for which Anchor expects
+the program's own address.
 
 ## PDAs
 
-The generator derives a PDA when each of its non-constant seeds is one of:
+Only the Rust client derives PDAs. The TypeScript client ignores the IDL's PDA
+seeds, so they never affect or stop its generation. Its callers derive PDA
+addresses with a Solana library, such as `@solana/web3.js`.
+
+The Rust generator derives a PDA when each of its non-constant seeds is one of:
 
 - the address of another account in the instruction;
 - an instruction argument of type `u32`, encoded little-endian;
@@ -108,9 +124,9 @@ The generator derives a PDA when each of its non-constant seeds is one of:
 
 An argument seed may name a field inside a struct argument, such as `args.id`.
 Generation fails for any other seed, such as a field of an account's data. For
-those programs, pass `--manual-pdas`: the clients then take every PDA account
-as a caller-supplied address, and the existing `pda.rs` or `pda.ts` is left
-unchanged.
+those programs, pass `--manual-pdas` to `generate-rust`: the client then takes
+every PDA account as a caller-supplied address, and the existing `pda.rs` is
+left unchanged.
 
 ## Tests
 

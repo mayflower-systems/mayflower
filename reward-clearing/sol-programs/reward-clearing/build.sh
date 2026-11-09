@@ -30,12 +30,10 @@ cargo run --locked -p mayf-anchor-idl-to-gen -- \
 cargo fmt -p mayf-reward-clearing-sol-cpi
 cargo check --locked -p mayf-reward-clearing-sol-cpi
 
-# The TypeScript client also takes PDA addresses from callers. The generator
-# keeps the hand-written ts/src/pda.ts.
+# The TypeScript client never derives PDAs; callers supply every PDA address.
 cargo run --locked -p mayf-anchor-idl-to-gen -- \
     generate-typescript "$idl_path" \
     --program-name MayfRewardClearing \
-    --manual-pdas \
     --output-dir "$program_dir/ts/src"
 
 pnpm exec prettier --write --log-level=warn "$program_dir/ts"

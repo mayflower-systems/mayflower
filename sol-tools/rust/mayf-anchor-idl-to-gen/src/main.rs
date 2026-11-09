@@ -68,10 +68,6 @@ enum Command {
         /// Directory where the eight generated TypeScript files will be written.
         #[arg(long, value_name = "DIR")]
         output_dir: PathBuf,
-
-        /// Treat PDA accounts as caller-supplied and preserve an existing pda.ts.
-        #[arg(long)]
-        manual_pdas: bool,
     },
 }
 
@@ -91,8 +87,7 @@ fn main() -> Result<()> {
             idl_path,
             program_name,
             output_dir,
-            manual_pdas,
-        } => generate_typescript(&idl_path, program_name, &output_dir, manual_pdas),
+        } => generate_typescript(&idl_path, program_name, &output_dir),
     }
 }
 
@@ -143,27 +138,16 @@ fn generate_rust(
     Ok(())
 }
 
-fn generate_typescript(
-    idl_path: &Path,
-    program_name: String,
-    output_dir: &Path,
-    manual_pdas: bool,
-) -> Result<()> {
+fn generate_typescript(idl_path: &Path, program_name: String, output_dir: &Path) -> Result<()> {
     let idl_json = fs::read_to_string(idl_path)
         .with_context(|| format!("failed to read {}", idl_path.display()))?;
-    let mut program = parse_anchor_idl(GenerateConfig {
+    let program = parse_anchor_idl(GenerateConfig {
         idl_json,
         program_name,
     })?;
-    if manual_pdas {
-        program.clear_pdas();
-    }
     let generated = typescript::materialize(&program)?;
 
     for (filename, bytes) in generated.files() {
-        if manual_pdas && filename == "pda.ts" {
-            continue;
-        }
         write(&output_dir.join(filename), bytes)?;
     }
     println!(

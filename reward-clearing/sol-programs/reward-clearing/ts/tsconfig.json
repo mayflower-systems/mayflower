@@ -3,9 +3,7 @@
   "extends": "../../../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist",
-    // The generated instruction builders use Node's global Buffer.
-    "types": ["node"]
+    "outDir": "dist"
   },
   "include": ["src"]
 }

@@ -1,19 +1,12 @@
 // Generated from an Anchor IDL. Do not edit.
 
 import { deserialize, serialize, type Schema } from "borsh"
-import bs58 from "bs58"
-import { PublicKey } from "@solana/web3.js"
 
+/**
+ * A public key as Borsh models hold it: 32 numbers, one per byte. `solana.ts`
+ * converts it to and from `PublicKey`.
+ */
 export type PublicKeyBytes = ReadonlyArray<number>
-
-export const publicKeyToBytes = (value: PublicKey): PublicKeyBytes =>
-  Array.from(value.toBytes())
-
-export const publicKeyFromBytes = (value: PublicKeyBytes): PublicKey =>
-  new PublicKey(Uint8Array.from(value))
-
-export const publicKeyBytesToBase58 = (value: PublicKeyBytes): string =>
-  bs58.encode(Uint8Array.from(value))
 
 export const hasDiscriminator = (
   data: Uint8Array,
