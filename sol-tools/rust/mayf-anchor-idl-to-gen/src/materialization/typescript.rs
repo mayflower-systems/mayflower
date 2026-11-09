@@ -1,20 +1,24 @@
 //! Materializes language-neutral program data as Anchor-free TypeScript.
 //!
-//! Generated wire codecs are plain `borsh` schemas. Solana-specific code is
-//! limited to discriminators, public-key conversion, account metas, and PDA
-//! derivation through `@solana/web3.js` v1.
+//! Generated wire codecs are plain `borsh` schemas. The client depends only on
+//! `borsh` and `bs58`. Its `solana.ts` defines the public-key, account-meta,
+//! and instruction types, so the client does not need `@solana/web3.js`.
+//!
+//! The client does not derive PDAs. Instruction builders take every account
+//! that the IDL does not fix to an address from the caller, so PDA seeds never
+//! affect generation.
 
 #![allow(clippy::write_with_newline)]
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
 
 use anyhow::{Context, Result, bail};
+use solana_address::Address;
 
 use crate::program_data::{
     ArrayLength, Constant, DefinedFields, EnumVariant, Instruction, InstructionAccount,
-    InstructionAccountItem, ProgramData, Seed, Serialization, Type, TypeDefinition,
-    TypeDefinitionKind,
+    InstructionAccountItem, ProgramData, Serialization, Type, TypeDefinition, TypeDefinitionKind,
 };
 
 /// TypeScript source files produced for one program client.
@@ -27,7 +31,7 @@ pub struct TypeScriptFileBundle {
     pub events_ts: Vec<u8>,
     pub instructions_ts: Vec<u8>,
     pub models_ts: Vec<u8>,
-    pub pda_ts: Vec<u8>,
+    pub solana_ts: Vec<u8>,
 }
 
 impl TypeScriptFileBundle {
@@ -41,136 +45,37 @@ impl TypeScriptFileBundle {
             ("events.ts", &self.events_ts),
             ("instructions.ts", &self.instructions_ts),
             ("models.ts", &self.models_ts),
-            ("pda.ts", &self.pda_ts),
+            ("solana.ts", &self.solana_ts),
         ]
     }
 }
 
-struct PdaDerivation<'data> {
-    function: String,
-    account: &'data str,
-    instruction: &'data Instruction,
-    seeds: &'data [Seed],
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SeedParameter<'data> {
-    Account(&'data str),
-    U32Argument(&'data str),
-    FixedBytesArgument { path: &'data str, length: usize },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum AccountMetaSeedType {
-    U32,
-    FixedBytes { length: usize },
-}
-
-impl AccountMetaSeedType {
-    fn typescript_type(&self) -> &'static str {
-        match self {
-            Self::U32 => "number",
-            Self::FixedBytes { .. } => "ReadonlyArray<number>",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct AccountMetaSeed {
-    /// Original instruction-argument path from the IDL.
-    path: String,
-    /// Collision-checked TypeScript property name exposed to callers.
-    field: String,
-    ty: AccountMetaSeedType,
-}
-
-/// Complete account-construction dependencies for one instruction.
-///
-/// Computing this plan once keeps the standalone account-meta builder and the
-/// full instruction builder structurally coupled: they share one ordered list,
-/// one minimal seed set, and one decision about deployment scoping.
+/// The accounts of one instruction, shared by its account-meta builder and its
+/// full instruction builder so that the two agree on order and inputs.
 struct InstructionAccountPlan<'data> {
+    /// Every account, in the order the program expects.
     ordered: Vec<&'data InstructionAccount>,
+    /// The accounts the caller supplies: all but those at fixed addresses.
     inputs: Vec<&'data InstructionAccount>,
-    seeds: Vec<AccountMetaSeed>,
+    /// Whether an optional account needs the program ID as Anchor's sentinel
+    /// for an omitted account.
     uses_program_id: bool,
 }
 
 impl<'data> InstructionAccountPlan<'data> {
-    fn new(
-        instruction: &'data Instruction,
-        types: &HashMap<&str, &TypeDefinition>,
-        pdas: &[PdaDerivation<'_>],
-    ) -> Result<Self> {
+    fn new(instruction: &'data Instruction) -> Self {
         let ordered = instruction_accounts(instruction);
         let inputs = ordered
             .iter()
-            // Optional PDAs remain caller-chosen. Deriving one unconditionally
-            // would make Anchor's `null`/program-id sentinel impossible.
-            .filter(|account| {
-                account.address.is_none() && (account.pda.is_none() || account.optional)
-            })
+            .filter(|account| account.address.is_none())
             .copied()
             .collect::<Vec<_>>();
-
-        let mut seed_fields = BTreeMap::new();
-        let mut seeds = Vec::new();
-        for account in ordered
-            .iter()
-            .filter(|account| account.pda.is_some() && !account.optional)
-        {
-            let derivation =
-                pda_for(pdas, &instruction.name, &account.name).with_context(|| {
-                    format!(
-                        "no PDA derivation for {} in {}",
-                        account.name, instruction.name
-                    )
-                })?;
-            for parameter in seed_parameters(derivation, types)? {
-                let (path, ty) = match parameter {
-                    SeedParameter::Account(_) => continue,
-                    SeedParameter::U32Argument(path) => (path, AccountMetaSeedType::U32),
-                    SeedParameter::FixedBytesArgument { path, length } => {
-                        (path, AccountMetaSeedType::FixedBytes { length })
-                    }
-                };
-                let field = seed_parameter_name(path);
-                if let Some(previous_path) = seed_fields.get(&field) {
-                    if previous_path != path {
-                        bail!(
-                            "PDA seed argument paths {previous_path} and {path} both map to account-meta seed field {field} in instruction {}",
-                            instruction.name
-                        );
-                    }
-                    continue;
-                }
-                seed_fields.insert(field.clone(), path.to_owned());
-                seeds.push(AccountMetaSeed {
-                    path: path.to_owned(),
-                    field,
-                    ty,
-                });
-            }
-        }
-
-        let uses_program_id = ordered.iter().any(|account| {
-            (account.pda.is_some() && !account.optional)
-                || (account.optional && account.address.is_none())
-        });
-
-        Ok(Self {
+        let uses_program_id = inputs.iter().any(|account| account.optional);
+        Self {
             ordered,
             inputs,
-            seeds,
             uses_program_id,
-        })
-    }
-
-    fn seed_field(&self, path: &str) -> Option<&str> {
-        self.seeds
-            .iter()
-            .find(|seed| seed.path == path)
-            .map(|seed| seed.field.as_str())
+        }
     }
 }
 
@@ -184,9 +89,7 @@ pub fn materialize(program: &ProgramData) -> Result<TypeScriptFileBundle> {
     validate_program(program)?;
     let types = type_map(program);
     let ordered_types = schema_order(program, &types)?;
-    let pdas = pdas(program)?;
     let fixed = fixed_addresses(program);
-    let seed_constants = seed_constants(program)?;
 
     Ok(TypeScriptFileBundle {
         index_ts: index().into_bytes(),
@@ -194,9 +97,9 @@ pub fn materialize(program: &ProgramData) -> Result<TypeScriptFileBundle> {
         accounts_ts: accounts(program)?.into_bytes(),
         errors_ts: errors(program).into_bytes(),
         events_ts: events(program)?.into_bytes(),
-        instructions_ts: instructions(program, &types, &pdas, &fixed)?.into_bytes(),
+        instructions_ts: instructions(program, &types, &fixed)?.into_bytes(),
         models_ts: models(program, &types, &ordered_types)?.into_bytes(),
-        pda_ts: pda(&pdas, &seed_constants, &types)?.into_bytes(),
+        solana_ts: solana().into_bytes(),
     })
 }
 
@@ -300,7 +203,7 @@ fn index() -> String {
      export * from \"./events.js\";\n\
      export * from \"./instructions.js\";\n\
      export * from \"./models.js\";\n\
-     export * from \"./pda.js\";\n"
+     export * from \"./solana.js\";\n"
         .to_owned()
 }
 
@@ -308,19 +211,12 @@ fn codecs() -> String {
     r#"// Generated from an Anchor IDL. Do not edit.
 
 import { deserialize, serialize, type Schema } from "borsh";
-import bs58 from "bs58";
-import { PublicKey } from "@solana/web3.js";
 
+/**
+ * A public key as Borsh models hold it: 32 numbers, one per byte. `solana.ts`
+ * converts it to and from `PublicKey`.
+ */
 export type PublicKeyBytes = ReadonlyArray<number>;
-
-export const publicKeyToBytes = (value: PublicKey): PublicKeyBytes =>
-  Array.from(value.toBytes());
-
-export const publicKeyFromBytes = (value: PublicKeyBytes): PublicKey =>
-  new PublicKey(Uint8Array.from(value));
-
-export const publicKeyBytesToBase58 = (value: PublicKeyBytes): string =>
-  bs58.encode(Uint8Array.from(value));
 
 export const hasDiscriminator = (
   data: Uint8Array,
@@ -351,6 +247,53 @@ export const encodeData = (
   data.set(body, discriminator.length);
   return data;
 };
+"#
+    .to_owned()
+}
+
+fn solana() -> String {
+    r#"// Generated from an Anchor IDL. Do not edit.
+//
+// The Solana types this client uses, so that it does not depend on
+// @solana/web3.js.
+
+import bs58 from "bs58";
+import type { PublicKeyBytes } from "./codecs.js";
+
+/** A Solana address: the 32 bytes of a public key or a program derived address. */
+export type PublicKey = Uint8Array;
+
+/** Copies 32 bytes, such as a model's `PublicKeyBytes`, into a new public key. */
+export const publicKeyFromBytes = (value: ArrayLike<number>): PublicKey => {
+  if (value.length !== 32) {
+    throw new RangeError("a public key must be 32 bytes");
+  }
+  return Uint8Array.from(value);
+};
+
+/** Copies a public key into the plain numbers that Borsh models hold. */
+export const publicKeyToBytes = (value: PublicKey): PublicKeyBytes =>
+  Array.from(value);
+
+export const publicKeyToBase58 = (value: PublicKey | PublicKeyBytes): string =>
+  bs58.encode(Uint8Array.from(value));
+
+export const publicKeyFromBase58 = (value: string): PublicKey =>
+  publicKeyFromBytes(bs58.decode(value));
+
+/** One account an instruction uses, with the access the program requires. */
+export interface AccountMeta {
+  pubkey: PublicKey;
+  isSigner: boolean;
+  isWritable: boolean;
+}
+
+/** The program to run, its accounts in order, and the encoded instruction data. */
+export interface TransactionInstruction {
+  programId: PublicKey;
+  keys: AccountMeta[];
+  data: Uint8Array;
+}
 "#
     .to_owned()
 }
@@ -977,354 +920,31 @@ fn errors(program: &ProgramData) -> String {
     out
 }
 
-// ---------------------------------------------------------------- PDAs
-
-fn pda(
-    pdas: &[PdaDerivation<'_>],
-    seed_constants: &BTreeMap<Vec<u8>, String>,
-    types: &HashMap<&str, &TypeDefinition>,
-) -> Result<String> {
-    let mut out = String::new();
-    header(&mut out);
-    if !pdas.is_empty() {
-        out.push_str("\nimport { PublicKey } from \"@solana/web3.js\";\n");
-    }
-    let imports = pdas
-        .iter()
-        .flat_map(|derivation| derivation.seeds)
-        .filter_map(|seed| match seed {
-            Seed::Constant(bytes) => seed_constants.get(bytes),
-            Seed::Account { .. } | Seed::Argument { .. } => None,
-        })
-        .map(|name| constant_name(name))
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    if !imports.is_empty() {
-        let imports = imports.join(", ");
-        let _ = write!(out, "import {{ {imports} }} from \"./models.js\";\n");
-    }
-    let uses_u32_argument = pdas.iter().try_fold(false, |uses_u32, derivation| {
-        Ok::<_, anyhow::Error>(
-            uses_u32
-                || seed_parameters(derivation, types)?
-                    .iter()
-                    .any(|parameter| matches!(parameter, SeedParameter::U32Argument(_))),
-        )
-    })?;
-    if uses_u32_argument {
-        out.push_str(
-            "\nconst u32ToLittleEndianBytes = (value: number): Uint8Array => {\n  \
-             if (!Number.isInteger(value) || value < 0 || value > 0xffff_ffff) {\n    \
-             throw new RangeError(`PDA u32 seed ${value} is out of range`);\n  }\n  \
-             const bytes = new Uint8Array(4);\n  \
-             new DataView(bytes.buffer).setUint32(0, value, true);\n  \
-             return bytes;\n};\n",
-        );
-    }
-    let uses_fixed_bytes_argument =
-        pdas.iter()
-            .try_fold(false, |uses_fixed_bytes, derivation| {
-                Ok::<_, anyhow::Error>(
-                    uses_fixed_bytes
-                        || seed_parameters(derivation, types)?.iter().any(|parameter| {
-                            matches!(parameter, SeedParameter::FixedBytesArgument { .. })
-                        }),
-                )
-            })?;
-    if uses_fixed_bytes_argument {
-        out.push_str(
-            "\nconst fixedBytesToSeed = (\n  value: ReadonlyArray<number>,\n  length: number,\n): Uint8Array => {\n  \
-             if (\n    value.length !== length ||\n    value.some(\n      (byte) => !Number.isInteger(byte) || byte < 0 || byte > 0xff,\n    )\n  ) {\n    \
-             throw new RangeError(`PDA seed must contain exactly ${length} bytes`);\n  }\n  \
-             return Uint8Array.from(value);\n};\n",
-        );
-    }
-    section(&mut out, "PDA derivations");
-    for derivation in pdas {
-        let parameters = seed_parameters(derivation, types)?;
-        let signature = parameters
-            .iter()
-            .map(|parameter| match parameter {
-                SeedParameter::Account(path) => {
-                    format!("{}: PublicKey", seed_parameter_name(path))
-                }
-                SeedParameter::U32Argument(path) => {
-                    format!("{}: number", seed_parameter_name(path))
-                }
-                SeedParameter::FixedBytesArgument { path, .. } => {
-                    format!("{}: ReadonlyArray<number>", seed_parameter_name(path))
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        let mut seeds = Vec::new();
-        for seed in derivation.seeds {
-            match seed {
-                Seed::Constant(bytes) => seeds.push(
-                    seed_constants
-                        .get(bytes)
-                        .map(|name| format!("Uint8Array.from({})", constant_name(name)))
-                        .unwrap_or_else(|| format!("Uint8Array.from({})", numeric_array(bytes))),
-                ),
-                Seed::Account { path, .. } => {
-                    seeds.push(format!("{}.toBytes()", seed_parameter_name(path)));
-                }
-                Seed::Argument { path } => {
-                    match resolve_argument_seed(derivation.instruction, types, path)? {
-                        SeedParameter::U32Argument(path) => seeds.push(format!(
-                            "u32ToLittleEndianBytes({})",
-                            seed_parameter_name(path)
-                        )),
-                        SeedParameter::FixedBytesArgument { path, length } => seeds.push(format!(
-                            "fixedBytesToSeed({}, {length})",
-                            seed_parameter_name(path)
-                        )),
-                        SeedParameter::Account(_) => {
-                            unreachable!("argument seeds never resolve to account parameters")
-                        }
-                    }
-                }
-            }
-        }
-        let comma = if signature.is_empty() { "" } else { ", " };
-        let _ = write!(
-            out,
-            "export const {} = (\n  programId: PublicKey{comma}{signature},\n): [PublicKey, number] =>\n  \
-             PublicKey.findProgramAddressSync([{}], programId);\n\n",
-            derivation.function,
-            seeds.join(", ")
-        );
-    }
-    Ok(out)
-}
-
-fn pdas(program: &ProgramData) -> Result<Vec<PdaDerivation<'_>>> {
-    let mut by_name: BTreeMap<&str, Vec<(&Instruction, &[Seed])>> = BTreeMap::new();
-    for instruction in &program.instructions {
-        for account in instruction_accounts(instruction) {
-            let Some(pda) = &account.pda else { continue };
-            if pda.program.is_some() {
-                bail!(
-                    "account {} derives from another program, which TypeScript materialization does not support",
-                    account.name
-                );
-            }
-            let variants = by_name.entry(&account.name).or_default();
-            if !variants
-                .iter()
-                .any(|(_, seeds)| *seeds == pda.seeds.as_slice())
-            {
-                variants.push((instruction, pda.seeds.as_slice()));
-            }
-        }
-    }
-    let mut out = Vec::new();
-    for (account, variants) in by_name {
-        let ambiguous = variants.len() > 1;
-        for (instruction, seeds) in variants {
-            let scope = instruction
-                .name
-                .strip_prefix("initialize_")
-                .unwrap_or(&instruction.name);
-            let function = if ambiguous {
-                format!(
-                    "find{}PdaFor{}",
-                    to_pascal_case(account),
-                    to_pascal_case(scope)
-                )
-            } else {
-                format!("find{}Pda", to_pascal_case(account))
-            };
-            out.push(PdaDerivation {
-                function,
-                account,
-                instruction,
-                seeds,
-            });
-        }
-    }
-    Ok(out)
-}
-
-fn pda_for<'a>(
-    pdas: &'a [PdaDerivation<'a>],
-    instruction: &str,
-    account: &str,
-) -> Option<&'a PdaDerivation<'a>> {
-    pdas.iter()
-        .find(|pda| pda.account == account && pda.instruction.name == instruction)
-        .or_else(|| {
-            let mut candidates = pdas.iter().filter(|pda| pda.account == account);
-            let first = candidates.next()?;
-            candidates.next().is_none().then_some(first)
-        })
-}
-
-/// One parameter per distinct seed value.
-///
-/// A derivation may legitimately use the same account twice — the referral
-/// root node is seeded on its network and owned by it — and one value needs
-/// one parameter, however many seeds read it.
-fn seed_parameters<'data>(
-    derivation: &'data PdaDerivation<'data>,
-    types: &HashMap<&str, &TypeDefinition>,
-) -> Result<Vec<SeedParameter<'data>>> {
-    let mut parameters: Vec<SeedParameter<'data>> = Vec::new();
-    for seed in derivation.seeds {
-        let parameter = match seed {
-            Seed::Constant(_) => continue,
-            Seed::Account { path, .. } => {
-                SeedParameter::Account(direct_seed_path(path, "account")?)
-            }
-            Seed::Argument { path } => resolve_argument_seed(derivation.instruction, types, path)?,
-        };
-        if !parameters.contains(&parameter) {
-            parameters.push(parameter);
-        }
-    }
-    Ok(parameters)
-}
-
-fn direct_seed_path<'a>(path: &'a str, kind: &str) -> Result<&'a str> {
-    if path.contains('.') {
-        bail!("nested PDA seed {kind} path {path} is not supported");
-    }
-    Ok(path)
-}
-
-fn resolve_argument_seed<'data>(
-    instruction: &Instruction,
-    types: &HashMap<&str, &TypeDefinition>,
-    path: &'data str,
-) -> Result<SeedParameter<'data>> {
-    let mut path_segments = path.split('.');
-    let argument_name = path_segments
-        .next()
-        .filter(|name| !name.is_empty())
-        .with_context(|| "PDA seed instruction argument path must not be empty")?;
-    let argument = instruction
-        .args
-        .iter()
-        .find(|argument| argument.name == argument_name)
-        .with_context(|| {
-            format!(
-                "PDA seed argument {argument_name} is not an argument of instruction {}",
-                instruction.name
-            )
-        })?;
-    let mut ty = &argument.ty;
-    for field_name in path_segments {
-        if field_name.is_empty() {
-            bail!("PDA seed instruction argument path {path} contains an empty field name");
-        }
-        ty = defined_struct_field(types, ty, field_name).with_context(|| {
-            format!(
-                "resolving PDA seed argument path {}.{path}",
-                instruction.name
-            )
-        })?;
-    }
-    match ty {
-        Type::U32 => Ok(SeedParameter::U32Argument(path)),
-        Type::Array(element, ArrayLength::Value(length))
-            if matches!(element.as_ref(), Type::U8) && (1..=32).contains(length) =>
-        {
-            Ok(SeedParameter::FixedBytesArgument {
-                path,
-                length: *length,
-            })
-        }
-        _ => bail!(
-            "PDA seed argument {}.{path} must be u32 or a byte array of 1 through 32 bytes; got {ty:?}",
-            instruction.name
-        ),
-    }
-}
-
-fn defined_struct_field<'data>(
-    types: &HashMap<&str, &'data TypeDefinition>,
-    ty: &'data Type,
-    field_name: &str,
-) -> Result<&'data Type> {
-    let Type::Defined { name, .. } = ty else {
-        bail!("cannot select field {field_name} from non-struct type {ty:?}");
-    };
-    let definition = types
-        .get(name.as_str())
-        .with_context(|| format!("defined type {name} does not exist"))?;
-    let TypeDefinitionKind::Struct {
-        fields: Some(DefinedFields::Named(fields)),
-    } = &definition.kind
-    else {
-        bail!("defined type {name} is not a struct with named fields");
-    };
-    fields
-        .iter()
-        .find(|field| field.name == field_name)
-        .map(|field| &field.ty)
-        .with_context(|| format!("defined type {name} has no field {field_name}"))
-}
-
-fn seed_parameter_name(path: &str) -> String {
-    value_name(&path.replace('.', "_"))
-}
-
-fn argument_path_expression(path: &str) -> String {
-    path.split('.')
-        .map(value_name)
-        .collect::<Vec<_>>()
-        .join(".")
-}
-
-fn seed_constants(program: &ProgramData) -> Result<BTreeMap<Vec<u8>, String>> {
-    let mut out = BTreeMap::new();
-    for constant in &program.constants {
-        if matches!(constant.ty, Type::Bytes) {
-            out.insert(
-                parse_byte_literal(&constant.value)
-                    .with_context(|| format!("constant {}", constant.name))?,
-                constant.name.clone(),
-            );
-        }
-    }
-    Ok(out)
-}
-
-fn parse_byte_literal(value: &str) -> Result<Vec<u8>> {
-    let inner = value
-        .trim()
-        .strip_prefix('[')
-        .and_then(|rest| rest.strip_suffix(']'))
-        .with_context(|| format!("expected a byte array, got {value}"))?;
-    if inner.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-    inner
-        .split(',')
-        .map(|byte| byte.trim().parse::<u8>().map_err(anyhow::Error::from))
-        .collect()
-}
-
 // ---------------------------------------------------------------- instructions
 
 fn instructions(
     program: &ProgramData,
     types: &HashMap<&str, &TypeDefinition>,
-    pdas: &[PdaDerivation<'_>],
     fixed: &[FixedAddress],
 ) -> Result<String> {
     let mut out = String::new();
     header(&mut out);
     out.push_str(
         "\nimport type { Schema } from \"borsh\";\n\
-         import bs58 from \"bs58\";\n\
-         import { PublicKey, TransactionInstruction, type AccountMeta } from \"@solana/web3.js\";\n\
          import { encodeData } from \"./codecs.js\";\n\
          import * as models from \"./models.js\";\n",
     );
-    if !pdas.is_empty() {
-        out.push_str("import * as pda from \"./pda.js\";\n");
+    // Only fixed addresses need a value from solana.ts. A type-only import
+    // leaves no import statement in the emitted JavaScript.
+    if fixed.is_empty() {
+        out.push_str(
+            "import type { AccountMeta, PublicKey, TransactionInstruction } from \"./solana.js\";\n",
+        );
+    } else {
+        out.push_str(
+            "import {\n  publicKeyFromBase58,\n  type AccountMeta,\n  type PublicKey,\n  \
+             type TransactionInstruction,\n} from \"./solana.js\";\n",
+        );
     }
     if program.instructions.iter().any(|instruction| {
         instruction
@@ -1343,9 +963,9 @@ fn instructions(
                 .unwrap_or(&entry.constant);
             let _ = write!(
                 out,
-                "export const {address_name}_ADDRESS = bs58.encode(Uint8Array.from({}));\n\
-                 export const {} = new PublicKey({address_name}_ADDRESS);\n",
-                numeric_array(&entry.address),
+                "export const {address_name}_ADDRESS = {};\n\
+                 export const {}: PublicKey = publicKeyFromBase58({address_name}_ADDRESS);\n",
+                js_string(&Address::from(entry.address).to_string()),
                 entry.constant
             );
         }
@@ -1356,7 +976,7 @@ fn instructions(
     }
     section(&mut out, "instruction builders");
     for instruction in &program.instructions {
-        emit_instruction_builders(&mut out, instruction, types, pdas, fixed)?;
+        emit_instruction_builders(&mut out, instruction, fixed);
     }
     Ok(out)
 }
@@ -1441,19 +1061,12 @@ fn instruction_type(ty: &Type, types: &HashMap<&str, &TypeDefinition>) -> Result
     }
 }
 
-fn emit_instruction_builders(
-    out: &mut String,
-    instruction: &Instruction,
-    types: &HashMap<&str, &TypeDefinition>,
-    pdas: &[PdaDerivation<'_>],
-    fixed: &[FixedAddress],
-) -> Result<()> {
+fn emit_instruction_builders(out: &mut String, instruction: &Instruction, fixed: &[FixedAddress]) {
     let name = to_pascal_case(&instruction.name);
-    let plan = InstructionAccountPlan::new(instruction, types, pdas)?;
+    let plan = InstructionAccountPlan::new(instruction);
     emit_instruction_account_types(out, &name, &plan);
-    emit_account_meta_builder(out, instruction, &name, &plan, types, pdas, fixed)?;
+    emit_account_meta_builder(out, instruction, &name, &plan, fixed);
     emit_full_instruction_builder(out, instruction, &name, &plan);
-    Ok(())
 }
 
 fn emit_instruction_account_types(out: &mut String, name: &str, plan: &InstructionAccountPlan<'_>) {
@@ -1468,20 +1081,6 @@ fn emit_instruction_account_types(out: &mut String, name: &str, plan: &Instructi
         );
     }
     out.push_str("}\n\n");
-
-    if !plan.seeds.is_empty() {
-        let _ = write!(out, "export interface {name}AccountMetaSeeds {{\n");
-        for seed in &plan.seeds {
-            let _ = write!(
-                out,
-                "  /** Instruction argument `{}`, used only to derive account addresses. */\n  {}: {};\n",
-                seed.path,
-                seed.field,
-                seed.ty.typescript_type()
-            );
-        }
-        out.push_str("}\n\n");
-    }
 }
 
 fn emit_account_meta_builder(
@@ -1489,15 +1088,8 @@ fn emit_account_meta_builder(
     instruction: &Instruction,
     name: &str,
     plan: &InstructionAccountPlan<'_>,
-    types: &HashMap<&str, &TypeDefinition>,
-    pdas: &[PdaDerivation<'_>],
     fixed: &[FixedAddress],
-) -> Result<()> {
-    let seed_parameter = if plan.seeds.is_empty() {
-        String::new()
-    } else {
-        format!(",\n  seeds: {name}AccountMetaSeeds")
-    };
+) {
     let program_id_parameter = if plan.uses_program_id {
         "  programId: PublicKey,\n"
     } else {
@@ -1505,90 +1097,17 @@ fn emit_account_meta_builder(
     };
     let _ = write!(
         out,
-        "/**\n * Builds account metas for `{}` in the exact order the program expects.\n * No instruction data is encoded, so the result can be forwarded as remaining accounts.\n */\nexport const create{name}AccountMetas = (\n{program_id_parameter}  accounts: {name}Accounts{seed_parameter},\n): AccountMeta[] => {{\n",
+        "/**\n * Builds account metas for `{}` in the exact order the program expects.\n * No instruction data is encoded, so the result can be forwarded as remaining accounts.\n */\nexport const create{name}AccountMetas = (\n{program_id_parameter}  accounts: {name}Accounts,\n): AccountMeta[] => {{\n",
         instruction.name
     );
-
-    let mut expressions = BTreeMap::new();
-    for account in &plan.ordered {
-        if let Some(address) = account.address {
-            expressions.insert(
-                account.name.as_str(),
-                fixed_constant_for(fixed, &address)
-                    .expect("every fixed address has a constant")
-                    .to_owned(),
-            );
-        } else if account.pda.is_none() || account.optional {
-            expressions.insert(
-                account.name.as_str(),
-                format!("accounts.{}", value_name(&account.name)),
-            );
-        }
-    }
-    for account in &plan.ordered {
-        let Some(_) = &account.pda else {
-            continue;
-        };
-        if account.optional {
-            continue;
-        }
-        let derivation = pda_for(pdas, &instruction.name, &account.name).with_context(|| {
-            format!(
-                "no PDA derivation for {} in {}",
-                account.name, instruction.name
-            )
-        })?;
-        let arguments = seed_parameters(derivation, types)?
-            .iter()
-            .map(|parameter| match parameter {
-                SeedParameter::Account(path) => {
-                    let expression = expressions.get(path).with_context(|| {
-                        format!(
-                            "PDA account {} depends on unresolved seed account {path}",
-                            account.name
-                        )
-                    })?;
-                    let optional = plan
-                        .ordered
-                        .iter()
-                        .find(|candidate| candidate.name == *path)
-                        .is_some_and(|seed| seed.optional);
-                    if optional {
-                        bail!(
-                            "PDA account {} depends on optional seed account {path}",
-                            account.name
-                        );
-                    }
-                    Ok(expression.clone())
-                }
-                SeedParameter::U32Argument(path)
-                | SeedParameter::FixedBytesArgument { path, .. } => {
-                    let field = plan.seed_field(path).with_context(|| {
-                        format!(
-                            "PDA account {} depends on unplanned argument seed {path}",
-                            account.name
-                        )
-                    })?;
-                    Ok(format!("seeds.{field}"))
-                }
-            })
-            .collect::<Result<Vec<_>>>()?
-            .join(", ");
-        let comma = if arguments.is_empty() { "" } else { ", " };
-        let local = value_name(&account.name);
-        let _ = write!(
-            out,
-            "  const {local} = pda.{}(programId{comma}{arguments})[0];\n",
-            derivation.function
-        );
-        expressions.insert(account.name.as_str(), local);
-    }
     out.push_str("  return [\n");
     for account in &plan.ordered {
-        let mut expression = expressions
-            .get(account.name.as_str())
-            .with_context(|| format!("no value for instruction account {}", account.name))?
-            .clone();
+        let mut expression = match account.address {
+            Some(address) => fixed_constant_for(fixed, &address)
+                .expect("every fixed address has a constant")
+                .to_owned(),
+            None => format!("accounts.{}", value_name(&account.name)),
+        };
         let optional_input = account.optional && account.address.is_none();
         let is_writable = if optional_input && account.writable {
             format!("{expression} !== null")
@@ -1609,7 +1128,6 @@ fn emit_account_meta_builder(
         );
     }
     out.push_str("  ];\n};\n\n");
-    Ok(())
 }
 
 fn emit_full_instruction_builder(
@@ -1633,26 +1151,10 @@ fn emit_full_instruction_builder(
     } else {
         ""
     };
-    if plan.seeds.is_empty() {
-        let _ = write!(
-            out,
-            "  const keys = create{name}AccountMetas({program_id_argument}accounts);\n"
-        );
-    } else {
-        let _ = write!(
-            out,
-            "  const keys = create{name}AccountMetas({program_id_argument}accounts, {{\n"
-        );
-        for seed in &plan.seeds {
-            let _ = write!(
-                out,
-                "    {}: args.{},\n",
-                seed.field,
-                argument_path_expression(&seed.path)
-            );
-        }
-        out.push_str("  });\n");
-    }
+    let _ = write!(
+        out,
+        "  const keys = create{name}AccountMetas({program_id_argument}accounts);\n"
+    );
     let value = if instruction.args.is_empty() {
         "{}"
     } else {
@@ -1661,7 +1163,7 @@ fn emit_full_instruction_builder(
     let _ = write!(
         out,
         "  const data = encodeData({}, {}_INSTRUCTION_DISCRIMINATOR, {value});\n  \
-         return new TransactionInstruction({{ programId, keys, data: Buffer.from(data) }});\n}};\n\n",
+         return {{ programId, keys, data }};\n}};\n\n",
         instruction_schema_name(&instruction.name),
         constant_name(&instruction.name)
     );
@@ -1778,6 +1280,21 @@ fn numeric_array(bytes: &[u8]) -> String {
     )
 }
 
+fn parse_byte_literal(value: &str) -> Result<Vec<u8>> {
+    let inner = value
+        .trim()
+        .strip_prefix('[')
+        .and_then(|rest| rest.strip_suffix(']'))
+        .with_context(|| format!("expected a byte array, got {value}"))?;
+    if inner.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    inner
+        .split(',')
+        .map(|byte| byte.trim().parse::<u8>().map_err(anyhow::Error::from))
+        .collect()
+}
+
 fn js_string(value: &str) -> String {
     serde_json::to_string(value).expect("serializing a string cannot fail")
 }
@@ -1825,9 +1342,10 @@ const TYPESCRIPT_RESERVED_WORDS: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::program_data::Seed;
     use crate::test_support::{
-        direct_u32_seed_and_account_ancestry_program, nested_byte_array_seed_program,
-        sample_program,
+        SYSTEM_PROGRAM, direct_u32_seed_and_account_ancestry_program,
+        nested_byte_array_seed_program, sample_program,
     };
 
     #[test]
@@ -1846,29 +1364,6 @@ mod tests {
     }
 
     #[test]
-    fn eight_byte_label_seeds_preserve_width_and_reject_oversized_seeds() {
-        let mut program = nested_byte_array_seed_program();
-        let TypeDefinitionKind::Struct {
-            fields: Some(DefinedFields::Named(fields)),
-        } = &mut program.types[0].kind
-        else {
-            panic!("expected named fixture fields")
-        };
-        fields[0].ty = Type::Array(Box::new(Type::U8), ArrayLength::Value(8));
-        let generated = materialize(&program).expect("eight-byte label should materialize");
-        let pda = String::from_utf8(generated.pda_ts).unwrap();
-        assert!(pda.contains("fixedBytesToSeed(argsIdentifierAscii, 8)"));
-        let TypeDefinitionKind::Struct {
-            fields: Some(DefinedFields::Named(fields)),
-        } = &mut program.types[0].kind
-        else {
-            panic!("expected named fixture fields")
-        };
-        fields[0].ty = Type::Array(Box::new(Type::U8), ArrayLength::Value(33));
-        assert!(materialize(&program).is_err());
-    }
-
-    #[test]
     fn emits_plain_borsh_schemas_for_the_complete_client_surface() {
         let generated = materialize(&sample_program()).expect("program data should materialize");
         assert_eq!(
@@ -1881,7 +1376,7 @@ mod tests {
                 "events.ts",
                 "instructions.ts",
                 "models.ts",
-                "pda.ts",
+                "solana.ts",
             ]
         );
         let models = String::from_utf8(generated.models_ts).unwrap();
@@ -1894,152 +1389,112 @@ mod tests {
     }
 
     #[test]
-    fn builders_keep_solana_effects_outside_the_schema_layer() {
+    fn builders_use_base58_fixed_addresses_and_return_plain_instructions() {
         let generated = materialize(&sample_program()).expect("program data should materialize");
         let instructions = String::from_utf8(generated.instructions_ts).unwrap();
-        let pda = String::from_utf8(generated.pda_ts).unwrap();
+        assert!(instructions.contains(&format!(
+            "export const SYSTEM_PROGRAM_ADDRESS = \"{SYSTEM_PROGRAM}\";\n\
+             export const SYSTEM_PROGRAM_ID: PublicKey = publicKeyFromBase58(SYSTEM_PROGRAM_ADDRESS);"
+        )));
         assert!(
             instructions
                 .contains("{ pubkey: SYSTEM_PROGRAM_ID, isWritable: false, isSigner: false }")
         );
-        assert!(pda.contains("authority.toBytes()"));
-        assert!(pda.contains("vault.toBytes(), u32ToLittleEndianBytes(slot)"));
-        assert!(!pda.contains("PROGRAM_ID"));
-        assert!(!pda.contains("PROGRAM_ADDRESS"));
+        assert!(instructions.contains("return { programId, keys, data };"));
     }
 
     #[test]
-    fn direct_u32_seed_arguments_and_account_ancestry_generate_end_to_end() {
-        let generated = materialize(&direct_u32_seed_and_account_ancestry_program())
-            .expect("seed graph should materialize");
-        let instructions = String::from_utf8(generated.instructions_ts).unwrap();
-        let pda = String::from_utf8(generated.pda_ts).unwrap();
-
-        assert!(pda.contains("epochCounter: number"));
-        assert!(pda.contains("u32ToLittleEndianBytes(epochCounter)"));
-        assert!(pda.contains("findFinalEpochPda"));
-        assert!(pda.contains("epoch: PublicKey"));
-        let seed_interface = instructions
-            .split_once("export interface InitializeEpochAccountMetaSeeds {")
-            .expect("account-meta seed interface should be generated")
-            .1
-            .split_once("}\n")
-            .expect("account-meta seed interface should be closed")
-            .0;
-        assert!(seed_interface.contains("epochCounter: number;"));
-        assert!(!seed_interface.contains("amount"));
-        let account_meta_builder = instructions
-            .split_once("export const createInitializeEpochAccountMetas")
-            .expect("standalone account-meta builder should be generated")
-            .1
-            .split_once("export const createInitializeEpochInstruction")
-            .expect("full instruction builder should follow it")
-            .0;
-        assert!(!account_meta_builder.contains("encodeData"));
-        assert!(!account_meta_builder.contains("amount"));
-        let channel_index = account_meta_builder
-            .find("pubkey: accounts.channel")
-            .expect("channel meta should be present");
-        let epoch_index = account_meta_builder
-            .find("pubkey: epoch")
-            .expect("epoch meta should be present");
-        let final_epoch_index = account_meta_builder
-            .find("pubkey: finalEpoch")
-            .expect("final epoch meta should be present");
-        assert!(channel_index < epoch_index && epoch_index < final_epoch_index);
-        assert!(instructions.contains(
-            "const epoch = pda.findEpochPda(programId, accounts.channel, seeds.epochCounter)[0];"
-        ));
-        assert!(
-            instructions.contains("const finalEpoch = pda.findFinalEpochPda(programId, epoch)[0];")
+    fn clients_import_no_packages_besides_borsh_and_bs58() {
+        let generated = materialize(&sample_program()).expect("program data should materialize");
+        let packages = generated
+            .files()
+            .iter()
+            .flat_map(|&(_, bytes)| {
+                std::str::from_utf8(bytes)
+                    .expect("generated files should be UTF-8")
+                    .lines()
+            })
+            .filter_map(|line| line.split_once(" from \"").map(|(_, rest)| rest))
+            .filter_map(|rest| rest.split('"').next())
+            .filter(|specifier| !specifier.starts_with("./"))
+            .map(str::to_owned)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            packages,
+            BTreeSet::from(["borsh".to_owned(), "bs58".to_owned()])
         );
-        assert!(
-            instructions
-                .contains("const keys = createInitializeEpochAccountMetas(programId, accounts, {")
-        );
-        assert!(instructions.contains("epochCounter: args.epochCounter,"));
-        assert!(instructions.contains("amount: bigint;"));
     }
 
+    /// The client ignores PDA seeds, so a seed that no generator can read,
+    /// such as a field of another account, does not stop generation.
     #[test]
-    fn account_meta_builders_ask_only_for_the_values_they_use() {
+    fn pda_accounts_are_caller_inputs_whatever_their_seeds() {
         let mut program = direct_u32_seed_and_account_ancestry_program();
-        for item in &mut program.instructions[0].accounts {
-            let InstructionAccountItem::Single(account) = item else {
-                panic!("fixture accounts should not be composite");
-            };
-            account.pda = None;
-        }
+        let InstructionAccountItem::Single(final_epoch) = &mut program.instructions[0].accounts[2]
+        else {
+            panic!("fixture final epoch should not be composite");
+        };
+        final_epoch
+            .pda
+            .as_mut()
+            .expect("fixture final epoch should be a PDA")
+            .seeds[1] = Seed::Account {
+            path: "epoch.channel".to_owned(),
+            account_type: Some("Epoch".to_owned()),
+        };
 
-        let generated = materialize(&program).expect("plain account list should materialize");
+        let generated = materialize(&program).expect("PDA seeds should not affect generation");
         let instructions = String::from_utf8(generated.instructions_ts).unwrap();
 
         assert!(instructions.contains(
-            "export const createInitializeEpochAccountMetas = (\n  accounts: InitializeEpochAccounts,\n): AccountMeta[]"
+            "export interface InitializeEpochAccounts {\n  channel: PublicKey;\n  epoch: PublicKey;\n  finalEpoch: PublicKey;\n}"
+        ));
+        assert!(instructions.contains(
+            "export const createInitializeEpochAccountMetas = (\n  accounts: InitializeEpochAccounts,\n): AccountMeta[] => {\n  return [\n    \
+             { pubkey: accounts.channel, isWritable: true, isSigner: false },\n    \
+             { pubkey: accounts.epoch, isWritable: true, isSigner: false },\n    \
+             { pubkey: accounts.finalEpoch, isWritable: true, isSigner: false },\n  ];"
         ));
         assert!(instructions.contains("const keys = createInitializeEpochAccountMetas(accounts);"));
-        assert!(!instructions.contains("InitializeEpochAccountMetaSeeds"));
     }
 
     #[test]
-    fn optional_pdas_remain_caller_chosen_and_use_the_anchor_sentinel() {
+    fn optional_accounts_use_the_program_id_as_anchor_sentinel() {
         let mut program = direct_u32_seed_and_account_ancestry_program();
         let InstructionAccountItem::Single(epoch) = &mut program.instructions[0].accounts[1] else {
             panic!("fixture epoch should not be composite");
         };
         epoch.optional = true;
-        let InstructionAccountItem::Single(final_epoch) = &mut program.instructions[0].accounts[2]
-        else {
-            panic!("fixture final epoch should not be composite");
-        };
-        final_epoch.pda = None;
 
-        let generated = materialize(&program).expect("optional PDA should remain caller-chosen");
+        let generated = materialize(&program).expect("optional account should materialize");
         let instructions = String::from_utf8(generated.instructions_ts).unwrap();
 
         assert!(instructions.contains("epoch: PublicKey | null;"));
         assert!(instructions.contains(
+            "export const createInitializeEpochAccountMetas = (\n  programId: PublicKey,\n  accounts: InitializeEpochAccounts,\n): AccountMeta[]"
+        ));
+        assert!(instructions.contains(
             "{ pubkey: accounts.epoch ?? programId, isWritable: accounts.epoch !== null, isSigner: false }"
         ));
-        assert!(!instructions.contains("InitializeEpochAccountMetaSeeds"));
-        assert!(!instructions.contains("const epoch = pda.findEpochPda"));
-    }
-
-    #[test]
-    fn nested_fixed_byte_array_seed_arguments_generate_end_to_end() {
-        let generated = materialize(&nested_byte_array_seed_program())
-            .expect("nested fixed-byte argument seed should materialize");
-        let instructions = String::from_utf8(generated.instructions_ts).unwrap();
-        let pda = String::from_utf8(generated.pda_ts).unwrap();
-
-        assert!(pda.contains("argsIdentifierAscii: ReadonlyArray<number>"));
-        assert!(pda.contains("fixedBytesToSeed(argsIdentifierAscii, 32)"));
-        assert!(pda.contains("value.length !== length"));
-        assert!(instructions.contains("export interface InitializeFleetAccountMetaSeeds"));
-        assert!(instructions.contains("argsIdentifierAscii: ReadonlyArray<number>;"));
         assert!(
-            instructions.contains(
-                "const fleet = pda.findFleetPda(programId, seeds.argsIdentifierAscii)[0];"
-            )
+            instructions
+                .contains("const keys = createInitializeEpochAccountMetas(programId, accounts);")
         );
-        assert!(instructions.contains("argsIdentifierAscii: args.args.identifierAscii,"));
     }
 
     #[test]
-    fn programs_without_events_or_pdas_omit_unused_module_imports() {
-        let mut program = nested_byte_array_seed_program();
-        let InstructionAccountItem::Single(fleet) = &mut program.instructions[0].accounts[0] else {
-            panic!("fixture instruction account should be flat");
-        };
-        fleet.pda = None;
-
-        let generated =
-            materialize(&program).expect("program without events or PDAs should materialize");
+    fn programs_without_events_or_fixed_addresses_omit_unused_imports() {
+        let generated = materialize(&nested_byte_array_seed_program())
+            .expect("program without events should materialize");
         let events = String::from_utf8(generated.events_ts).expect("events should be UTF-8");
-        let pda = String::from_utf8(generated.pda_ts).expect("PDA helpers should be UTF-8");
+        let instructions =
+            String::from_utf8(generated.instructions_ts).expect("instructions should be UTF-8");
 
         assert!(!events.contains("import "));
-        assert!(!pda.contains("import "));
+        // Without fixed addresses, the builders use no value from solana.ts.
+        assert!(instructions.contains(
+            "import type { AccountMeta, PublicKey, TransactionInstruction } from \"./solana.js\";"
+        ));
     }
 
     #[test]
@@ -2073,24 +1528,5 @@ mod tests {
         let events = String::from_utf8(generated.events_ts).expect("events should be UTF-8");
         assert!(events.contains("export const decodeDepositedEvent ="));
         assert!(events.contains("export const decodeDepositedEventUnion ="));
-    }
-
-    #[test]
-    fn nested_argument_seed_reports_a_missing_struct_field() {
-        let mut program = nested_byte_array_seed_program();
-        let InstructionAccountItem::Single(fleet) = &mut program.instructions[0].accounts[0] else {
-            panic!("fixture should contain the fleet account");
-        };
-        let Seed::Argument { path } = &mut fleet.pda.as_mut().unwrap().seeds[1] else {
-            panic!("fixture should contain the argument seed");
-        };
-        *path = "args.missing".to_owned();
-
-        let error = materialize(&program).expect_err("missing nested field should be rejected");
-        assert!(
-            error
-                .to_string()
-                .contains("resolving PDA seed argument path initialize_fleet.args.missing")
-        );
     }
 }

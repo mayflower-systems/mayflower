@@ -25,17 +25,19 @@ program address through `MayfRewardClearingApi::new(program_id)` and include
 instruction builders, account layouts, and argument models.
 
 Keep `ts/package.json` and `ts/tsconfig.json` as the package definition. The
-TypeScript config extends the repository's `tsconfig.base.json` and adds Node's
-types, because the generated instruction builders use Node's global `Buffer`.
-The generated `create…Instruction` builders take the program address as their
-first argument.
+TypeScript config extends the repository's `tsconfig.base.json` unchanged, and
+the package depends only on `borsh` and `bs58`. The generated
+`create…Instruction` builders take the program address as their first
+argument.
 
-Channel group and epoch PDA seeds depend on counters stored in accounts.
-Generation uses `--manual-pdas`, so callers supply the PDA addresses explicitly.
-The small `cpi/src/pda.rs` and `ts/src/pda.ts` modules are maintained by hand and
-preserved on regeneration; the other files in `cpi/src/` and `ts/src/` are
-generated. Creation instructions validate derived addresses; subsequent
-operations use stored relationships.
+Channel group and epoch PDA seeds depend on counters stored in accounts, so
+callers supply the PDA addresses explicitly. Rust generation uses
+`--manual-pdas`, and the small `cpi/src/pda.rs` interface is maintained by hand
+and preserved on regeneration. The TypeScript client never derives PDAs; its
+callers derive them with a Solana library, such as `@solana/web3.js`. The
+other files in `cpi/src/` and every file in `ts/src/` are generated. Creation
+instructions validate derived addresses; subsequent operations use stored
+relationships.
 
 ## State-machine integration
 

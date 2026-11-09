@@ -17,12 +17,10 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@solana/web3.js": "catalog:",
     "borsh": "catalog:",
     "bs58": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "typescript": "catalog:"
   }
 }

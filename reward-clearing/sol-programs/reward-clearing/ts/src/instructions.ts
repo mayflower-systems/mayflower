@@ -1,31 +1,26 @@
 // Generated from an Anchor IDL. Do not edit.
 
 import type { Schema } from "borsh"
-import bs58 from "bs58"
-import {
-  PublicKey,
-  TransactionInstruction,
-  type AccountMeta,
-} from "@solana/web3.js"
 import { encodeData } from "./codecs.js"
 import * as models from "./models.js"
+import {
+  publicKeyFromBase58,
+  type AccountMeta,
+  type PublicKey,
+  type TransactionInstruction,
+} from "./solana.js"
 
 // fixed addresses ---------------------------------------------------
 
-export const TOKEN_PROGRAM_ADDRESS = bs58.encode(
-  Uint8Array.from([
-    6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235, 121, 172,
-    28, 180, 133, 237, 95, 91, 55, 145, 58, 140, 245, 133, 126, 255, 0, 169,
-  ]),
+export const TOKEN_PROGRAM_ADDRESS =
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+export const TOKEN_PROGRAM_ID: PublicKey = publicKeyFromBase58(
+  TOKEN_PROGRAM_ADDRESS,
 )
-export const TOKEN_PROGRAM_ID = new PublicKey(TOKEN_PROGRAM_ADDRESS)
-export const SYSTEM_PROGRAM_ADDRESS = bs58.encode(
-  Uint8Array.from([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0,
-  ]),
+export const SYSTEM_PROGRAM_ADDRESS = "11111111111111111111111111111111"
+export const SYSTEM_PROGRAM_ID: PublicKey = publicKeyFromBase58(
+  SYSTEM_PROGRAM_ADDRESS,
 )
-export const SYSTEM_PROGRAM_ID = new PublicKey(SYSTEM_PROGRAM_ADDRESS)
 
 // instruction schemas -----------------------------------------------
 
@@ -172,11 +167,7 @@ export const createBidderPositionClaimInstruction = (
     BIDDER_POSITION_CLAIM_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface BidderPositionCreateAccounts {
@@ -218,11 +209,7 @@ export const createBidderPositionCreateInstruction = (
     BIDDER_POSITION_CREATE_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface BidderPositionDepositAccounts {
@@ -278,11 +265,7 @@ export const createBidderPositionDepositInstruction = (
     BIDDER_POSITION_DEPOSIT_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface BidderPositionWithdrawAccounts {
@@ -337,11 +320,7 @@ export const createBidderPositionWithdrawInstruction = (
     BIDDER_POSITION_WITHDRAW_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelCreateAccounts {
@@ -411,11 +390,7 @@ export const createChannelCreateInstruction = (
     CHANNEL_CREATE_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelEpochAddToRewardPotAccounts {
@@ -462,11 +437,7 @@ export const createChannelEpochAddToRewardPotInstruction = (
     CHANNEL_EPOCH_ADD_TO_REWARD_POT_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelEpochCreateAccounts {
@@ -525,11 +496,7 @@ export const createChannelEpochCreateInstruction = (
     CHANNEL_EPOCH_CREATE_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelEpochFinalizeAccounts {
@@ -575,11 +542,7 @@ export const createChannelEpochFinalizeInstruction = (
     CHANNEL_EPOCH_FINALIZE_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelSetDefaultEpochTermsAccounts {
@@ -615,11 +578,7 @@ export const createChannelSetDefaultEpochTermsInstruction = (
     CHANNEL_SET_DEFAULT_EPOCH_TERMS_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface ChannelSetDisabledAccounts {
@@ -655,11 +614,7 @@ export const createChannelSetDisabledInstruction = (
     CHANNEL_SET_DISABLED_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface CreateChannelGroupAccounts {
@@ -711,11 +666,7 @@ export const createCreateChannelGroupInstruction = (
     CREATE_CHANNEL_GROUP_INSTRUCTION_DISCRIMINATOR,
     args,
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface CreateOrganizationAccounts {
@@ -749,11 +700,7 @@ export const createCreateOrganizationInstruction = (
     CREATE_ORGANIZATION_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
 
 export interface EpochCreateAccounts {
@@ -789,9 +736,5 @@ export const createEpochCreateInstruction = (
     EPOCH_CREATE_INSTRUCTION_DISCRIMINATOR,
     {},
   )
-  return new TransactionInstruction({
-    programId,
-    keys,
-    data: Buffer.from(data),
-  })
+  return { programId, keys, data }
 }
