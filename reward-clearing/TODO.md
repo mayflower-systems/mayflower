@@ -1,3 +1,0 @@
-- add Solana program
-- add scripts to build & test with local rpc
-- link docs to wiki
