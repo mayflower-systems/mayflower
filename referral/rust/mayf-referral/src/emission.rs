@@ -1,10 +1,37 @@
-//! Emission: credits emitted at a known rate.
-//!
-//! The emitter stores the total emitted before its current rate began. Anyone computes the
-//! total at `now` from that anchor, so the emitter is written only when its rate changes.
+//! Authenticated cumulative emission supplied by the host's emitter.
 
-mod emitter;
-mod rate;
+use mayf_fixed_number::FixedNumber;
 
-pub use emitter::Emitter;
-pub use rate::EmissionRate;
+use crate::{Error, Result, Seconds};
+
+/// Integrated scheduled emission, not outstanding token supply.
+/// The host authenticates the emitter and its declining rate independently.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Emission<N> {
+    pub at: Seconds,
+    pub total: N,
+}
+
+impl<N: FixedNumber> Default for Emission<N> {
+    fn default() -> Self {
+        Self {
+            at: 0,
+            total: N::ZERO,
+        }
+    }
+}
+
+impl<N: FixedNumber> Emission<N> {
+    pub(crate) fn validate_after(self, previous: Self) -> Result<()> {
+        if self.at < previous.at {
+            return Err(Error::TimeWentBack);
+        }
+        if previous.total < N::ZERO
+            || self.total < previous.total
+            || (self.at == previous.at && self.total != previous.total)
+        {
+            return Err(Error::InvalidEmission);
+        }
+        Ok(())
+    }
+}
