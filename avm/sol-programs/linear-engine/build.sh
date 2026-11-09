@@ -27,4 +27,13 @@ cargo run --locked -p mayf-anchor-idl-to-gen -- \
 
 cargo fmt -p mayf-avm-engine-linear-sol-cpi
 cargo check --locked -p mayf-avm-engine-linear-sol-cpi
+
+cargo run --locked -p mayf-anchor-idl-to-gen -- \
+    generate-typescript "$idl_path" \
+    --program-name MayfAvmEngineLinear \
+    --output-dir "$program_dir/ts/src"
+
+pnpm exec prettier --write --log-level=warn "$program_dir/ts"
+pnpm --dir "$program_dir/ts" run build
+
 install -m 644 "$build_dir/$program_name.so" "$program_dir/bin/$program_name.so"

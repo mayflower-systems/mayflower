@@ -1,6 +1,7 @@
 packages:
   - "sol-tools/ts/**"
   - "reward-clearing/sol-programs/reward-clearing/ts"
+  - "avm/sol-programs/linear-engine/ts"
 
 strictPeerDependencies: false
 autoInstallPeers: false
