@@ -1,86 +1,89 @@
 <!--
 title: Referral Network Parameters
 summary:
-  How maximum depth, the override rate, and each member's voluntary sharing
-  fraction shape the referral allocation.
+  Fixed depth and commission terms, external emission and auction boundaries,
+  and the admission and marketing choices made by each node owner.
 tags:
   - referral
   - parameters
 -->
 
-The [Referral Network](Referral-Network) has two fixed network parameters:
-maximum depth $m$ and override rate $q$. Node owners separately choose
-voluntary sharing and admission-offer terms.
+The target [Referral Network](Referral-Network) separates fixed network terms
+from each parent's commercial choices. The following symbols and responsibilities
+apply throughout these pages.
 
-## Maximum depth
+| Term | Meaning | Who controls it |
+| --- | --- | --- |
+| $H$ | Maximum earning depth | Fixed network configuration |
+| $q$ | Commission to each earning ancestor | Fixed network configuration |
+| $E(t)$ | Global credit emission rate, decreasing continuously | Global emission module |
+| $e_\ell$ | Emission allocated to asset lane $\ell$ | External allocator, such as gauge voting |
+| Top-seat supply | Scarce depth-zero admission capacity | Protocol auction authorization |
+| $\mu_i$ | Fraction of gross override income marketed to immediate children | Node owner, prospectively |
+| Join fee and increment | Credit price for ordinary admission and its increase after a successful join | Parent, for future joins |
+| $p_{i,\ell}$ | Own eligible asset balance in a lane | Member's asset participation |
+| $s_i$ | Credits escrowed with the immediate parent | Member's staking and withdrawal choices |
 
-Depth counts the participating links from a top member: top members are at depth
-0, their children at depth 1, and so on. The maximum $m$ is the greatest
-permitted depth. A source at depth $d$ has $d$ members in its upline, each
-eligible for an override from that source.
+## Depth and fixed commissions
 
-The reference $m=2$ permits three participating levels: depths 0, 1, and 2. A
-larger maximum depth permits longer recruitment chains; a smaller maximum limits
-the number of upline members receiving overrides. With $m=0$, only top
-positions participate and there are no overrides.
+The logical protocol root is non-earning. Auctioned seats have depth 0; their
+children have depth 1. The deepest permitted member has depth $H$ and cannot
+accept children.
 
-## Override rate
+The core requires
 
-Every source assigns fraction $q$ of its original own points to **each**
-upline member and retains $1-dq$ at depth $d$. The fixed parameters satisfy
+$$H\in\mathbb{Z}_{>0},\qquad q>0,\qquad Hq<1.$$
 
-$$0\le q<1,\qquad mq<1.$$
+A source at depth $d$ retains $1-dq$ of its gross own-asset attribution and funds
+$q$ for each of its $d$ earning ancestors. The strict product bound leaves
+positive retention at every valid depth.
 
-The strict product bound keeps the own-point retention of every permitted member
-positive. The reference $q=10\%$ with $m=2$ gives:
+For illustration, $H=2$ and $q=10\%$ give:
 
-| Depth |                     Overrides to upline | Own-point retention |
-| ----- | --------------------------------------: | ------------------: |
-| 0     |                                      0% |                100% |
-| 1     |                                     10% |                 90% |
-| 2     | 20% in total, 10% to each upline member |                 80% |
+| Depth | Total sent to earning ancestors | Own-asset retention | Can recruit? |
+| --- | ---: | ---: | --- |
+| 0 | 0% | 100% | Yes |
+| 1 | 10% | 90% | Yes |
+| 2 | 20%, or 10% each | 80% | No |
 
-Increasing $q$ shifts more of each downline member's core attribution to its
-upline. Setting $q=0$ disables overrides. The network fixes $m$ and $q$
-when it is established; the reference values illustrate a configuration rather
-than an automatic default.
+These are example values, not deployment defaults. Increasing $q$ directs more
+of each source's attribution to its ancestors. Increasing $H$ permits longer
+chains but must preserve $Hq<1$. Neither value changes through an ordinary
+parent action once the network is operating.
 
-## Voluntary sharing
+## Marketing and admission choices
 
-Each node owner chooses one sharing fraction $\mu$ from 0% to 100%, initially
-0%, and it applies in every channel. In each channel, the member shares $\mu$ of
-its core earnings in that channel, divided among direct children in proportion
-to their own points in that channel. The member keeps incoming gifts in full and
-does not share them onward. If those children have no own points, the member
-retains the full amount. A member's sharing policy can change for future
-earnings, from each channel's next settlement; the previous policy determines
-the attribution of earlier earnings.
+Each node starts with $\mu_i=0$ and can set it anywhere from 0 to 1. It applies
+to gross override earnings from every lane, paid through one family pool with a
+common credit-escrow denominator. Own-asset income, fees, and incoming gifts are
+excluded. A parent with no eligible child escrow keeps its overrides.
 
-Overrides and sharing play different roles. An override sends a fixed fraction
-of every source's own attribution upward to each upline member. Mutualization sends a
-member's chosen fraction of its core earnings downward to its direct children.
-Both redistribute the same underlying participation or reward; neither creates a
-new budget.
+A parent can change $\mu_i$ at any time for future accrual. All contributing
+lanes must be checkpointed under the old terms before that change takes effect.
+There is no separate effective date chosen by each lane's next settlement.
 
-## Joining offers
+Ordinary join fees and increments are nonnegative credit amounts. Zero for both
+is a valid default. A parent can edit them for future admissions, without
+changing existing connections. The increment is a pricing convenience; it does
+not prove that new accounts represent independent people.
 
-Every node offers positions beneath it, subject to the network's maximum depth.
-The offer sets the current joining fee and the increment added to that fee after
-each successful join. The owner may change those values at any time; changes
-affect future joins and leave existing uplines intact. Top-level seats have no
-parent node; the protocol offers them under its own joining offer, which it may
-also change at any time. [Link Shopping](Link-Shopping) explains how admission
-terms and sharing affect a prospective member's choice.
+[Link Shopping](Link-Shopping) explains how these choices combine into an offer.
 
-The network's maximum depth and override rate are fixed for its lifetime. A node
-owner's joining offer and voluntary sharing policy do not change those network
-parameters.
+## Emission and auction boundaries
 
-## Time and rounding
+The global emission module supplies a continuously decreasing rate $E(t)$. The
+external allocator divides that scheduled stream among asset lanes; gauge
+weights may change the relative shares without changing the global schedule.
+The exact decay curve belongs to the emission module and is separate from the
+tree's allocation rules. Empty or unavailable allocations must be recorded
+explicitly rather than awarded retroactively to later depositors.
 
-A member's points and sharing policy can change while the reward rate changes.
-Attribution uses the values in effect during each interval. Sharing is rounded
-conservatively to the accounting grid, with amounts too small to divide retained
-by the sharing member. The
-[formal specification](Referral-Network-Formal-Specification) gives the calculations;
-[Mutualization](Mutualization) illustrates them.
+Top-level supply is scarce and controlled by the protocol auction. A winning
+credit payment is burned; an ordinary join fee is paid to the parent. The auction
+format, initial credit supply, numerical parameter values, and supported lanes
+must be specified before deployment. They are not extra pricing restrictions on
+ordinary parents.
+
+The [formal summary](Referral-Network-Formal-Specification) gives the allocation
+equations. [Emission Accounting](Emission-Accounting) covers changing balances,
+shared family checkpoints, and finite-precision validation.

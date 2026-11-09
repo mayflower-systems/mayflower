@@ -1,79 +1,149 @@
 <!--
 title: Participation and Referral Rewards
 summary:
-  Eligible collateral supplies channel points; upline overrides and voluntary
-  sharing divide each channel's emission into members' retained rewards.
+  Eligible assets fund fixed upline commissions. Parents can share gross
+  commissions across lanes with children weighted by their escrowed credits.
 tags:
   - tokenomics
   - emission
   - referral
 -->
 
-After [channel weights](Emission-Channel-Weighting) allocate the
-common stream among channels, each channel divides its allocation among eligible
-participants using the shared [Referral Network](Referral-Network). The
-network's tree is shared across channels; points and accumulated rewards are
-tracked separately for each channel, while a member's sharing fraction applies
-in every channel.
+After [channel allocation](Emission-Channel-Weighting), each lane divides its
+assigned credits using eligible asset balances and the shared
+[Referral Network](Referral-Network). Parents can then share part of their gross
+referral commissions with children who escrow credits. These rules are defined in the
+[implementation specification](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md);
+the kernel applies them through bounded public actions.
 
-## Eligible points
+## Eligible balances and permanent membership
 
-In Mayflower Reserve, a member's deposited AVA collateral contributes one point
-per collateral base unit in its market's channel. Each member's own points enter
-that channel's total $P$ once. Nonmembers can use the AVM and pledge credits to
-channels, but their collateral contributes no emission points. Joining activates
-eligible collateral prospectively; it does not earn emission for earlier
-intervals.
+The host supplies an authoritative eligible balance $p_{i,l}$ for each member
+$i$ in asset lane $l$. Each own balance enters that lane's total
+$P_l=\sum_i p_{i,l}$ once. The asset-eligibility adapter must prevent duplicate
+claims against the same underlying eligible position. Balances outside the
+referral network do not receive core referral emission.
 
-For a channel allocation $E$ over an interval with unchanged $P>0$, a source
-with $p$ own points has an ideal gross attribution
+Only like asset units are added within a lane. A descendant aggregate helps
+calculate commissions; it does not add the same assets to $P_l$ again. Escrowed
+credits and uncollected earnings are not additional eligible asset balances.
 
-$$G=E\frac{p}{P}.$$
+Auctioned top-level seats have earning depth zero. The logical protocol root
+earns nothing and is not a paid ancestor. Every ordinary node chooses a
+permanent parent. The maximum earning depth is $H$; members at that depth can
+earn but cannot accept children. Asset balances can change without changing any
+parent connection.
 
-This is the source amount to be divided by referral rules, not a separate payout
-to the depositor. If $P=0$, the channel's allocation for that interval is
-unallocated; future points cannot claim it. Downline aggregates are used to
-determine referral attribution and do not add points to $P$.
+## Fixed upline commissions
 
-## Upline overrides
+The network fixes $q>0$ with $Hq<1$. The interval formulas below assume unchanged
+eligible balances, marketing fractions, and credit escrows. A change closes the
+old interval before the new state takes effect; an unchanged total alone is not
+enough if members trade offsetting positions.
 
-The network fixes maximum depth $m$ and override rate $q$ with $mq<1$. A
-source at depth $d$ assigns an override of $qG$ to each upline member and
-retains $(1-dq)G$. Equivalently, a member with own points $p$, downline points
-$D$, and depth $d$ has core points
+For a lane allocation $Y_l$ over such an interval with $P_l>0$, a source holding
+$p$ has gross attribution
 
-$$b=(1-dq)p+qD.$$
+$$G=Y_l\frac{p}{P_l}.$$
 
-Across the network, core points sum to the original channel points. A member can
-earn overrides with no own points. Overrides reallocate the source's
-attribution; it does not move its collateral or create additional emission.
+Here $Y_l=\int_{t_a}^{t_b}e_l(t)\,dt$ is the lane's integrated interval budget.
+The global rate $E(t)$ may decline continuously during that interval; the formula
+does not assume constant emission.
 
-For example, with $q=10\%$, maximum depth 2, and Alice → Bob → Charlie each
-holding 100 points, their core points are 120, 100, and 80. If the channel
-allocates 30 credits while these balances remain constant, their ideal core
-earnings are 12, 10, and 8 credits. They do not also claim separate rewards for
-their original 100-point deposits.
+A source at depth $d$ retains $(1-dq)G$ and assigns $qG$ to each of its $d$
+earning ancestors. This attribution is divided once; it is not a separate
+additional payment to the asset holder.
 
-## Voluntary mutualization
+Equivalently, member $i$ has own income and gross referral overrides:
 
-A member can choose one sharing fraction from 0% to 100%, and it applies in
-every channel. In each channel, the fraction applies to the member's core
-earnings in that channel. Direct children divide that amount by their own points
-in that channel. A child keeps its gift whole and does not share it onward, so a
-gift passes down exactly one level. A zero-own-point child receives no gift,
-though it can earn from its downline. When direct children have no own points,
-the parent retains its core earnings.
+$$A_{i,l}=\frac{Y_l}{P_l}(1-d_iq)p_{i,l},\qquad
+O_{i,l}=\frac{Y_l}{P_l}qD_{i,l},$$
 
-Continuing the example, if Alice shares 50% of her core earnings with Bob and
-Bob shares 25% of his with Charlie, Alice gifts Bob 6 credits and Bob gifts
-Charlie 2.5. Bob keeps Alice's gift whole. Final retained rewards are Alice 6,
-Bob 13.5, and Charlie 10.5 credits. The total is the same 30 credits.
-[Mutualization](Mutualization) explains the calculation and
-its rounding.
+where $D_{i,l}$ includes every strict descendant's eligible balance. A grandchild
+therefore funds the same commission fraction for its grandparent as it does for
+its parent. A node can earn overrides without holding assets itself, but every
+override is funded by actual descendant assets.
 
-Points are settled under their old values before a change, and new points apply
-only to subsequent accrual. A sharing change takes effect in each channel at
-that channel's next settlement; it never reaches back into credits already
-earned. A member's final retained
-credit—not its gross source attribution or the amount it shares away—is the
-amount it can collect.
+Core earnings are $B_i=\sum_l(A_{i,l}+O_{i,l})$. Across all members, they sum to
+the nonempty lanes' assigned budget. If $P_l=0$, that lane's allocation is
+unallocated and unissued; later deposits cannot claim it.
+
+## Marketing weighted by escrowed credits
+
+A parent chooses a discretionary fraction $\mu_i\in[0,1]$. Its source is gross
+referral commissions $O_i=\sum_l O_{i,l}$, excluding own-asset income, fees,
+escrow principal, and incoming gifts.
+
+Let $s_c$ be a child's issued-credit escrow with that parent and let
+$S_i=\sum_c s_c$ over its immediate children. When $S_i>0$:
+
+$$M_i=\mu_iO_i,\qquad G_{i,c}=M_i\frac{s_c}{S_i}.$$
+
+If $S_i=0$, the parent retains the otherwise undistributable budget and $M_i=0$.
+Its final retained entitlement is
+
+$$R_i=B_i-M_i+G_{parent(i),i},$$
+
+with no incoming gift for a top-level seat. Children keep incoming gifts whole;
+those credits do not enter another marketing pool or pay another commission.
+
+There is one escrow weight and one marketing fraction per member relationship
+across all lanes. A child needs no BTC or ETH holdings to receive a marketing
+gift. It needs issued credits actually held in the corresponding escrow. That
+principal remains withdrawable after settling earlier income and cannot back
+another family simultaneously.
+
+For a 30-credit pool, siblings escrowing 100 and 200 credits receive 10 and 20.
+Splitting the first stake into aliases holding 40 and 60 yields 4 and 6, leaving
+the owner's combined share unchanged. An empty account receives no gift merely
+because it exists.
+
+## Worked allocation across two assets
+
+Take Alice at depth zero, her child Bob at depth one, and Bob's child Carol at
+depth two. Let $q=10\%$, $\mu_A=50\%$, and $\mu_B=25\%$. Bob escrows 100 credits
+with Alice; Carol escrows 200 with Bob. These are already-issued principal from
+earlier activity.
+
+| Lane | Assigned credits | Alice's assets | Bob's assets | Carol's assets |
+| --- | ---: | ---: | ---: | ---: |
+| BTC | 200 | 100 | 100 | 0 |
+| ETH | 100 | 0 | 0 | 100 |
+
+The credits earned over this interval are:
+
+| Credit flow | Alice | Bob | Carol |
+| --- | ---: | ---: | ---: |
+| Own-asset income | 100 | 90 | 80 |
+| Gross referral overrides | 20 | 10 | 0 |
+| Marketing paid | -10 | -2.5 | 0 |
+| Marketing received | 0 | 10 | 2.5 |
+| **Net entitlement** | **110** | **107.5** | **82.5** |
+
+The total is 300. Bob receives part of Alice's ETH-funded commission even though
+he holds no ETH. The 300 credits in family escrow remain principal and do not
+enter either asset denominator or the new emission budget.
+
+## Changes, incentives, and collection
+
+Asset changes settle the affected lane and ancestor path under the old balances.
+Changing escrow or a parent's marketing fraction additionally requires a common
+checkpoint of all that parent's contributing lanes. The new values then apply
+prospectively; a late staker cannot claim earlier rewards. See
+[Emission Accounting](Emission-Accounting).
+
+Parents can change future marketing percentages and join fees. These are
+discretionary offers, not permanent income rights. Ordinary admission fees
+transfer issued credits to the parent; they neither count as the child's escrow
+nor create another emission claim.
+
+Family growth can improve a child's marketing dividend, but credit escrow alone
+does not grow the parent's asset-based income. A new sibling staking only
+credits dilutes existing shares; a nephew bringing assets can increase the
+family's commission pool. Declining global emission, competing escrow, gauge
+changes, and asset withdrawals still affect final returns.
+
+Collection mints only the member's net earned entitlement and debits that claim
+once. Incoming gifts may be explicitly collected and restaked, but do not
+automatically compound. [Mutualization](Mutualization) describes the family
+market; [Link Shopping](Link-Shopping) explains admission offers.

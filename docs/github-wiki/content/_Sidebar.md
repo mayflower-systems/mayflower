@@ -1,5 +1,31 @@
 **[Mayflower](Home)**
 
+**Referral Network**
+
+- [Overview](Referral-Network)
+- [Why These Rules](Referral-Network-Rationale)
+- [Allocation Rules](Referral-Network-Formal-Specification)
+- [Parameters and Authority](Referral-Network-Parameters)
+- [Family Marketing](Mutualization)
+- [Choosing a Parent](Link-Shopping)
+- [Diagrams](Referral-Network-Diagrams)
+
+**Credits**
+
+- [Mayflower Credits](Mayflower-Credits)
+- [Earning Credits](Earning-Credits)
+- [Channel Weighting](Credit-Channel-Weighting)
+- [Credits and Revenue Clearing](Credits-and-Revenue-Clearing)
+- [Long-Term Economics](Long-Term-Economics-of-Credits)
+
+**Credit Emissions**
+
+- [Overview](Credit-Emissions)
+- [Emission Rate and Cumulative Budget](Emission-Schedule)
+- [Lane Allocation](Emission-Channel-Weighting)
+- [Participation and Referral Rewards](Participation-and-Referral-Rewards)
+- [Accrual, Collection, and Conservation](Emission-Accounting)
+
 **AVM**
 
 - [Amplifying Value Machine](Amplifying-Value-Machine)
@@ -24,32 +50,6 @@
 - [Evolution](Linear-AVM-Evolution)
 - [Floor Investment](Linear-AVM-Floor-Investment)
 - [Corollaries](Linear-AVM-Corollaries)
-
-**Credits**
-
-- [Mayflower Credits](Mayflower-Credits)
-- [Earning Credits](Earning-Credits)
-- [Channel Weighting](Credit-Channel-Weighting)
-- [Revenue Clearing](Credits-and-Revenue-Clearing)
-- [Long-Term Economics](Long-Term-Economics-of-Credits)
-
-**Credit Emissions**
-
-- [Overview](Credit-Emissions)
-- [Schedule](Emission-Schedule)
-- [Channel Weighting](Emission-Channel-Weighting)
-- [Participation and Referral Rewards](Participation-and-Referral-Rewards)
-- [Accounting](Emission-Accounting)
-
-**Referral Network**
-
-- [Overview](Referral-Network)
-- [Formal Specification](Referral-Network-Formal-Specification)
-- [Rationale](Referral-Network-Rationale)
-- [Parameters](Referral-Network-Parameters)
-- [Mutualization](Mutualization)
-- [Link Shopping](Link-Shopping)
-- [Diagrams](Referral-Network-Diagrams)
 
 **Revenue Clearing**
 

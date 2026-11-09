@@ -1,89 +1,153 @@
 <!--
 title: Referral Network Rationale
 summary:
-  Why the referral network rewards productive recruitment, how depth and
-  voluntary sharing create different offers, and how splitting positions affects
-  core attribution.
+  Why fixed commissions and credit-weighted marketing produce distinct referral
+  offers, and the limits of their conservation and identity-splitting guarantees.
 tags:
   - referral
   - design
 -->
 
-The [Referral Network](Referral-Network) connects a member's reward to two
-sources: the member's own eligible points and points contributed by its
-downline. Fixed upline overrides reward recruitment without enlarging the
-underlying reward budget. Voluntary
-[mutualization](Mutualization) lets members share part of
-their earnings with the children who help produce them.
+The target [Referral Network](Referral-Network) combines two choices: fixed
+commissions for asset-funded recruitment, and discretionary marketing for
+competing over children. Neither enlarges the global emission budget. Admission
+prices and marketing policies are business decisions within those rules.
 
-## Reward productive recruitment
+## Reward capital participation throughout the downline
 
-Each source assigns the same fraction $q$ of its own points to each upline
-member. An upline member's override therefore depends on downline points, rather
-than on how many accounts its downline creates. A member can earn from a
-productive child or grandchild without making a deposit of its own. The override
-is calculated from the source's original points at every level, so a
-grandparent's fraction does not shrink because an intervening parent has few
-points.
+Every earning ancestor receives the same fraction $q$ of a descendant source's
+gross attribution. When Bob recruits Carol, Carol's assets fund a commission for
+Alice even if Bob has no assets of his own. Alice earns more than if the same
+incoming capital joined outside her subtree; this does not guarantee more income
+than before that capital entered. Commissions depend on eligible assets and
+their ancestry, not a reward for each account merely existing.
 
-For example, with a 10% override rate and maximum depth 2, Alice has 100 own points, Bob
-has none, and Bob recruits Charlie with 1,000. Their core points are Alice 200,
-Bob 100, and Charlie 800: Alice retains her 100 and receives 100 from Charlie,
-Bob earns 100 from Charlie, and Charlie retains 800. The total remains 1,100. If
-Bob shares half of his earnings and Charlie is his only direct child with
-positive own points, Bob retains half and Charlie receives the other half.
+Each commission is calculated from the source's original attribution. With
+$q=10\%$, a depth-2 source retains 80% and assigns 10% to each ancestor. There
+is no compounded sequence of percentage deductions.
 
-## Each layer has a different value
+A shared emission budget still creates dilution. Suppose Alice is the only asset
+holder, with 100 eligible units, and initially receives the entire lane's
+allocation. Another 100 units joining directly under her gives her 110 core units
+out of 200, or 55%. If that capital instead joined a different top-level branch,
+she would have 100 out of 200, or 50%. Recruiting improves her outcome relative
+to that alternative; it does not preserve her original 100% share.
 
-A member at depth $d$ retains $1-dq$ of its own-point attribution. With $q=10\%$
-and maximum depth 2, the fractions are 100%, 90%, and 80% at depths 0, 1, and 2.
-A shallower position also has more remaining depth in which to recruit
-a downline. Maximum depth determines how many layers can receive overrides from
-any source; it does not by itself limit the number of top positions.
+These are fractions of the lane's available budget. The global emission rate
+also decreases continuously, so an unchanged percentage does not promise an
+unchanged credit income per unit of time.
 
-Recruiting changes both a member's core points and total own points. A larger
-raw override does not automatically mean a larger share of a fixed reward. For
-example, Alice has 100 own points and is the only member in the allocation, so
-she initially has all 100 core points out of 100. A new member with 100 points
-joins directly below her at $q=10\%$: Alice now has 110 core points out of 200,
-or 55%. If the same 100 points instead arrived in a separate tree, Alice would
-have 100 out of 200, or 50%. The referral gives Alice a larger share than that
-alternative, while the new points dilute her original share.
+## Depth has an economic cost
 
-## Splitting existing capital
+A deeper node has both a lower own-asset retention fraction and less recruiting
+room. The finite bound $H$ limits the total commission burden and keeps the
+maximum number of paid ancestors explicit. $Hq<1$ preserves a positive
+own-asset share at the bottom.
 
-Consider a controlled subtree whose top member is at depth $d$. If its members
-have total own points $S$, its combined core points are
+Finite depth alone does not create scarce top positions. That scarcity comes
+from protocol-authorized auctions of depth-zero seats under a non-earning root.
+Winning payments burn credits. Ordinary parents separately price admission to
+their branches and may offer free entry to attract future participation.
 
-$$(1-dq)S.$$
+Auctions limit the number of seats, not the number one beneficial owner may
+control. Seat scarcity does not itself prevent concentrated ownership or a
+monopoly over top-level positions.
 
-Each source in the subtree gives the same override to each outside upline
-member, regardless of where its points sit inside the subtree. Overrides to
-controlled upline members remain within the group. Moving fixed points among
-controlled downline members under an unchanged outside upline therefore leaves
-their combined **core** attribution unchanged. The same reasoning applies to
-splitting points among siblings with the same outside upline.
+## What splitting neutrality actually means
 
-The property concerns core attribution from existing points. Voluntary gifts use
-a separate rule: a parent can share with children it controls, and those
-children's own points affect how gifts are divided. Creating a controlled
-intermediary above a newly recruited outside member is also a different
-arrangement. At $q=10\%$, inserting an intermediary between a top member and a
-new recruit gives that intermediary 10% of the recruit's points and reduces the
-recruit's own retention from 90% to 80%; it does not create extra points.
-An accepted upline is permanent, so this example concerns a new recruit's chosen
-path.
+Consider one owner's connected region, whose highest owned member has $d$
+outside earning ancestors. Look only at the attribution generated by that
+owner's fixed assets in a lane. Each asset unit pays those same outside ancestors
+$dq$, wherever it sits within the owned region. All commissions to owned
+intermediaries remain inside the group.
 
-## Why share earnings with children?
+Consequently, the group retains $(1-dq)$ of its own assets' gross attribution.
+Splitting those assets among owned descendants does not increase that combined
+core amount. Existing outside assets may also fund commissions to the group;
+hold those assets and their existing connections fixed for this comparison.
 
-A parent can offer mutualization to attract or retain productive children. The
-sharing fraction alone is not the whole offer. A child's share also depends on
-the parent's core earnings, the child's own points, and the own points of
-the parent's other direct children. A parent can itself receive gifts from
-above, but it keeps them; they do not enlarge the amount it shares onward.
+This is a limited property, not proof of human identity or resistance to every
+coalition strategy. For example, with $q=10\%$ and $H=7$, a seat owner can create
+six empty accounts beneath it before admitting an outside depositor at depth 7.
+With marketing turned off, the owner's seven ancestor accounts together receive
+70% of that depositor's gross attribution; admitting the depositor directly
+under the seat would pay the owner 10%. The depositor retains 30% or 90%,
+respectively. Scarce seats and permanent edges do not prevent this arrangement.
 
-Children a parent controls participate in the same pro-rata division as other
-children. Their presence reduces each other child's fraction of the pool.
-Sharing policies can change prospectively, while the accepted parent
-relationship remains fixed. [Link Shopping](Link-Shopping)
-explains how these terms affect a prospective member's choice.
+The example earns more from **outside capital**, so it does not contradict
+own-capital splitting neutrality. It does rule out a stronger claim that extra
+owned accounts can never improve an owner's referral income. Pooling capital
+above an outside intermediary or acquiring a different family's offer is also
+a different arrangement. Permanent edges prevent inserting an intermediary
+above an existing member; they do not identify which new accounts share an owner.
+
+## Movable capital can bypass an intermediary
+
+Permanent edges do not make the economic position of an intermediary permanent.
+Suppose A is a top-level seat, B is A's child, C is B's child, and only C has
+assets. At $q=10\%$ with marketing off, 100 gross credits divide as 10 to A,
+10 to B, and 80 to C. If A and C instead pool those assets in A's eligible
+position, it earns 100. An arrangement returning 89 to C and keeping 11 for A
+benefits both while B receives nothing. C's original node simply becomes empty.
+
+This requires custody and redistribution that participants find acceptable;
+it does not require duplicated balances or a changed parent edge. Efficient
+pools at top-level seats could therefore undercut deeper positions. The model
+allows this competition, but cannot promise that multilevel intermediaries
+remain economically necessary or continue receiving capital from old recruits.
+
+## Why use credit escrow for family marketing?
+
+Equal rewards per child would reward manufacturing accounts. Weighting children
+by escrowed credits instead requires a real, exclusively held resource. Splitting
+100 credits among ten sibling accounts gives the same combined share as staking
+100 through one account. An empty account receives no marketing gift.
+
+Credits also provide one unit across asset lanes. The parent first earns its
+overrides in credits under the asset and allocation rules. It then divides its
+chosen marketing budget by immediate-child credit escrow, without comparing raw
+BTC, ETH, or SOL quantities again.
+
+This budget gives siblings exposure to each other's recruiting. A nephew's assets
+can increase the grandparent's gross overrides without increasing the uncle's
+competing escrow denominator. That makes expected family growth relevant when
+[shopping for a link](Link-Shopping).
+
+Credit escrow does not itself generate additional commissions or emission. It
+competes for a fraction of someone else's already allocated income. Borrowing
+credits over real elapsed time is capital rental, not evidence of independent
+people or unleveraged wealth. Correct historical settlement prevents a temporary
+new stake from collecting an earlier pool.
+
+## Why let parents change the offer?
+
+Mutualization is a marketing budget. A parent may raise it to attract children,
+lower it when business conditions change, or stop it. The payment rule guarantees
+how each elapsed interval is allocated; it does not guarantee a future percentage
+or a profitable campaign.
+
+A parent can stake credits through child accounts it controls. That can recapture
+some of its offered pool, just as reducing $\mu$ retains more commissions
+directly. The design permits this behavior. It does not require identifying the
+parent's beneficial ownership, or treating a fee paid to oneself as a real
+external cost.
+
+Future admission revenue and reputation can make a generous offer worthwhile.
+They do not automatically make it permanent or prove that every parent will
+honor today's rate indefinitely. Children choose how much credit principal to
+commit and can withdraw it; their existing parent connections remain fixed.
+
+## Keep the financial flows separate
+
+An ordinary join fee is a price paid to a parent. A winning top-seat payment is
+burned. Escrow remains the child's withdrawable property. Core credits are earned
+from eligible assets, and family gifts reallocate gross overrides. These roles
+must not be counted twice.
+
+This separation supports a simple market without account-count bonuses,
+permanent family shares, or mandatory marketing promises. It also makes the
+limits visible: global dilution, competing escrow, changing gauge allocations,
+and discretionary offers all affect what a member earns. See
+[Mutualization](Mutualization) for the mechanics and
+[Emission Accounting](Emission-Accounting) for the chronology required to implement
+them.

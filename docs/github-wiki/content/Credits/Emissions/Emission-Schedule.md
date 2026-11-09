@@ -1,80 +1,91 @@
 <!--
 title: Emission Schedule
 summary:
-  A whole-second geometric schedule defines the non-increasing credit emission
-  rate and cumulative entitlement from immutable segment anchors.
+  A continuously declining global rate defines an increasing cumulative credit
+  budget. Allocation and collection preserve each interval's scheduled amount.
 tags:
   - tokenomics
   - emission
   - math
 -->
 
-The [credit emission schedule](Credit-Emissions) determines the total reward
-entitlement available over time. It is independent of channel pledges, channel
-points, and referral relationships: those determine how the scheduled amount is
-divided. The opening annual rate and decay coefficient are supplied when a
-deployment is created.
+The planned [credit emission](Credit-Emissions) rate **declines continuously over
+time**. The schedule establishes how many credits are available over an interval;
+channel allocation and referral rules decide who earns them. The target
+accounting is specified in the
+[implementation handoff](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md).
 
-## Rate and cumulative emission
+## Rate and cumulative budget
 
-Let $R_0\ge0$ be the annualized rate at the start of a segment, $D\ge0$ the
-annual decay coefficient, and $S=31{,}536{,}000$ the number of seconds in a
-365-day year. The ideal per-second retention is
+Let $E(t)\ge0$ be the continuously declining emission rate in credit base units
+per unit of time, and let $t_0$ be the schedule's start. The ideal cumulative
+scheduled budget is
 
-$$q=\max\left(0,1-\frac{D}{S}\right).$$
+$$B(t)=\int_{t_0}^{t}E(u)\,du,\qquad t\ge t_0.$$
 
-After $n$ complete seconds, the annualized rate is $R_n=R_0q^n$. During second
-$k$, the schedule attributes $R_k/S$. Cumulative entitlement since the segment
-began is
+For any $t_b\ge t_a\ge t_0$, the interval budget is
 
-$$
-E_n=\frac{R_0}{S}\sum_{k=0}^{n-1}q^k=
-\begin{cases}
-nR_0/S,&q=1,\\
-R_0(1-q^n)/(S(1-q)),&0\le q<1.
-\end{cases}
-$$
+$$\Delta B=B(t_b)-B(t_a)=\int_{t_a}^{t_b}E(u)\,du.$$
 
-With $D=0$, the annual rate stays constant and cumulative entitlement grows
-linearly. With positive decay, the rate declines. If the per-second decrement is
-at least one, $q$ is clamped to zero: the initial one-second tranche accrues and
-the subsequent rate is zero.
+The rate decreases while the cumulative budget continues to increase wherever
+$E(t)>0$. A smaller flow still adds to the cumulative scheduled budget; it does
+not subtract from credits scheduled earlier.
 
-For example, at $R_0=1{,}000$ credits per year and $D=0.15$, the ideal rate
-after one year is approximately 860.71 credits per year, and about 928.61
-credits have accrued during that year. A 15% coefficient produces an
-approximately exponential decline; it does not mean exactly 15% of the opening
-rate disappears in the first year.
+For example, if two successive intervals have integrated budgets of 300 and 250
+credits, their combined budget is 550. Splitting them into more settlement calls
+does not increase that entitlement. Implementations must take differences of
+cumulative emission, rather than multiply the latest rate by a past interval.
+A monotonic trusted clock and explicit finite-precision accounting are required.
 
-## Changes to decay
+The rate is global. It is not multiplied by the number of lanes, referral nodes,
+or credit stakers. A family does not acquire an additional emission stream when
+its parent enables marketing.
 
-The deployment administrator can change $D$. A change first settles the existing
-segment, then starts a new segment at the annual rate already in force.
-Increasing $D$ makes subsequent decay faster; reducing it slows the decline;
-setting $D=0$ pauses decay at the current rate. Since $D$ is nonnegative and the
-new segment begins at the settled rate, these changes cannot raise the
-instantaneous emission rate or rewrite earlier accrual.
+## Lane allocation follows the scheduled stream
 
-The intended opening policy is an annual rate equal to the then-current supply
-of M and a 15% annual decay coefficient. These are intended configuration
-choices, not values inferred by the schedule. Actual opening rate and decay are
-supplied explicitly.
+An external allocator supplies each lane's rate $e_l(t)$. In ordinary active
+operation:
 
-With a fixed positive $D$ that yields $0<q<1$, the ideal remaining emission is
-$R_0/D$. This limit is conditional on keeping that decay fixed. Holding a
-positive rate at $D=0$ instead continues issuance indefinitely at that rate; the
-non-increasing rate alone does not establish a fixed lifetime-supply ceiling.
+$$\sum_l e_l(t)=E(t).$$
 
-## Anchors and precision
+With one active lane and no gauge competition, that lane receives $E(t)$. Changing
+gauge weights can move the scheduled stream between lanes, but cannot silently
+reduce the global budget or replace the schedule with another rate policy.
 
-Each segment's cumulative entitlement is evaluated from its fixed start and
-compared with the amount already recorded. Splitting an unchanged interval into
-more checkpoints therefore cannot enlarge the schedule. A decay change closes
-one segment and establishes the next anchor; pledge and point changes do not
-reanchor it.
+If an allocation is unavailable, or a destination lane has no eligible assets,
+the exception is recorded as unallocated and unissued. At the routing stage,
+lane allocations plus unallocated routing amounts reconcile to the scheduled
+budget. Within each lane, earned allocations and that lane's unallocated amounts
+reconcile to the amount it received. An empty lane's past allocation is not saved
+for its first later depositor. See [Emission Channel Weighting](Emission-Channel-Weighting).
 
-The actual schedule uses fixed-point arithmetic. For positive decay, the
-per-second decrement rounds upward, and the calculated rate and cumulative
-entitlement round downward. These directed approximations preserve
-non-increasing, conservative accrual. The formula above describes the ideal
-geometric schedule; actual represented amounts follow its fixed-point rules.
+## Scheduling is not minting
+
+Elapsed time records a budget. Core allocation and marketing establish net
+member entitlements. Successful collection removes an earned claim and issues
+the same amount once. Fractional earned claims remain accounted for between
+collections.
+
+Already-issued credits can be transferred as admission fees, held in family
+escrow, or burned in an authorized top-seat auction. These operations do not
+alter scheduled emission. In particular, a burn does not reset the clock or
+authorize replacement rewards. [Emission Accounting](Emission-Accounting)
+separates the emission budget from token supply and custody.
+
+## Emitter design and deferred supply analysis
+
+The intended policy is continuous decline. Its exact curve, parameters, and
+implementation belong to the emitter design; this page does not choose a decay
+formula or add administrative controls. A constant rate can simplify an
+allocation example, but it is not the planned global policy.
+
+Continuous variation does not require settlement transactions at every instant.
+The emitter supplies cumulative emission over intervals, and the accounting
+checkpoints that history when relevant state changes.
+
+A decreasing positive rate does not by itself prove that its integral over all
+future time is finite. The far-future check that total token supply in base units
+remains within `u64::MAX` is deferred. That analysis should use the eventual
+emitter and supply rules; it is not resolved by asserting that emission declines.
+Ordinary checked arithmetic for operational balances, indices, accrued claims,
+and custody remains required.

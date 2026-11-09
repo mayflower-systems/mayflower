@@ -1,73 +1,100 @@
 <!--
 title: Emission Channel Weighting
 summary:
-  Credit pledges weight the distribution of the common emission stream among
-  channels.
+  An independent allocator routes the declining emission stream to asset lanes,
+  preserving allocation history and explicitly accounting for unallocated amounts.
 tags:
   - tokenomics
   - emission
   - referral
 -->
 
-Channel weighting divides the [scheduled emission](Emission-Schedule)
-among channels. A channel, also called an outlet, corresponds to a market. A
-holder pledges existing [Mayflower credits](Mayflower-Credits) to a channel to influence
-the portion of future emission it receives. Pledged credits remain committed
-until the owner reduces the pledge; the same credits cannot simultaneously back
-another channel pledge. Pledging does not require referral membership.
+Channel weighting decides which asset lanes receive the
+[scheduled emission budget](Emission-Schedule). A lane, also called a channel, has
+one asset identity, its own eligible balance total, and its own reward history.
+The [referral specification](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md)
+treats the allocator as an independent adapter. Gauge voting is a possible
+allocator; its voting rules are not part of the core referral algorithm.
 
-## Allocation by channel weight
+## The allocator's contract
 
-Let channel $i$ have weight $v_i$, equal to the credits pledged to it, and let
-$V=\sum_i v_i$. For scheduled emission $E$ over an interval with unchanged
-weights, the ideal channel allocation is
+Let $E(t)$ be the continuously declining global emission rate and $e_l(t)$ the
+rate assigned to lane $l$. In ordinary active operation the allocator routes the
+full budget:
 
-$$E_i=E\frac{v_i}{V}\qquad\text{when }V>0.$$
+$$\sum_l e_l(t)=E(t).$$
 
-A channel with zero weight receives none of the allocation. Channel weights
-choose the destination of the stream; they do not increase its rate or total. A
-channel with no eligible points does not pass its allocation to the others; that
-amount is unallocated within the channel. If no channel has weight, nothing is
-emitted.
+One active lane with no gauge competition receives $E(t)$. Adding a lane does not
+create another emission stream. The allocator must supply authenticated,
+chronological allocations; a new weight affects future accrual after the
+previous interval has been settled.
 
-## A change takes effect immediately
+If routing is unavailable, the amount is explicitly unallocated and unissued.
+Numerical routing residuals must also be accounted for. These exceptions are not
+a discretionary reserve that the allocator may silently retain from otherwise
+valid active allocations.
 
-A pledge change settles elapsed emission under the previous weights before
-replacing the pledge and the totals. The new weight applies to subsequent
-emission, with no waiting period or epoch boundary. An add-and-remove cycle at
-the same timestamp earns no elapsed emission.
+An allocation to a lane with no eligible assets is likewise unallocated for that
+interval. It does not pass automatically to other lanes or become a reward for
+a later entrant. An allocator may choose a future allocation policy that avoids
+empty lanes, provided that policy is explicit and preserves the global budget.
 
-For example, suppose two channels are registered:
+## A proportional gauge adapter
 
-1. A pledge to the first gives it all subsequent emission while the second has
-   no weight.
-2. An equal pledge to the second changes subsequent shares to one half each.
-3. Removing the first pledge gives the second all subsequent emission.
+For an adapter using nonnegative lane weights $v_l$ with total $V=\sum_l v_l>0$,
+a conventional proportional rule is
 
-A change affects future intervals, not the emission already allocated under
-earlier weights. A newly registered channel starts with zero weight and
-receives no allocation until credits are pledged to it.
+$$e_l(t)=E(t)\frac{v_l}{V}.$$
 
-## Tracking changing weights
+For example, unchanged weights 2 and 1 divide an interval's integrated 300-credit
+budget into 200 and 100, even while its emission rate declines. Equal weights
+would divide that same interval budget into 150 per lane. A later weight change
+applies to later scheduled budgets; it does not rewrite the earlier allocation.
 
-The allocation can also be expressed as one cumulative measure: emission per
-unit of channel weight. For an interval with scheduled emission $E$ and total
-weight $V$:
+This formula illustrates one adapter. It does not settle how voting power is
+acquired, how votes are committed, or when a particular gauge accepts a new
+vote. If such an adapter has no valid allocation because $V=0$, it must report
+the unavailable routing budget rather than quietly change the global emission
+schedule or give a later voter the backlog.
 
-$$
-\Delta K=\begin{cases}E/V,&V>0,\\0,&V=0.\end{cases}
-$$
+An adapter may preserve changing weights through a cumulative index such as
 
-A channel with unchanged weight $v_i$ over an interval receives $v_i\Delta K$
-in ideal arithmetic. The measure preserves the history of weight changes;
-fixed-point routing rounds and accounts for any unallocated remainder.
+$$K(t)=\int_{V(t)>0}\frac{E(t)}{V(t)}\,dt.$$
 
-## What happens inside a channel?
+A lane whose weight stays constant during an interval receives $v_l\Delta K$.
+The changing emission rate is integrated over time; it does not require a new
+transaction at every instant. Weight changes must checkpoint the old interval
+before taking effect. An implementation cannot multiply today's weight by an
+entire unprocessed past interval and call that historical allocation.
 
-Each channel has its own eligible points and reward history. Channel weighting
-sets how much emission reaches a channel. Once the channel receives an
-allocation,
-[participation and referral rules](Participation-and-Referral-Rewards) divide it
-among members. All channels use the same referral tree within a deployment,
-but a member's points in one channel do not become points in another. A
-member's sharing fraction is one choice that applies in every channel.
+## Asset units stay inside their lanes
+
+For lane $l$, the core referral denominator is
+$P_l=\sum_i p_{i,l}$, the sum of members' own eligible balances in that asset.
+The system never adds raw BTC, ETH, or other asset quantities into one balance
+denominator. Gauge allocation expresses the chosen relative earning power by
+routing credit budgets; it does not make unlike asset units interchangeable.
+
+All lanes use the same permanent referral connections and the same fixed
+commission geometry. [Participation and Referral Rewards](Participation-and-Referral-Rewards)
+divides each lane's assigned credits among asset holders and their ancestors.
+
+## Common family marketing is a separate allocation
+
+After core referral allocation, a parent can share a fraction of its gross
+commissions from all lanes. Children divide that common pool by their escrowed
+credits, not by the parent's gauge weights or by their own BTC or ETH balances.
+A child with no holdings in a particular lane can therefore receive marketing
+funded by that lane.
+
+Gauge commitments and family escrow are separate uses of already-issued credits.
+The reference custody model does not let the same principal simultaneously fund
+both, or a clearing commitment or auction bid. Any future governance rights over
+family escrow need an explicit integration rule; they must not duplicate reward
+weight or keep spent principal active.
+
+Changing a family's escrow or marketing percentage requires the parent to settle
+all of its contributing lane sources at one effective time. The allocator's
+chronological history makes that possible, but an allocation index alone does
+not perform the family checkpoint. See [Emission Accounting](Emission-Accounting)
+and [Credit Channel Weighting](Credit-Channel-Weighting).

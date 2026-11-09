@@ -1,87 +1,99 @@
 <!--
 title: Mutualization
 summary:
-  How members voluntarily share their core earnings with direct children, in
-  proportion to those children's own points.
+  A parent's discretionary marketing budget comes from gross referral overrides
+  and is divided among immediate children by their escrowed credits.
 tags:
   - referral
   - tokenomics
 -->
 
-Mutualization is voluntary sharing down a [referral tree](Referral-Network).
-After core attribution assigns a member earnings from its own points and
-downline, the member can share a chosen fraction of those core earnings with
-its direct children. A gift received from the member's parent is kept whole and
-is never shared onward, so a gift passes down exactly one level.
+In the target [Referral Network](Referral-Network), mutualization is a parent's
+voluntary marketing budget. The parent gives up some of its downline commissions
+to make its family more attractive. Immediate children compete for that budget
+by escrowing credits.
 
-## How a gift is divided
+## What funds the pool
 
-Let a parent have core earnings $E$, sharing fraction $\mu$, and direct
-children with own points $p_1,p_2,\ldots$. Let $Z=\sum_c p_c$. When $Z>0$, child
-$c$ receives, in ideal arithmetic,
+Consider an interval with unchanged marketing fraction and child escrow balances.
+Let $O$ be the parent's **gross referral override income**, in credits, during
+that interval. It includes commissions from every permitted descendant generation
+and every asset lane. The parent chooses a fraction $\mu\in[0,1]$.
 
-$$G_c=\mu E\frac{p_c}{Z}.$$
+If any immediate child has credits escrowed, the marketing pool is $\mu O$.
+Children do not receive a fraction of the parent's own-asset income, admission
+fees, or incoming family gifts. Those amounts remain outside this pool.
 
-The parent retains $(1-\mu)E$, plus the whole of any gift from its own parent.
-Children's **own** points determine their proportions; their downlines' points
-do not enter this particular split. A
-child with zero own points receives no parent gift, although its downline can
-still generate core earnings for it. If $Z=0$, the parent retains all its
-earnings.
+The pool redistributes credits already allocated to the parent. It does not add
+emissions, transfer deposited assets, or consume the children's escrow principal.
 
-The parent's gift is paid from its own core earnings. Sharing changes who
-retains existing earnings; it does not increase the reward budget. A gift goes
-downward and does not pay overrides a second time.
+## How children divide it
 
-## Example: sharing through two levels
+If child $c$ has $s_c$ credits escrowed, and the immediate children together have
+$S=\sum_c s_c$, then for $S>0$:
 
-Suppose Alice → Bob → Charlie each have 100 own points, with $q=10\%$ and
-maximum depth 2. Their core points are 120, 100, and 80. In a period with 30
-reward units and no changes to points, their ideal core earnings are 12, 10,
-and 8.
+$$G_c=\mu O\frac{s_c}{S}.$$
 
-1. Alice chooses to share 50%. Bob is her only direct child with own points, so
-   Alice retains 6 and gives Bob 6.
-2. Bob chooses to share 25% of his 10 core earnings. Charlie is his only direct
-   child with own points, so Bob gives Charlie 2.5. Bob keeps the other 7.5 and
-   Alice's gift of 6 whole, so he retains 13.5.
-3. Charlie retains 10.5: 8 core earnings plus Bob's gift of 2.5. Bob's gift came
-   from his own core earnings, not from Alice's gift. The final retained
-   earnings are Alice 6, Bob 13.5, and Charlie 10.5.
+The same credit escrow divides the combined override earnings from all lanes.
+A child does not need BTC to receive a gift funded by BTC, or ETH to receive one
+funded by ETH. Raw asset balances and the number of child accounts do not enter
+this division.
 
-The three retained amounts sum to the original 30 reward units. If Alice has
-another direct child with the same own points as Bob, her gift is divided
-equally between those two children instead. Their downlines do not change
-their proportions of that particular gift.
+A child with zero credit escrow receives no gift. If $S=0$, the parent keeps all
+of its override income for that interval. A child that stakes later receives
+nothing from that earlier interval.
 
-## Sharing offers change over time
+For example, a parent earning 120 override credits chooses $\mu=25\%$, creating
+a 30-credit pool:
 
-Each node owner chooses one sharing fraction, and it applies in every emission
-channel. In each channel, the parent shares that fraction of what it earned in
-that channel, and its children divide the gift by their own points in that
-channel. The credits a member keeps from every channel gather in one balance.
-The fraction starts at zero and can be changed for future earnings. A change
-applies in each channel from that channel's next settlement; earnings accrued
-before then use the earlier fraction. A new child or newly activated deposit
-participates from that point forward; it does not receive earlier gifts. If a
-parent had no direct children with positive own points during an interval, it
-retains that interval's core earnings.
+| Child | Credits escrowed | Fraction of pool | Gift |
+| --- | ---: | ---: | ---: |
+| Bob | 100 | 1/3 | 10 |
+| Carol | 200 | 2/3 | 20 |
+| Dave | 0 | 0 | 0 |
 
-A sharing percentage alone does not determine a child's reward. The parent's
-core earnings set the size of the pool, and all direct children's own
-points determine how that pool is divided. A parent can have children it
-controls itself; their points participate in the same division and reduce the
-fraction available to other children.
+The parent keeps the other 90 override credits, all of its own-asset earnings,
+and any gift from its own parent. Splitting Bob's 100 credits across sibling
+accounts holding 40 and 60 gives those accounts 4 and 6: still 10 in total.
 
-## Point-time and reward time
+## Why a nephew can help an uncle
 
-The same sharing pattern can describe participation as **point-time** or
-allocate a funded reward stream. Point-time measures points held over time.
-Reward earnings also depend on the reward rate and total points while that
-participation occurs, so equal point-time can receive different rewards when
-those quantities change.
+Suppose Bob and Carol are children of Alice, and Bob recruits another asset
+holder. That new descendant can increase Alice's gross overrides. Carol can
+receive part of the larger marketing pool through the credits she has escrowed,
+even though the new member is outside Carol's own downline.
 
-Sharing is accounted with directed rounding. A parent retains any amount too
-small to divide among child points on the accounting grid. The
-[formal specification](Referral-Network-Formal-Specification) defines the equations,
-timing, and conservation rules.
+The new member's assets do not themselves increase Alice's immediate-child
+credit-escrow denominator. This is the family exposure: members can benefit from
+productive branches beside their own. A new sibling who stakes credits does
+increase the denominator and competes for the pool.
+
+The actual income still depends on global participation, lane allocations, and
+Alice's chosen marketing fraction. Growth does not guarantee that every
+member's total credits increase.
+
+## Gifts stop at their recipient
+
+If Alice gives Bob 10 credits, Bob keeps that gift in full. Bob's own marketing
+pool is calculated only from Bob's gross downline overrides. Alice's gift neither
+enters Bob's pool nor pays another upline commission.
+
+Receiving a gift also does not automatically increase Bob's escrow. He can
+collect the credits and explicitly restake them for subsequent income.
+
+## A changing offer with withdrawable principal
+
+A parent can change $\mu$ at any time for future accrual, including setting it to
+zero. A current percentage is a discretionary commercial offer, not ownership of
+a permanent fraction of future earnings. The parent may participate through its
+own child accounts under the same escrow rules.
+
+Children can withdraw some or all of their escrow without a mandatory cooldown
+or forfeiture. Their already earned credits remain theirs. Moving credits to a
+different family requires a node under that family; an existing parent
+connection does not move.
+
+Every escrow or percentage change settles earlier income first, across **all**
+lanes funding that family. This prevents new stake from capturing an old pool.
+[Emission Accounting](Emission-Accounting) gives the settlement rule, and
+[Link Shopping](Link-Shopping) explains how to compare offers.

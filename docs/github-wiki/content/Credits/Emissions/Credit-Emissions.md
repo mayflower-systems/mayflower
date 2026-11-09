@@ -1,80 +1,96 @@
 <!--
 title: Credit Emissions
 summary:
-  How the emission schedule creates a budget, channel pledges route it to
-  channels, and referral participation turns allocated rewards into newly minted
-  credits.
+  A declining global emission stream is routed to asset lanes, divided by
+  referral rules, and optionally shared according to escrowed credits.
 tags:
   - tokenomics
   - emission
 -->
 
-The credit emission system distributes newly issued
-[Mayflower credits](Mayflower-Credits) to participants over time. A single schedule
-determines the amount available; holders' channel pledges divide it among
-channels; eligible participation and the [Referral Network](Referral-Network)
-determine who earns each channel's allocation. A member collects its final
-retained reward, and that collection mints the corresponding credits.
+The emission system allocates one global stream of
+[Mayflower credits](Mayflower-Credits), with a rate that declines continuously
+over time. Asset participation generates core rewards and referral commissions.
+Parents can share some of those commissions
+with their immediate children, weighted by the credits those children escrow.
+Collection turns a member's net earned entitlement into issued credits.
 
-A **channel**, also called an **outlet**, is a market's share of the common
-emission stream. The referral network has one shared tree. Each channel
-accounts separately for its members' points, rewards, and gifts;
-channel weights select how much emission reaches each channel, not who belongs
-to the network.
+These pages describe the design in the
+[referral implementation specification](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md).
+The kernel implements these allocation rules. The host supplies the emission
+schedule, asset eligibility, auction authority, and atomic token custody.
 
-## The allocation sequence
+## One budget, separate decisions
 
-1. **Schedule:** An annualized emission rate sets the stream of newly accrued
-   entitlement. The rate follows a non-increasing, whole-second decay schedule.
-2. **Channel weighting:** credit holders pledge credits to channels. Channels
-   receive emission in proportion to their pledged weights.
-3. **Participation:** In each channel, eligible members' deposited collateral
-   supplies points. The channel's allocation is attributed in proportion to
-   those points; each point enters the denominator once.
-4. **Referral distribution:** Each source's attribution is divided between the
-   source and its upline. Members may then voluntarily share part of their core
-   earnings with their direct children, who keep those gifts. The same network
-   relationships and sharing fractions apply across channels, while the points
-   and sharing allocations are channel-specific.
-5. **Collection:** Each member's retained entitlement is collected and minted as
-   credits. An amount attributed to a source before referral is an intermediate
-   calculation, not a second claim.
+1. **Global emission:** the continuously declining rate $E(t)$ establishes the
+   credit budget by integration over time. The exact curve and its parameters
+   belong to the emitter design.
+2. **Lane allocation:** an external allocator, such as gauge voting, assigns
+   that budget to asset lanes. In ordinary active operation, lane rates sum to
+   $E(t)$. One active lane with no gauge competition receives the whole rate.
+3. **Core referral allocation:** each lane divides its allocation using its own
+   eligible asset balances. Every source funds its own retained share and a
+   fixed commission for each earning ancestor.
+4. **Mutualization:** a parent may share a fraction of its gross referral
+   commissions across all lanes. Its immediate children divide that pool by
+   their escrowed credits. Incoming gifts are kept whole.
+5. **Collection:** each member collects its net entitlement. The same amount is
+   removed from its uncollected balance and minted once.
 
-Each stage divides the same scheduled budget. Channel pledges, referral overrides,
-and voluntary sharing do not create extra emission. If a channel has no eligible
-points, its allocation is recorded as unallocated for that interval; later
-participants do not inherit it.
+A lane, also called a channel, has its own asset identity, balance denominator,
+and allocation history. Raw BTC and ETH quantities are never added together to
+make a common asset weight. The [Referral Network](Referral-Network) is shared
+across lanes; the common marketing weight is already-issued credit escrow.
 
-## Accrual and supply
+Each stage divides the same scheduled budget. Gauge weights, commissions,
+marketing, fees, and escrow do not create another emission stream. Unavailable
+routing, allocations to empty lanes, and numerical residuals are accounted for
+explicitly as unallocated, unissued budget. Later participants do not inherit it.
 
-Scheduled emission is an accounting entitlement, not a quantity automatically
-minted as time passes. After the mint authority has been transferred to Reserve,
-collecting a final retained reward is the ongoing issuance path. A bootstrap
-balance can already exist before that handoff; it is separate from scheduled
-accrual. Channel pledges use already-issued credits and do not mint more.
+## Membership and rewards
 
-Positive decay reduces the rate over time; zero decay holds it constant. A
-change in the decay coefficient starts from the rate already in force, so the
-rate never jumps upward. A fixed positive decay has a finite ideal remaining
-tail, while a positive rate held at zero decay can continue indefinitely. The
-[clearing auction](Revenue-Clearing) consumes credits separately; the balance
-between issuance and clearing affects circulating supply.
+Auctioned top-level seats have earning depth zero. The logical protocol root
+earns nothing. Ordinary members choose a permanent parent, and the maximum
+earning depth is $H$. A node at that limit can earn rewards but cannot recruit
+children. The fixed commission rate $q$ satisfies $q>0$ and $Hq<1$, leaving
+positive own-asset income at every permitted depth.
+
+A member can earn commissions from actual descendant assets without holding
+assets itself. It can also receive marketing gifts without holding assets,
+provided it escrows issued credits with its immediate parent. Neither an empty
+account nor an uncollected reward claim supplies marketing weight.
+
+Parents set their current join fee and marketing percentage independently. A
+marketing change applies prospectively at one common effective time across all
+of the parent's contributing lanes. Assets and credit escrow can change
+frequently without changing the parent connection. [Emission Accounting](Emission-Accounting)
+explains the checkpoints needed to preserve earlier rewards.
+
+## Earned, issued, and escrowed credits
+
+Scheduled emission and earned entitlement are not automatically minted as time
+passes. Collection issues net earned credits. A documented bootstrap supply is
+separate from this ongoing issuance path.
+
+Family escrow holds already-issued credits as the child's withdrawable principal.
+An ordinary join fee transfers issued credits to the parent; a winning top-seat
+payment burns issued credits. Neither payment is family escrow. Burning credits
+does not replenish the emission budget. Custody rules also keep the same
+principal from simultaneously funding incompatible family, gauge, clearing, or
+auction commitments.
 
 ## Chapters
 
-- [Emission Schedule](Emission-Schedule) — The decaying rate,
-  cumulative entitlement, and prospective changes to decay.
-- [Channel Weighting](Emission-Channel-Weighting) — How pledges route
-  the stream, including the empty-channel case.
+- [Emission Schedule](Emission-Schedule) — The declining rate, cumulative budget,
+  and the emitter-design boundary.
+- [Emission Channel Weighting](Emission-Channel-Weighting) — The independent
+  allocator and its chronological, budget-conserving interface.
 - [Participation and Referral Rewards](Participation-and-Referral-Rewards) —
-  Eligible points, upline overrides, mutualization, and final retained rewards.
-- [Accrual, Collection, and Conservation](Emission-Accounting) —
-  Time-varying reward indexes, unallocated amounts, rounding, and how collection
-  creates supply.
+  Eligible assets, fixed upline commissions, credit-weighted marketing, and a
+  worked allocation.
+- [Emission Accounting](Emission-Accounting) — Lane and family indices,
+  settlement across lanes, custody, collection, and numerical requirements.
 
-## How it connects
-
-The [Referral Network](Referral-Network) explains the underlying attribution
-mechanism independently of emissions.
-[Long-Term Economics of Credits](Long-Term-Economics-of-Credits) describes the
-incentives created by channel weighting, emission, and revenue clearing.
+See [Credit Channel Weighting](Credit-Channel-Weighting) for the allocator's
+broader role and [Long-Term Economics of Credits](Long-Term-Economics-of-Credits)
+for the relationships between credit demand, emissions, and clearing.
