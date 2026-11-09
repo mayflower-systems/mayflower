@@ -29,4 +29,16 @@ cargo run --locked -p mayf-anchor-idl-to-gen -- \
 
 cargo fmt -p mayf-reward-clearing-sol-cpi
 cargo check --locked -p mayf-reward-clearing-sol-cpi
+
+# The TypeScript client also takes PDA addresses from callers. The generator
+# keeps the hand-written ts/src/pda.ts.
+cargo run --locked -p mayf-anchor-idl-to-gen -- \
+    generate-typescript "$idl_path" \
+    --program-name MayfRewardClearing \
+    --manual-pdas \
+    --output-dir "$program_dir/ts/src"
+
+pnpm exec prettier --write --log-level=warn "$program_dir/ts"
+pnpm --dir "$program_dir/ts" run build
+
 install -m 644 "$build_dir/$program_name.so" "$program_dir/bin/$program_name.so"

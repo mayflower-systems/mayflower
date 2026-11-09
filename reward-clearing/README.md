@@ -1,21 +1,22 @@
 # Reward Clearing
 
 The [Solana program](sol-programs/reward-clearing/README.md) uses the
-`prog/`, `bin/`, `cpi/`, and `idl/` layout. Run
+`prog/`, `bin/`, `cpi/`, `ts/`, and `idl/` layout. Run
 `./reward-clearing/sol-programs/reward-clearing/build.sh` from the repository
-root to build its binary, IDL, and generated CPI crate.
+root to build its binary, IDL, generated CPI crate, and generated TypeScript
+client.
 
 ## State and parameters
 
 The [algorithm state types](rust/mayf-reward-clearing/src/models.rs) carry:
 
-| State           | Essential data                                                                                                                    |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Epoch schedule  | Immutable master start `t0` and duration `T`, shared by synchronized channels.                                                    |
-| Channel epoch   | Channel/counter, immutable terms, accepted principal `A`, surviving shares `S`, tracked net reward `R`.                           |
-| Lot             | Whole remaining principal `Aij` and remaining shares `Sij`.                                                                      |
-| Position        | Channel epoch identity, ordered lots, and whether its entitlement has been claimed.                                              |
-| Finalized epoch | Frozen settlement totals `S*` and `R*`, remaining unclaimed shares `U` and reward `V`, held on the existing channel epoch.          |
+| State           | Essential data                                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Epoch schedule  | Immutable master start `t0` and duration `T`, shared by synchronized channels.                                             |
+| Channel epoch   | Channel/counter, immutable terms, accepted principal `A`, surviving shares `S`, tracked net reward `R`.                    |
+| Lot             | Whole remaining principal `Aij` and remaining shares `Sij`.                                                                |
+| Position        | Channel epoch identity, ordered lots, and whether its entitlement has been claimed.                                        |
+| Finalized epoch | Frozen settlement totals `S*` and `R*`, remaining unclaimed shares `U` and reward `V`, held on the existing channel epoch. |
 
 Library models carry generic identities and each position's ordered lot
 collection. The actions select lots and maintain the channel epoch's balances.

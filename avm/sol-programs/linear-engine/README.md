@@ -5,12 +5,12 @@ location, so it also works when invoked from the repository root or elsewhere.
 It requires `cargo-build-sbf` and uses Solana platform tools `v1.58` plus the
 repository's pinned Rust toolchain and dependencies.
 
-| Directory | Contents |
-| --- | --- |
-| `prog/` | Anchor program source and native arithmetic tests |
-| `bin/` | Built `mayf_avm_engine_linear_sol.so` |
-| `idl/` | Generated `mayf_avm_engine_linear_sol.json` |
-| `cpi/` | Generated Rust library `mayf-avm-engine-linear-sol-cpi` |
+| Directory | Contents                                                |
+| --------- | ------------------------------------------------------- |
+| `prog/`   | Anchor program source and native arithmetic tests       |
+| `bin/`    | Built `mayf_avm_engine_linear_sol.so`                   |
+| `idl/`    | Generated `mayf_avm_engine_linear_sol.json`             |
+| `cpi/`    | Generated Rust library `mayf-avm-engine-linear-sol-cpi` |
 
 The script builds the program with its default features, extracts its IDL,
 generates `cpi/src/` using `mayf-anchor-idl-to-gen`, formats the generated code,

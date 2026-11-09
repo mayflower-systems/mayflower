@@ -82,10 +82,10 @@ geometry, and spot price. Both require zero characteristic engine calls.
 
 The two floor-raise actions share the calculator's geometry verifier:
 
-| Action | Absolute reserve budget | Permitted backing change |
-| --- | --- | --- |
-| `raise_floor_preserving_area` | `max_area_decrease` | `[-max_area_decrease, 0]` |
-| `raise_floor_from_surplus` | `max_area_increase` | `[0, max_area_increase]` |
+| Action                        | Absolute reserve budget | Permitted backing change  |
+| ----------------------------- | ----------------------- | ------------------------- |
+| `raise_floor_preserving_area` | `max_area_decrease`     | `[-max_area_decrease, 0]` |
+| `raise_floor_from_surplus`    | `max_area_increase`     | `[0, max_area_increase]`  |
 
 Both take `floor_increase_by: Pos<N>`, `new_ramp_end`, `new_ramp_width`,
 and `max_floor_join_gap`. The budgets use normalized reserve quantities, not
