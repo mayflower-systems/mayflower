@@ -1,71 +1,73 @@
 <!--
 title: AVM Rationale
 summary:
-  Why the AVM is a distinct class of automated market maker — no liquidity
-  providers, self-bootstrapping reserve, evolving floor, and credit liquidity
-  from the same capital pool.
+  Why the AVM combines buyer-funded reserves, price discovery, and an evolving floor.
 tags:
   - avm
   - pricing
 -->
 
-The AVM is a species of automated market maker (AMM), but it differs from
-conventional AMMs in several structural ways. This note explains what makes the
-AVM a distinct class and why those differences matter.
+The [AVM](Amplifying-Value-Machine) combines a deterministic market with a
+reserve-denominated minimum redemption value. This page explains the design's
+purpose and tradeoffs. Exact rules belong to the [specification](AVM-Specification).
 
----
+## Buyers fund the reserve
 
-## What it shares with AMMs
+Purchasing AVA supplies the capital backing it. Redemption returns capital from
+that reserve according to the pricing schedule. The core market therefore has
+no separate liquidity-provider position whose withdrawal removes its backing.
 
-The AVM is an AMM in the sense that it is a deterministic pricing function that
-acts as the counterparty to every trade. A buyer sends capital and receives
-tokens; a seller sends tokens and receives capital. The price is determined by
-the current state of the machine — there is no negotiation, no order matching,
-no human discretion. In this respect, the AVM resembles any on-chain AMM:
-Uniswap, Curve, Balancer, and so on.
+The reserve is still finite. A marginal quote does not mean every circulating
+token can be sold at that quote, and backing held in collateralized advances
+is not immediately liquid. These distinctions are why the system tracks required
+backing, liquid reserve, and advances separately.
 
----
+## A floor separates backing from price discovery
 
-## Where it diverges
+The floor assigns a minimum gross reserve claim to unencumbered AVA. The
+schedule above the floor supplies the price-discovery component. A purchase
+above the floor retains exposure to that premium falling, even though the floor
+itself cannot decrease under the permitted transitions.
 
-### No liquidity providers
+An area-preserving floor raise reallocates existing backing: it increases the
+floor component while reducing the value assigned above the floor. It creates
+no new reserve. Surplus-funded investment can instead increase required backing
+using capital already available to the market.
 
-Conventional AMMs depend on external liquidity providers — entities that pledge
-capital to the pool, and the AMM allocates that capital according to a pricing
-function. Buyers and sellers trade against the provided liquidity. The liquidity
-provider is the market maker in an economic sense; the AMM merely automates the
-order-filling. If liquidity providers withdraw, the AMM becomes illiquid.
+This is useful when a market wants part of accumulated backing to support a
+persistent minimum claim. It is not a promise of investment returns or a floor
+measured in any currency other than the reserve asset.
 
-The AVM has no liquidity providers. The reserve is created by buyers themselves:
-every buy adds capital to the reserve, and the reserve is the counterparty to
-every sell. The AVM bootstraps its own liquidity from first principles. There is
-no external party whose participation is required for the market to function,
-and no external party who can withdraw liquidity and leave the market stranded.
+## The ramp gives the schedule room to change
 
-### Self-bootstrapping reserve
+The ramp lies below the backward extension of main. Advancing its endpoint can
+replace main area with less expensive ramp area, making room for a higher floor.
+That geometric relationship is the basis of [floor raising](AVM-Floor-Raising).
 
-Because the reserve equals the area under the [price curve](AVM-Specification)
-from zero to supply, the reserve is always exactly sufficient to redeem every
-token at the price the curve assigns. Solvency is a mathematical identity, not a
-condition that must be monitored or maintained. The reserve cannot become
-insufficient through normal operation — it is structural.
+A sale into the ramp reattaches main at the remaining progress. The next purchase
+then follows main from that point. Ordinary purchases do not climb an old ramp:
+the ramp describes retained backing and redemption behavior. Contraction may
+allow later raises at lower progress, but no trading pattern guarantees future
+floor growth.
 
-### Evolving floor
+## Separate progress from circulation
 
-The AVM adapts over time. The floor price can rise through area-preserving
-raises or surplus-funded investment, permanently increasing the guaranteed
-minimum value of every token. The market's sensitivity characteristics also
-adapt — when supply contracts into the ramp or floor, the effective price
-sensitivity changes, and the ramp–main boundary resets. These adaptations follow
-the curve's geometry; the selected floor-raising policy controls when raises
-occur.
+An authorized floor-priced issuance adds AVA and its floor backing without
+moving the live price. Tracking circulation separately from pricing progress
+expresses this directly. The same distinction supports a bounded floor-redemption
+operation without moving the schedule.
 
-### Credit liquidity
+It also prevents a common accounting mistake: when those quantities differ,
+required backing is not simply the area from zero to current circulation.
 
-The AVM provides credit liquidity through the
-[cash advance](Cash-Advance-Overview) facility. Because the
-reserve already guarantees floor-value redemption for every token, advancing
-that floor value against pledged collateral does not create a new liability — it
-accelerates one that already exists. The same capital pool that backs the
-pricing function also funds the credit facility. No separate lending pool or
-external capital source is needed.
+## Advances use the same backing
+
+A [cash advance](Cash-Advance-Overview) releases reserve against an AVA position's
+floor value. Its principal has no time-based interest increase in this design,
+and a fixed collateral quantity with a nondecreasing floor retains its advance
+capacity. The application must keep collateral encumbered and check liquid
+reserve before paying a draw.
+
+This avoids a separate lender pool, while making collateral custody and reserve
+liquidity essential. Releasing reserve now also consumes part of the holder's
+future unencumbered redemption entitlement.

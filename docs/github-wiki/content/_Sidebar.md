@@ -1,59 +1,61 @@
 **[Mayflower](Home)**
 
-**Referral Network**
-
-- [Overview](Referral-Network)
-- [Why These Rules](Referral-Network-Rationale)
-- [Allocation Rules](Referral-Network-Formal-Specification)
-- [Parameters and Authority](Referral-Network-Parameters)
-- [Family Marketing](Mutualization)
-- [Choosing a Parent](Link-Shopping)
-- [Diagrams](Referral-Network-Diagrams)
-
-**Credits**
-
-- [Mayflower Credits](Mayflower-Credits)
-- [Earning Credits](Earning-Credits)
-- [Channel Weighting](Credit-Channel-Weighting)
-- [Credits and Revenue Clearing](Credits-and-Revenue-Clearing)
-- [Long-Term Economics](Long-Term-Economics-of-Credits)
-
-**Credit Emissions**
-
-- [Overview](Credit-Emissions)
-- [Emission Rate and Cumulative Budget](Emission-Schedule)
-- [Lane Allocation](Emission-Channel-Weighting)
-- [Participation and Referral Rewards](Participation-and-Referral-Rewards)
-- [Accrual, Collection, and Conservation](Emission-Accounting)
+- [Protocol scope](Protocol-Scope)
 
 **AVM**
 
 - [Amplifying Value Machine](Amplifying-Value-Machine)
 - [Specification](AVM-Specification)
-- [Floor Raising](AVM-Floor-Raising)
+- [Floor raising](AVM-Floor-Raising)
 - [Evolution](AVM-Evolution)
 - [Rationale](AVM-Rationale)
 
-**AVM Features**
+**AVM features**
 
 - [Overview](AVM-Features)
-- [Call Options](Call-Options)
-- [Cash Advance Overview](Cash-Advance-Overview)
-- [Cash Advance Mechanics](Cash-Advance-Mechanics)
-- [Floor Investment](Floor-Investment)
+- [Call options](Call-Options)
+- [Cash advance overview](Cash-Advance-Overview)
+- [Cash advance mechanics](Cash-Advance-Mechanics)
+- [Floor investment](Floor-Investment)
 
 **Linear AVM**
 
 - [Overview](Linear-AVM)
 - [Specification](Linear-AVM-Specification)
-- [Floor Raising](Linear-AVM-Floor-Raising)
+- [Floor raising](Linear-AVM-Floor-Raising)
 - [Evolution](Linear-AVM-Evolution)
-- [Floor Investment](Linear-AVM-Floor-Investment)
+- [Floor investment](Linear-AVM-Floor-Investment)
 - [Corollaries](Linear-AVM-Corollaries)
 
-**Revenue Clearing**
+**Referral network**
+
+- [Overview](Referral-Network)
+- [Rationale](Referral-Network-Rationale)
+- [Specification](Referral-Network-Formal-Specification)
+- [Parameters and authority](Referral-Network-Parameters)
+- [Family marketing](Mutualization)
+- [Choosing a parent](Link-Shopping)
+- [Diagrams](Referral-Network-Diagrams)
+
+**Credits**
+
+- [Mayflower Credits](Mayflower-Credits)
+- [Earning credits](Earning-Credits)
+- [Channel weighting](Credit-Channel-Weighting)
+- [Credits and revenue clearing](Credits-and-Revenue-Clearing)
+- [Long-term economics](Long-Term-Economics-of-Credits)
+
+**Credit emissions**
+
+- [Overview](Credit-Emissions)
+- [Emission rate and cumulative budget](Emission-Schedule)
+- [Lane allocation](Emission-Channel-Weighting)
+- [Participation and referral rewards](Participation-and-Referral-Rewards)
+- [Accrual, collection, and conservation](Emission-Accounting)
+
+**Revenue clearing**
 
 - [Overview](Revenue-Clearing)
-- [Formal Specification](Revenue-Clearing-Formal-Specification)
+- [Specification](Revenue-Clearing-Formal-Specification)
 - [Rationale](Revenue-Clearing-Rationale)
-- [Time Weight](Revenue-Clearing-Time-Weight)
+- [Time weight](Revenue-Clearing-Time-Weight)

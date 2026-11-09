@@ -1,205 +1,138 @@
 <!--
 title: Linear AVM Evolution
 summary:
-  Linear implementation of every curve mutation — closed-form expressions for
-  how f, b₁, and b₂ change during buys, sells, contraction, floor raises, floor
-  investment, and option execution. Each case gives the exact state-variable
-  update and the resulting x₂ motion.
+  Linear state transitions for trading, contraction, and floor operations.
 tags:
   - linear-avm
   - math
 -->
 
-The linear implementation of [AVM evolution](AVM-Evolution). This note gives
-the closed-form state-variable updates for every curve mutation in the
-[piecewise-linear system](Linear-AVM-Specification). The general note
-describes _what_ changes in each case; this note gives the _equations_.
+This page specializes [AVM Evolution](AVM-Evolution) to the
+[linear characteristic](Linear-AVM-Specification). Use floor $F$, main slope
+$m>0$, ramp slope $a>m$, main intercept $b$, ramp intercept
+$c=b-(a-m)E$, joins $A,E$, progress $P$, circulation $T$, and floor tail
+$J=T-P+A$.
 
-## The three lines
+## Purchase
 
-| Line  | Equation            | Y-intercept |
-| ----- | ------------------- | ----------- |
-| Floor | $y = f$             | $f$         |
-| Ramp  | $y = m_1\, x + b_1$ | $b_1$       |
-| Main  | $y = m_2\, x + b_2$ | $b_2$       |
-
-The slopes $m_1$ (ramp) and $m_2$ (main) are immutable. The state variables are
-the three y-intercepts: $f$, $b_1$, $b_2$.
-
-The intersection points are derived:
+An ordinary purchase of $n$ AVA pays
 
 $$
-x_1 = \frac{f - b_1}{m_1}, \quad x_2 = \frac{b_2 - b_1}{m_1 - m_2}
+C=n\left(mP+b+\frac{mn}{2}\right)
 $$
 
----
+before fees and sets $P'=P+n$, $T'=T+n$. Geometry and both intercepts stay
+fixed. The purchase starts on main because $P\ge E$.
 
-## Buy
+## Sale ending on main
 
-Supply increases. No state variable changes. See
-[general treatment](AVM-Evolution#buy).
-
-| $f$ | $b_1$ | $b_2$ |
-| --- | ----- | ----- |
-| —   | —     | —     |
-
----
-
-## Sell (supply stays in main)
-
-Supply decreases but remains $\ge x_2$. No state variable changes. See
-[general treatment](AVM-Evolution#sell-supply-stays-on-main).
-
-| $f$ | $b_1$ | $b_2$ |
-| --- | ----- | ----- |
-| —   | —     | —     |
-
----
-
-## Sell into ramp ($x_1 \le x' < x_2$)
-
-Supply drops below $x_2$ but stays at or above $x_1$. The ramp line does not
-move. The main line re-anchors through the ramp at the new supply:
+Let $Q=\max(P-n,0)$. If $n\le P$ and $Q\ge E$, the gross sale proceeds are
 
 $$
-b_2^{\,\text{new}} = (m_1 - m_2)\, x' + b_1
+V=n\left(mP+b-\frac{mn}{2}\right).
 $$
 
-Since $b_1$ is unchanged, $x_1$ does not move. $b_2$ dropped, so $x_2$ contracts
-to the new supply.
+The sale lies entirely on main. Set $P'=Q$, $T'=T-n$ and
+leave geometry unchanged.
 
-| $f$ | $b_1$ | $b_2$         |
-| --- | ----- | ------------- |
-| —   | —     | **decreases** |
+## Sale ending inside the ramp
 
-The main line is permanently lower. Subsequent buys walk up the shifted-down
-main. Only a floor raise can advance $x_2$ again. See
-[general treatment](AVM-Evolution#sell-into-ramp).
-
----
-
-## Sell into floor ($x' < x_1$)
-
-Supply drops below $x_1$. The ramp collapses. Both lines re-anchor through
-$(x', f)$:
+If $A<Q<E$, quote the sale over the old ramp and main intervals, then set
 
 $$
-b_1^{\,\text{new}} = f - m_1\, x', \quad b_2^{\,\text{new}} = f - m_2\, x'
+A'=A,\quad E'=Q,\quad W'=Q-A,\quad
+b'=b+(a-m)(Q-E).
 $$
 
-Now $x_1 = x_2 = x'$ — the ramp has zero width. At the limit $x' = 0$:
-$b_1 = b_2 = f$, and the curve is a single ray $y = m_2\, x + f$ — the launch
-shape (though $f$ may have been raised). See
-[general treatment](AVM-Evolution#sell-into-floor).
-
-| $f$ | $b_1$      | $b_2$         |
-| --- | ---------- | ------------- |
-| —   | **resets** | **decreases** |
-
----
-
-## Floor raise (area-preserving)
-
-$f$ increases. $b_2$ is unchanged. $b_1$ **decreases** so that the ramp line, at
-its steeper slope, connects the higher floor to the unchanged main line. See
-[Linear AVM Floor Raising](Linear-AVM-Floor-Raising) for the closed-form derivation of
-$b_1^{\,\text{new}}$ and the maximum floor formula.
-
-Since $b_2$ is fixed and $b_1$ decreased: $x_2 = (b_2 - b_1)/(m_1 - m_2)$
-increases. Since $f$ increased and $b_1$ decreased: $x_1 = (f - b_1)/m_1$
-increases. The ramp widens.
-
-| $f$           | $b_1$         | $b_2$ |
-| ------------- | ------------- | ----- |
-| **increases** | **decreases** | —     |
-
-**Precondition:** supply $> x_2$. The new $x_2$ cannot exceed supply.
-
-**Invariants preserved:** reserve (area under curve from $0$ to supply), price
-at supply, $b_2$, $m_1$, $m_2$. See
-[general treatment](AVM-Evolution#floor-raise-area-preserving).
-
----
-
-## Floor investment (surplus-funded)
-
-The floor rises and the selected geometry may change $b_1$, $b_2$, $x_1$, and
-$x_2$. The ramp may shorten or collapse, including beyond the old $x_2$. See
-[Linear AVM Floor Investment](Linear-AVM-Floor-Investment) for the linear constraints and
-[Floor Investment](Floor-Investment) for the general policy.
-
-| $f$           | Ramp                | $x_2$            |
-| ------------- | ------------------- | ---------------- |
-| **increases** | shortens/can vanish | fixed or forward |
-
-**Precondition:** $f_{\text{new}}$ does not exceed the old live price, the
-candidate preserves the live price, and effective reserve covers the new
-required area.
-
-**Contrast with area-preserving raise:** both may reshape the ramp. The
-surplus-funded action permits a covered area increase; the area-preserving
-action does not.
-
----
-
-## Option execution
-
-A [perpetual call option](Call-Options) is executed. The buyer
-pays $f$ per token, and $n$ new tokens are minted. Both lines shift right by
-$n$:
+The new main connects at the sale endpoint:
 
 $$
-b_1 \to b_1 - m_1\, n, \quad b_2 \to b_2 - m_2\, n
+mQ+b'=aQ+c.
 $$
 
-$f$ does not change. Since both y-intercepts decreased by amounts proportional
-to their slopes, both intersection points shift right by exactly $n$ — a pure
-rightward translation.
+Its intercept decreases, while the retained ramp intercept remains $c$.
+Progress becomes $Q$ and circulation becomes $T-n$. The next purchase follows
+the new main from $Q$.
 
-Supply increases from $x$ to $x + n$. Price is unchanged:
-$y_{\text{new}}(x + n) = y_{\text{old}}(x)$.
+## Sale ending in the floor
 
-Reserve invariant holds: the buyer paid $f \cdot n$, covering the $n$ new units
-of floor region. See [general treatment](AVM-Evolution#option-execution).
+If $Q<E$ and $Q\le A$, quote the sale on the old schedule and then collapse
+the ramp:
 
-| $f$ | $b_1$                    | $b_2$                    |
-| --- | ------------------------ | ------------------------ |
-| —   | **decreases** by $m_1 n$ | **decreases** by $m_2 n$ |
+$$
+A'=E'=Q,\quad W'=0,\quad b'=F-mQ,\quad c'=F-aQ.
+$$
 
-Unlike a floor raise (which preserves $b_2$), option execution lowers both
-y-intercepts. Unlike sell contraction (which lowers $b_2$ only), option
-execution shifts both lines in the same direction by the same amount — a
-translation, not a contraction.
+The new live price is $mQ+b'=F$. The floor is unchanged. The intercept $b'$
+can be higher or lower than the old intercept; the defining rule is attachment
+at $(Q,F)$, not a universal downward shift of the entire main line.
 
----
+With circulation different from progress, a complete redemption can leave
+$T'=0$ but positive $P'=Q$.
 
-## How $x_2$ moves
+## Sale exceeding progress
 
-$x_2 = (b_2 - b_1)/(m_1 - m_2)$. It shifts whenever $b_1$ or $b_2$ changes:
+When floor issuance has made $T>P$, an ordinary sale can have $P<n\le T$.
+It pays
 
-| Event                         | $b_1$         | $b_2$         | $x_2$ direction | Which line moves?              |
-| ----------------------------- | ------------- | ------------- | --------------- | ------------------------------ |
-| Floor raise (area-preserving) | **decreases** | —             | **forward**     | ramp adjusts, main stays       |
-| Floor investment (surplus)    | —             | —             | —               | neither; only $f$ rises        |
-| Sell contraction              | —             | **decreases** | **backward**    | main shifts down, ramp stays   |
-| Option execution              | **decreases** | **decreases** | **forward**     | both shift right (translation) |
+$$
+V=\int_0^P y(x)\,dx+F(n-P)
+$$
 
-See [general treatment](AVM-Evolution#how-x_2-moves) for the
-implementation-agnostic version.
+before fees, sets $P'=0$ and $T'=T-n$, and applies the same contraction rules.
+If $E>0$, the ramp collapses at zero. If $E=0$, geometry is unchanged; the
+sale still needs the separate $F(n-P)$ term rather than the main-only formula.
 
----
+## Ordinary floor raise
 
-## The sell–raise cycle
+A raise preserves $m,a,b,P,T$, increases $F$, and selects $A',E'$ with
+$A'\ge A$, $E'\ge E$, and $A'\le E'\le P$. Exact continuity gives
 
-Selling into the ramp or floor lowers $b_2$, which pulls $x_2$ back. This lowers
-the bar for future floor raises:
+$$
+c'=b-(a-m)E',\qquad F'=aA'+c'.
+$$
 
-1. Supply is at 100, $x_2$ is at 80. Floor can be raised (supply $> x_2$).
-2. A large sell pushes supply to 50. $b_2$ drops, pulling $x_2$ to 50.
-3. New buys push supply to 60. Now supply $> x_2$ again — a floor raise is
-   possible.
-4. The floor raise increases $f$ and decreases $b_1$, sliding $x_2$ forward
-   along the (now lower) main line.
+Required backing stays fixed in the exact area-preserving model. The new ramp
+width may increase or decrease. [Linear AVM Floor Raising](Linear-AVM-Floor-Raising)
+gives the constant-backing solution, including the case $T\ne P$.
 
-The system is self-healing: sell-offs create room for floor appreciation on
-recovery. See [general treatment](AVM-Evolution#the-sellraise-cycle).
+## Floor investment
+
+The same boundary and join rules apply, with main intercept $b$ still unchanged.
+The difference is the backing policy: a nonnegative increase must fit the
+permitted budget and available surplus. A fixed-end investment can narrow the
+ramp to zero width. See [Linear AVM Floor Investment](Linear-AVM-Floor-Investment).
+
+## Floor issuance and special floor redemption
+
+Authorized issuance of $n$ AVA at the floor sets
+
+$$
+T'=T+n,\quad J'=J+n,\quad B'=B+Fn.
+$$
+
+Special floor redemption of $n\le J$ sets
+
+$$
+T'=T-n,\quad J'=J-n,\quad B'=B-Fn.
+$$
+
+Both leave $P,F,A,E,b,c$ unchanged. No line translates and no boundary moves.
+The corresponding reserve payment, fees, authorization, and collateral checks
+must settle with the state change.
+
+## Example of contraction
+
+Start from $m=8$, $a=25/2$, $b=1$, $F=16$, $A=3$, $E=5$, $P=T=6$.
+Sell two AVA, leaving $Q=4$ inside the ramp. Gross proceeds on the old schedule
+are 45 from $[5,6]$ plus $(57/2+41)/2=139/4$ from $[4,5]$, totaling $319/4$.
+
+The new main intercept is
+
+$$
+b'=1+\frac92(4-5)=-\frac72,
+$$
+
+so its price at progress four is $8\cdot4-7/2=57/2$, equal to the old ramp
+price there. Required backing becomes $150-319/4=281/4$. The floor stays 16.
+These amounts exclude fees and fixed-point rounding.

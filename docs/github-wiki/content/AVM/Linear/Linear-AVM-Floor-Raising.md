@@ -1,120 +1,128 @@
 <!--
 title: Linear AVM Floor Raising
 summary:
-  Linear implementation of the area-preserving floor raise — closed-form
-  expressions for how f, b₁, x₁, and x₂ change, the maximum floor formula, and a
-  worked numeric example.
+  Closed-form constant-backing geometry, maximum-floor conditions, and verified examples.
 tags:
   - linear-avm
   - floor
   - math
 -->
 
-The linear implementation of the
-[area-preserving floor raise](AVM-Floor-Raising). This note gives the
-closed-form equations for how the [state variables](Linear-AVM-Specification)
-change when the floor is raised, the formula for the maximum achievable floor,
-and a worked example.
-
----
-
-## State-variable changes
-
-A floor raise modifies two of the three state variables:
-
-| Variable | Change                                         |
-| -------- | ---------------------------------------------- |
-| $f$      | **increases** to $f_{\text{new}}$              |
-| $b_1$    | **decreases** (derived from area preservation) |
-| $b_2$    | unchanged                                      |
-
-The slopes $m_1$ and $m_2$ are immutable.
-
-### Derived intersection points
-
-Both advance as a consequence:
+This page derives an exact area-preserving raise for the
+[linear AVM](Linear-AVM-Specification). Let $m>0$ be the main slope, $a>m$ the
+ramp slope, $b$ the main intercept, $F$ the floor, $A$ the ramp start, $E$ the
+ramp end, $P$ progress, and $T$ circulation. Define
 
 $$
-x_1 = \frac{f - b_1}{m_1}, \qquad x_2 = \frac{b_2 - b_1}{m_1 - m_2}
+s=a-m,\qquad h=T-P,\qquad J=h+A.
 $$
 
-Since $f$ increased and $b_1$ decreased (with $b_2$ fixed), both $x_1$ and $x_2$
-move right. The ramp width $(x_2 - x_1)$ increases.
+The derivation assumes exact continuous joins and preserves $P,T,b,m,a$.
+Fixed-point proposals must still pass the [general numerical checks](AVM-Floor-Raising).
 
-### Computing $b_1^{\,\text{new}}$
+## Backing equation
 
-The new $b_1$ is determined by the area-preservation constraint: the total area
-under the curve from $0$ to supply must be unchanged. Given the new floor
-$f_{\text{new}}$, solve for $b_1^{\,\text{new}}$ such that:
+The required backing is
 
 $$
-\int_0^x y_{\text{new}}(s)\, ds = \int_0^x y_{\text{old}}(s)\, ds
+B=\frac{mP^2}{2}+bP+hF+\frac{aA^2-sE^2}{2}.
 $$
 
-Because both curves are piecewise-linear and share the same main line (same
-$b_2$, $m_2$), the integrals reduce to algebraic expressions in $f_{\text{new}}$
-and $b_1^{\,\text{new}}$. The result is a closed-form solution for
-$b_1^{\,\text{new}}$ in terms of $f_{\text{new}}$, $b_2$, $m_1$, $m_2$, and the
-current supply.
-
----
-
-## Maximum floor
-
-The new $x_2$ cannot exceed the current supply (otherwise the spot price would
-change). This bounds the maximum achievable floor.
-
-For a market sitting entirely on the main segment (supply well above $x_2$), the
-approximate maximum floor as a fraction of the current price is:
+Since the floor join gives $F=aA+b-sE$, preserving $B$ is equivalent to
 
 $$
-\frac{f_{\max}}{y(\text{supply})} \approx 1 - \sqrt{\frac{m_2}{m_1}}
+a(A'^2-A^2)-s(E'^2-E^2)+2h(F'-F)=0.
 $$
 
-If $m_1 = 2\, m_2$: $f_{\max}/y \approx 1 - 1/\sqrt{2} \approx 29\%$ of the
-current price can be locked in as floor in a single raise (with enough room).
-The actual limit depends on how far supply exceeds $x_2$ and the current floor
-level.
+The term with $h$ cannot be omitted after floor issuance or special floor
+redemption.
 
----
+## Solve for a chosen ramp end
+
+Choose $E'\in[E,P]$. Completing the square gives
+
+$$
+J'=\sqrt{J^2+\frac{s}{a}\left((E'+h)^2-(E+h)^2\right)},
+$$
+
+$$
+A'=J'-h,\qquad
+F'=aA'+b-sE',\qquad W'=E'-A'.
+$$
+
+The nonnegative square root is selected because $J'$ is a physical quantity.
+A valid positive raise must have $F'>F$ and satisfy the join and boundary rules.
+The derived ramp intercept is $c'=b-sE'$. The ramp width need not increase.
+
+When circulation equals progress ($h=0$), this simplifies to
+
+$$
+A'=\sqrt{A^2+\frac{s}{a}(E'^2-E^2)},\qquad
+F'=aA'+b-sE'.
+$$
+
+## Maximum floor at fixed progress and circulation
+
+Along this exact constant-backing family, where $J'>0$,
+
+$$
+\frac{dF'}{dE'}=s\frac{E'-A'}{J'}\ge0.
+$$
+
+Thus the largest continuous floor in the family is attained at the largest
+permitted end, $E'=P$. Cases with zero tail follow by continuity and must still
+satisfy the state constraints. Substituting $E'=P$ into the formulas above gives
+the bound for the current state. It is not a fixed percentage of spot price.
+
+A useful special case starts from an unraised launch schedule with
+$A=E=0$, $T=P$, and $F=b$. Then
+
+$$
+F_{\max}=b+P\left(\sqrt{a(a-m)}-(a-m)\right).
+$$
+
+For $a=2m$, the floor increase is $(\sqrt2-1)mP$, approximately 41.42% of
+the live price's increase above $b$. The full ratio $F_{\max}/(mP+b)$ also
+depends on $b$. This formula does not apply unchanged to a previously raised
+market or a state with $T\ne P$.
 
 ## Worked example
 
-**Setup:** $m_1 = 0.0003$, $m_2 = 0.00015$, $f = 0.10$, $b_1 = 0.04$,
-$b_2 = 0.10$. Supply $= 600$.
+Take $m=8$, $a=25/2$, $b=F=1$, $A=E=0$, and $P=T=6$. The initial backing is
+150 reserve units and spot price is 49.
 
-**Before the raise:**
-
-$$
-x_1 = \frac{0.10 - 0.04}{0.0003} = 200, \qquad x_2 = \frac{0.10 - 0.04}{0.0003 - 0.00015} = 400
-$$
-
-Supply (600) is above $x_2$ (400), so a floor raise is possible. Spot price:
-$y(600) = 0.00015 \times 600 + 0.10 = 0.19$.
-
-**Raise floor to $f_{\text{new}} = 0.12$:**
-
-$b_1$ decreases to satisfy area preservation. The new intersection points
-advance:
+Choose $E'=5$. Since $s/a=(9/2)/(25/2)=9/25$,
 
 $$
-x_2^{\,\text{new}} < 600 \quad \checkmark
+A'=\sqrt{\frac9{25}\cdot25}=3,
+\qquad
+F'=\frac{25}2\cdot3+1-\frac92\cdot5=16.
 $$
 
-The floor rose from $0.10$ to $0.12$ — a 20% increase — while the spot price at
-supply $= 600$ stays at $0.19$. The reserve is unchanged. The guaranteed value
-per token increased from $0.10$ to $0.12$, and the ramp widened behind the
-current supply.
+The new width is $W'=2$. Backing is
 
----
+$$
+16\cdot3+\frac{16+41}{2}\cdot2+\frac{41+49}{2}\cdot1=150.
+$$
 
-## Precondition
+For the maximum permitted $E'=6$, the same calculation gives
 
-Supply must be in the main region: $\text{supply} > x_2$. Equivalently, the spot
-price must be on the main line.
+$$
+A'=\frac{18}{5},\qquad W'=\frac{12}{5},\qquad F'=19.
+$$
 
-If supply is in the ramp ($x_1 \le \text{supply} < x_2$) or the floor
-($\text{supply} < x_1$), there is no room for $x_2$ to advance and no area
-deficit to redistribute. The floor cannot be raised by area-preservation in
-these states — only [floor investment](Floor-Investment)
-(surplus-funded) can raise the floor when supply is at or below $x_2$.
+Backing remains $19(18/5)+(19+49)(12/5)/2=150$, and spot stays 49.
+
+## Why circulation matters
+
+Suppose two AVA are issued at the floor after the first raise to 16. Then
+$T=8$, $P=6$, and backing rises from 150 to 182. Reusing the former maximum
+candidate $F'=19,A'=18/5,E'=6$ would require
+
+$$
+B'=150+(8-6)19=188.
+$$
+
+That is a six-unit increase, so this candidate is no longer area-preserving.
+It could only be admitted under a suitable surplus-funded policy. A new
+constant-backing solution must use $h=2$ in the full formula.

@@ -1,97 +1,61 @@
 <!--
 title: Call Options
 summary:
-  Perpetual call options with strike price equal to the floor — an optional
-  add-on to the AVM that mints new tokens at floor price, translates the curve
-  rightward, and preserves the reserve invariant without changing the spot
-  price.
+  Authorized issuance at the current floor, with unchanged pricing progress and explicit backing.
 tags:
   - avm-features
   - options
 -->
 
-The AVM can support a perpetual call option with strike price equal to the
-current floor. This is not part of the core pricing mechanism — it is an add-on
-that some markets may enable. Execution mints new tokens at the floor price,
-widens the floor region, and leaves the spot price unchanged.
+An application can grant an option to acquire AVA at the market's **current
+floor**. The AVM supplies the floor-issuance accounting operation. Who receives
+an option, whether it expires or transfers, and how exercise rights are consumed
+are application rules. The pricing operation alone grants no exercise right.
 
----
+## Exercise
 
-## Why the strike price is the floor
+Use $F$ for floor price, $P$ for pricing progress, $T$ for circulation,
+$J=T-P+A$ for the physical floor tail, $B$ for required backing, and $H$ for
+held reserve, as in the [AVM specification](AVM-Specification).
 
-The floor is the minimum amount of reserved capital backing each token. It is
-the guaranteed redemption value — the price at which the reserve will always buy
-back a token. A new token can only be issued if at least $f$ of capital enters
-the reserve to back it. The floor is therefore the minimum price at which the
-AVM can issue a token without breaking the solvency invariant.
-
----
-
-## Execution
-
-The buyer pays $f$ per token and receives newly minted tokens. The payment goes
-into the reserve.
-
-If $n$ options are executed:
-
-- The buyer pays $f \cdot n$. This capital enters the reserve.
-- $n$ new tokens are minted.
-- Both the ramp and main schedules shift right by $n$: $x_1 \to x_1 + n$,
-  $x_2 \to x_2 + n$.
-- The floor region widens by $n$ units.
-- The floor $f$ does not change.
-
----
-
-## Price is unchanged
-
-Supply increases from $x$ to $x + n$, but the price at the new supply equals the
-price at the old supply:
+An authorized exercise for $n>0$ AVA has the exact changes
 
 $$
-y_{\text{new}}(x + n) = y_{\text{old}}(x)
+T'=T+n,\qquad J'=J+n,\qquad B'=B+Fn,\qquad H'=H+Fn.
 $$
 
-The curve shifted right by $n$, so the same price that was at position $x$ is
-now at position $x + n$. No price impact.
+The holder pays $Fn$ plus the configured exercise fee and receives $n$ AVA.
+Progress $P$, floor $F$, ramp boundaries, and main offset all stay fixed.
+Consequently, the live price $M(P)$ stays fixed.
 
----
+There is no rightward translation of the stored curve. Separating circulation
+from progress accounts for the additional floor-backed supply directly.
 
-## Reserve invariant holds
+## Backing and settlement
 
-The reserve must equal the area under the curve from $0$ to supply. After the
-rightward shift, the new curve has $n$ additional units of floor region at
-height $f$. The rest of the curve is identical, just translated. The new
-required reserve is $R_{\text{old}} + f \cdot n$, which is exactly what the
-buyer paid.
+The added backing requirement is exactly $Fn$ in real arithmetic. The payment
+covers that requirement; an exercise does not create an unfunded floor claim.
+With bounded arithmetic, the reserve charge is rounded conservatively upward.
+The holder's maximum reserve payment includes the exercise fee.
 
----
+The application must verify and consume the exercise entitlement, collect reserve,
+issue the correct AVA amount, distribute fees, and commit the next state in one
+atomic settlement.
 
-## Arbitrage and the execution fee
+## Economic effect
 
-If a buyer executes an option (paying $f$) and immediately redeems the new
-token, they receive approximately $y(x)$ — the market price. The profit is
-$y(x) - f$: the premium above the floor. This is the value of the
-[discovery region](AVM-Specification) captured per token.
+If the live price exceeds the floor, an exercise right can have value. Immediate
+ordinary redemption of the new AVA pays the integral over the sale interval,
+less redemption fees and any conservative numerical adjustment. For a small
+quantity its gross per-unit proceeds approach the live price; a large quantity
+has price impact. Profit cannot be computed as spot price times quantity without
+accounting for that impact.
 
-This arbitrage is priced by the **execution fee**, set through the market's
-authorized fee configuration. Availability of option operations depends on the
-application; Mayflower Reserve does not enable them. The fee makes execution
-profitable only when the premium is large enough to cover it. In practice,
-options are rarely executed — they only make sense when the market price is
-substantially above the floor.
+An exercise fee reduces the value of the right but does not by itself control
+how many rights exist. Granting unrestricted floor issuance would make those
+rights available to anyone and materially alter the market's economics. An
+application must define admission and issuance limits deliberately.
 
----
-
-## Effect on the curve
-
-Unlike a floor raise (which preserves the main schedule and adjusts the ramp),
-option execution shifts both schedules in the same direction by the same amount
-— a pure rightward translation. And unlike sell contraction (which shifts the
-main schedule down), option execution moves both schedules together without
-changing their relationship. The ramp–main boundary $x_2$ advances by exactly
-$n$.
-
-| $f$ | Ramp         | Main         | $x_2$ direction |
-| --- | ------------ | ------------ | --------------- |
-| —   | shifts right | shifts right | forward         |
+Exercise preserves backing at that moment, but it adds circulating claims and
+increases the backing needed for later floor raises. Existing holders retain
+their floor claim; the distribution of future price-discovery value can change.

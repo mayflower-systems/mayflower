@@ -1,122 +1,101 @@
 <!--
 title: Cash Advance Mechanics
 summary:
-  How the cash advance works — advance capacity sized by pledged collateral
-  times floor price, collateral locking and automatic deleveraging as the floor
-  rises, voluntary repayment, the reserve as the liquidity source, and why full
-  utilization is generally rational.
+  Capacity, reserve movement, collateral, fees, and settlement of AVA advances.
 tags:
   - avm-features
   - cash-advance
 -->
 
-The cash advance lets m-token holders draw liquidity up to the floor value of
-their pledged collateral, with no interest and no obligation to repay. The
-reserve itself funds the advance — the same pool that backs redemptions. This
-note covers the mechanics: how the credit line is sized, what happens to
-collateral, how repayment works, where the liquidity comes from, and why full
-utilization is generally rational.
+The [cash advance](Cash-Advance-Overview) uses the AVM's reserve asset and the
+floor backing of a position. Equations below use exact normalized quantities;
+rounding rules are stated separately.
 
----
+## Position and capacity
 
-## Advance capacity
-
-A holder's advance capacity equals the total floor value of their pledged
-collateral:
+Let $n\ge0$ be the position's AVA quantity, $d\ge0$ its outstanding reserve
+advance, and $F\ge0$ the current floor price. A valid position satisfies
 
 $$
-\text{capacity} = n \cdot f
+d\le Fn.
 $$
 
-where $n$ is the number of pledged m-tokens and $f$ is the current
-[floor price](AVM-Floor-Raising).
+In fixed-point arithmetic, capacity is $\lfloor Fn\rfloor_\delta$, rounding
+down to the accounting grid $\delta$. If $F=0$, capacity is zero. All accepted
+changes must leave the target position within capacity.
 
-Because the floor is monotonically non-decreasing, advance capacity can only
-grow for resting collateral. It increases in two ways: the holder pledges
-additional m-tokens (increasing $n$), or the floor rises (increasing $f$). It
-never decreases spontaneously.
+For $F>0$, the ideal minimum collateral for principal $d$ is $d/F$. When AVA
+units are discrete, the quantity must be rounded up sufficiently to pass the
+capacity check. The application must prevent transfers or redemptions that
+would leave less collateral than required.
 
-The advance is denominated in the market's reserve asset — the same asset that
-backs the [price curve](AVM-Specification). If the market is denominated in
-USDC, the advance is in USDC. If the market is denominated in gold, the advance
-is in gold. The holder is not borrowing a foreign asset against their
-collateral; they are unlocking liquidity already embedded in the floor
-guarantee.
+If the floor rises from $F$ to $(1+r)F$, the ideal collateral requirement changes
+from $d/F$ to $d/((1+r)F)$: a reduction by the fraction $r/(1+r)$, not by $r$.
+For example, a 25% floor increase reduces that requirement by 20%. Actual
+withdrawal or transfer still requires an authorized action.
 
----
+## Reserve movement
 
-## Collateral locking
-
-While an advance is outstanding, the protocol locks the minimum collateral
-required to secure it. The locked quantity is:
+Let $H$ be liquid reserve and $D$ total outstanding advances. For a target
+principal $d'$, define $\Delta d=d'-d$. With no simultaneous trade:
 
 $$
-n_{\text{locked}} = \frac{\text{outstanding}}{f}
+H'=H-\Delta d,\qquad D'=D+\Delta d.
 $$
 
-Any pledged collateral beyond $n_{\text{locked}}$ remains free — the holder can
-withdraw or redeem it.
+A positive $\Delta d$ is a draw; a negative value is a repayment. The sum
+$H+D$ is unchanged. Progress, circulating supply, and the price schedule also
+stay fixed. An advance does not create surplus for a floor raise.
 
-When the floor rises, $n_{\text{locked}}$ decreases proportionally. An $x\%$
-increase in the floor reduces the locked collateral by the same proportion,
-because the same outstanding balance is now secured by fewer tokens at a higher
-guaranteed value. This is **automatic deleveraging**: the holder's collateral
-requirement shrinks without any action on their part, freeing tokens that were
-previously locked.
+The market must cover the resulting transfer from held reserve. Backing
+coverage by $H+D$ does not waive that liquidity check.
 
-No margin call or forced close-out is possible. The advance never exceeds the
-floor value of the locked collateral, and the floor cannot decrease. The
-position is solvent by construction.
+## Combined trading and advance settlement
 
----
+A holder can choose target AVA quantity $n'$ and target advance $d'$ in the same
+action. Let $C$ be the signed gross trade transfer **to the market**: positive
+for a purchase, negative for a redemption, and zero when holdings do not change.
+The trade uses the [ordinary AVM quote](AVM-Specification).
 
-## Repayment
+Then
 
-Repayment is voluntary. The holder may repay any portion of the outstanding
-advance at any time to unlock the corresponding collateral. There is no
-repayment fee, no interest accrual, and no maturity date.
+$$
+H'=H+C-\Delta d,\qquad D'=D+\Delta d,
+$$
 
-Reasons to repay include wanting to sell the underlying m-tokens, pledging them
-elsewhere, or simply reducing the locked position. But there is no obligation —
-the holder can carry the advance indefinitely at zero cost.
+and the net reserve transfer to the holder is
 
----
+$$
+V_{\rm holder}=-C+\Delta d-f_{\rm trade}-f_{\rm draw}.
+$$
 
-## Source of liquidity
+A negative $V_{\rm holder}$ means the holder pays reserve. The target must
+satisfy $d'\le Fn'$ and $H'\ge0$. Settlement also checks the holder's ability to
+pay and their minimum acceptable final reserve balance.
 
-The advance is funded directly from the market's reserve — the same capital pool
-that backs all m-token redemptions.
+This permits a purchase to supply collateral for a simultaneous draw and a sale
+to supply proceeds for repayment. Merely selling collateral does not silently
+reduce principal: the submitted target and resulting settlement must satisfy
+the collateral rule.
 
-This works because the advance is economically equivalent to a forward sale of
-the collateral at the floor price, with an embedded option to repurchase. When a
-holder takes an advance, they receive the floor value of their tokens — exactly
-what the reserve would pay out if those tokens were redeemed at the floor. The
-protocol retains the tokens as collateral, just as it would hold the reserve
-after a redemption. The difference is that the holder keeps the right to reclaim
-the tokens by repaying.
+## Fees and rounding
 
-No external lender is needed, and no separate liquidity pool exists. The reserve
-already guarantees redemption at the floor for every m-token in circulation, so
-advancing floor value against pledged tokens does not create any new liability —
-it accelerates one that already exists.
+The draw fee is charged only on $\max(\Delta d,0)$ at the configured
+reserve-access rate. Repayment incurs no separate fee. A simultaneous purchase
+or redemption has its own trade fee, calculated separately.
 
----
+Charges use conservative upper bounds, payouts lower bounds, and advance
+capacity is rounded down. Fees round upward under the
+[AVM numerical rules](AVM-Specification#numerical-and-settlement-rules). A draw
+fee is paid in addition to its backing movement; it is not added to principal.
 
-## Economics of full utilization
+## Resting positions and custody
 
-Ignoring the origination fee, it is generally rational to draw the advance to
-its full capacity. The advance carries no interest and no obligation, making it
-free liquidity with zero carrying cost. Capital drawn can be deployed elsewhere
-while the holder retains full exposure to m-token appreciation above the floor.
+Outstanding principal has no interest accumulation or maturity clock. With
+unchanged $n$ and nondecreasing $F$, the capacity inequality remains satisfied.
+The holder can leave the position encumbered or repay to reduce the encumbrance.
 
-This is especially powerful when the floor exceeds the holder's cost basis. If a
-holder deposited 1.00 and the floor has since risen to 1.20, they can draw an
-advance of 1.20 — recovering more than their entire initial outlay — while still
-holding the m-token and benefiting from any further price appreciation. The
-holder has effectively realized a profit without selling.
-
-When the market price is close to the floor, the advance unlocks nearly all of
-the holder's capital. If the market price is 1.00 and the floor is 0.90,
-depositing 1.00 and immediately drawing the advance yields 0.90 back — the
-holder's net capital commitment is only 0.10 for full m-token exposure. The
-origination fee is the only friction.
+The application must bind each position to its owner and market, keep actual
+AVA collateral under the required controls, reconcile market-wide advance totals,
+and settle the net payment, fees, and new state atomically. Those duties are
+necessary for the accounting model to describe actual assets.

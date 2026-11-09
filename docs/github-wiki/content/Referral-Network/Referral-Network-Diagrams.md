@@ -2,14 +2,14 @@
 title: Referral Network Diagrams
 summary:
   Diagrams of scarce top-level admission, fixed upline commissions, and
-  discretionary family gifts weighted by credit escrow.
+  discretionary family allocations weighted by credit escrow.
 tags:
   - referral
 -->
 
-These diagrams illustrate the target [Referral Network](Referral-Network).
-Examples use $H=2$ and $q=10\%$ for clarity; they are not deployment defaults.
-Reward attribution changes who earns credits, not ownership of deposited assets.
+These diagrams illustrate the [Referral Network](Referral-Network). Examples use
+$H=2$ and $q=10\%$ for clarity; they are not deployment defaults. Reward
+attribution changes who earns credits, not ownership of deposited assets.
 
 ## The root does not earn
 
@@ -23,8 +23,8 @@ Protocol root: no assets, commission, or family pool
 ```
 
 Winning seat payments in credits are burned. Bob's join fee instead goes to
-Alice, and Carol's goes to Bob. Carol is at depth $H$ and cannot accept children,
-but can earn from her own assets and escrow credits with Bob.
+Alice, and Carol's goes to Bob. Carol is at depth $H$ and cannot accept
+children, but can earn from her own assets and escrow credits with Bob.
 
 Every accepted parent edge is permanent. Changes to asset balances or credit
 escrow do not move those edges.
@@ -53,7 +53,7 @@ flowchart TB
     A["Alice: earns overrides from the whole downline"] --> B["Bob: immediate child"]
     A --> D["Dana: immediate child"]
     B --> C["Carol: Bob's child"]
-    C -. "asset-funded override" .-> A
+    C -. "asset-weighted credit override" .-> A
     A == "chosen share of gross overrides" ==> P["Alice's family marketing pool"]
     P -->|"Bob's credit-escrow fraction"| B
     P -->|"Dana's credit-escrow fraction"| D
@@ -62,8 +62,8 @@ flowchart TB
 Carol's participation can increase Alice's pool. Dana can receive part of that
 income by escrowing credits, even though Carol is not in Dana's own downline.
 The denominator is Bob's and Dana's credit escrow, not their assets or the
-number of descendants. Bob's received gift is kept; it does not enter Bob's own
-marketing pool.
+number of descendants. Bob's received family allocation is kept; it does not
+enter Bob's own marketing pool.
 
 ## From emission to retained credits
 
@@ -89,9 +89,9 @@ Each lane: eligible asset balances + permanent earning ancestry
                          divide by credit escrow        net entitlement
 ```
 
-The parent's incoming family gift is also retained, outside its outgoing pool.
-The global rate decreases continuously; the budget shown is the amount accrued
-over the interval, not a constant rate for all future intervals.
+The parent's incoming family allocation is also retained, outside its outgoing
+pool. The global rate decreases continuously; the budget shown is the amount
+accrued over the interval, not a constant rate for all future intervals.
 Children's escrow principal is not spent or added to the emission budget. If
 there is no child escrow, the parent retains its entire override income.
 
@@ -107,6 +107,6 @@ Escrow is withdrawable. A paid fee belongs to the parent and cannot also remain
 the child's stake. Received marketing credits can be collected and explicitly
 restaked for later accrual.
 
-[Formal Specification](Referral-Network-Formal-Specification) gives the equations;
-[Emission Accounting](Emission-Accounting) explains how changing balances and
-marketing terms are settled without reallocating earlier earnings.
+[Formal Specification](Referral-Network-Formal-Specification) gives the
+equations; [Emission Accounting](Emission-Accounting) explains how changing
+balances and marketing terms are settled without reallocating earlier earnings.

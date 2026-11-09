@@ -1,184 +1,144 @@
 <!--
 title: AVM Evolution
 summary:
-  How the AVM price curve mutates — a complete walkthrough of every state change
-  (buy, sell, sell into ramp, sell into floor, area-preserving floor raise,
-  surplus-funded floor investment, option execution) with a summary table and
-  the sell–raise cycle.
+  State transitions for trading, contraction, floor operations, and reserve advances.
 tags:
   - avm
   - pricing
 -->
 
-The [price curve](AVM-Specification) is static most of the time. Buys and
-sells move supply along the existing curve without changing its shape. The curve
-only mutates during specific events: a sell contraction, a
-[floor raise](AVM-Floor-Raising), a
-[floor investment](Floor-Investment), or an
-[option execution](Call-Options). This note walks through every
-case.
+This page gives the exact state transitions of the
+[AVM specification](AVM-Specification). Use $F$ for floor price, $A$ and $E$ for
+ramp start and end, $W=E-A$, $P$ for pricing progress, $T$ for circulation, and
+$b$ for the main offset. The immutable characteristic is $g$, the ramp
+multiplier is $k>1$, and $J=T-P+A$ is the physical floor tail.
 
----
+## Ordinary purchase
 
-## Buy
+A purchase of $n>0$ costs $\int_P^{P+n}y(x)\,dx$ before fees and sets
 
-Supply increases. No schedule moves. The buyer pays the integral under the
-existing curve. The reserve grows by exactly the cost paid.
+$$
+P'=P+n,\qquad T'=T+n.
+$$
 
-| Floor $f$ | Ramp | Main | $x_2$ direction |
-| --------- | ---- | ---- | --------------- |
-| —         | —    | —    | —               |
+All schedule parameters stay fixed. Because a valid state has $P\ge E$, the
+purchase follows main. Required backing and held reserve increase by the gross
+purchase cost. The floor tail $J$ is unchanged.
 
----
+## Ordinary redemption
 
-## Sell (supply stays on main)
+For $0<n\le T$, define $Q=\max(P-n,0)$. Quote the entire sale on the old
+schedule, with any quantity beyond $P$ paid at $F$:
 
-Supply decreases but remains at or above $x_2$. No schedule moves. The seller
-receives the integral under the curve. The reserve shrinks by the proceeds paid
-out.
+$$
+V=\int_Q^P y(x)\,dx+F\max(n-P,0).
+$$
 
-| Floor $f$ | Ramp | Main | $x_2$ direction |
-| --------- | ---- | ---- | --------------- |
-| —         | —    | —    | —               |
+Then set
 
----
+$$
+P'=Q,\quad T'=T-n,\quad E'=\min(E,Q),\quad A'=\min(A,Q),\quad W'=E'-A'.
+$$
 
-## Sell into ramp
+The floor stays fixed. Main placement depends on where the sale ends:
 
-Supply drops below $x_2$ but stays at or above $x_1$. The ramp is unchanged. The
-main schedule shifts down so that it meets the ramp at the new, lower supply.
-The ramp–main boundary contracts: $x_2$ moves back to the new supply.
+| Remaining progress | New main offset $b'$           |
+| ------------------ | ------------------------------ |
+| $Q\ge E$           | $b$                            |
+| $A<Q<E$            | $b+(k-1)\bigl(g(Q)-g(E)\bigr)$ |
+| $Q<E$ and $Q\le A$ | $F-g(Q)$                       |
 
-| Floor $f$ | Ramp | Main        | $x_2$ direction |
-| --------- | ---- | ----------- | --------------- |
-| —         | —    | shifts down | backward        |
+At the old ramp start, the second and third expressions agree for a continuous
+join. If the old ramp already has zero width and $Q=E$, geometry is unchanged.
 
-After this, the main schedule is permanently lower. Subsequent buys walk up the
-shifted-down main. Only a floor raise can advance $x_2$ again.
+### Sale ending inside the ramp
 
----
+The retained ramp remains the same function on $[A,Q]$. The new main attaches
+at its endpoint: $M'(Q)=R(Q)$. Thus the sale lowers main placement, preserves
+the retained exact backing, and makes the next purchase start on main at $Q$.
+The characteristic function itself does not change.
 
-## Sell into floor
+### Sale ending in the floor
 
-Supply drops below $x_1$. The ramp collapses to zero width. Both the ramp and
-main schedules re-anchor at the new supply point at height $f$, so
-$x_1 = x_2 = x'$. If supply returns all the way to $0$, the curve resets to its
-launch shape (though $f$ may have been raised by prior floor raises).
+The ramp collapses to $A'=E'=Q$. Main becomes
 
-| Floor $f$ | Ramp       | Main        | $x_2$ direction |
-| --------- | ---------- | ----------- | --------------- |
-| —         | re-anchors | shifts down | backward        |
+$$
+M'(x)=g(x)+F-g(Q),
+$$
 
----
+so $M'(Q)=F$. Remaining circulation is backed at the floor until subsequent
+purchases add a new main tail. If floor operations previously made $T\ne P$,
+zero circulation need not mean zero progress.
 
-## Floor raise (area-preserving)
+### Numerical contraction
 
-The floor rises. The main schedule does not move. The ramp adjusts to connect
-the higher floor to the unchanged main. See [Floor Raising](AVM-Floor-Raising)
-for the full treatment.
+A fixed-point calculation uses an upper bound for the new offset to keep the
+retained schedule from falling below its required floor. Any additional
+retained backing is conservatively deducted from the sale's proceeds. This
+is separate from the redemption fee. The exact equations above need no such
+deduction.
 
-$f$ increases. The ramp adjusts so that, at its steeper path, it connects the
-higher floor to the unchanged main schedule. Both $x_1$ and $x_2$ advance — the
-ramp widens.
+## Floor raise
 
-| Floor $f$ | Ramp    | Main | $x_2$ direction |
-| --------- | ------- | ---- | --------------- |
-| increases | adjusts | —    | forward         |
+A raise increases $F$ and supplies new ramp geometry. It preserves $b$, $P$,
+$T$, and the immutable characteristic and multiplier. It requires
 
-**Precondition:** supply $> x_2$. The new $x_2$ cannot exceed supply.
+$$
+A'\ge A,\qquad E'\ge E,\qquad A'\le E'\le P.
+$$
 
-**Invariants preserved:** reserve (area under curve), spot price, the main
-schedule $M(x)$.
+The floor tail becomes $J'=T-P+A'$. The live price stays $M(P)$ because main
+placement is unchanged and the new ramp ends at or behind progress.
 
----
+An ordinary raise preserves backing, subject to a one-sided numerical allowance.
+A [floor investment](Floor-Investment) may increase backing using existing
+surplus. Neither action transfers reserve or mints AVA. Increasing the floor
+does not imply that ramp width increases; the proposed joins and backing must
+be checked directly.
 
-## Floor investment (surplus-funded)
+## Floor issuance and floor redemption
 
-External capital is donated to the reserve, creating a surplus. The floor rises
-to absorb the surplus. See [Floor Investment](Floor-Investment)
-for the full treatment.
+For authorized [option exercise](Call-Options) of $n$ AVA:
 
-The floor rises and the ramp may shorten or collapse. The proposed $x_2$ may
-remain fixed or advance past the old boundary. The action accepts the reshape
-only when effective reserve covers the new required area and the price at live
-supply is unchanged.
+$$
+T'=T+n,\qquad J'=J+n,\qquad B'=B+Fn.
+$$
 
-| Floor $f$ | Ramp                | $x_2$ direction  |
-| --------- | ------------------- | ---------------- |
-| increases | shortens/can vanish | fixed or forward |
+The holder supplies $Fn$ plus the exercise fee. Progress and the entire schedule
+stay fixed. There is no translation of the characteristic or ramp boundaries.
 
-**Precondition:** the new floor does not exceed the old price at live supply,
-the candidate preserves that live price, and effective reserve covers its
-required area.
+For special floor redemption of $0<n\le J$:
 
-**Contrast with area-preserving raise:** both operations may reshape the ramp.
-The difference is whether the action requires area preservation or permits
-surplus to fund an area increase.
+$$
+T'=T-n,\qquad J'=J-n,\qquad B'=B-Fn.
+$$
 
----
+The holder receives $Fn$ before the redemption fee. Progress and geometry again
+stay fixed. Holdings, collateral, and liquid reserve must support the operation.
 
-## Option execution
+## Reserve advances and donations
 
-A [perpetual call option](Call-Options) is executed. The buyer
-pays $f$ per token and $n$ new tokens are minted. Both the ramp and main
-schedules shift right by $n$. The floor $f$ does not change. Both $x_1$ and
-$x_2$ advance by exactly $n$ — a pure rightward translation, widening the floor
-region.
+An advance draw of $d$ exchanges held reserve for a collateralized advance:
+$H'=H-d$, $D'=D+d$. Repayment reverses this exchange. These operations preserve
+$H+D$, $P$, $T$, and schedule geometry. The draw must satisfy collateral and
+liquidity checks; a reserve-access fee is separate from backing.
 
-Supply increases from $x$ to $x + n$, but the spot price is unchanged:
-$y_{\text{new}}(x + n) = y_{\text{old}}(x)$.
+A donation of $v$ sets $H'=H+v$ and leaves required backing unchanged. It creates
+surplus available for a later authorized floor investment.
 
-The reserve invariant holds because the buyer paid $f \cdot n$, which exactly
-covers the $n$ new units of floor region.
+## What each action changes
 
-| Floor $f$ | Ramp         | Main         | $x_2$ direction |
-| --------- | ------------ | ------------ | --------------- |
-| —         | shifts right | shifts right | forward         |
+| Action                   | Progress $P$                     | Circulation $T$ | Floor $F$ | Main offset $b$           | Required backing                           |
+| ------------------------ | -------------------------------- | --------------- | --------- | ------------------------- | ------------------------------------------ |
+| Ordinary purchase        | Increases                        | Increases       | Fixed     | Fixed                     | Increases                                  |
+| Ordinary redemption      | Decreases, bounded below by zero | Decreases       | Fixed     | May change on contraction | Does not increase                          |
+| Ordinary floor raise     | Fixed                            | Fixed           | Increases | Fixed                     | Preserved, with bounded numerical decrease |
+| Floor investment         | Fixed                            | Fixed           | Increases | Fixed                     | May increase                               |
+| Floor issuance           | Fixed                            | Increases       | Fixed     | Fixed                     | Increases by $Fn$                          |
+| Special floor redemption | Fixed                            | Decreases       | Fixed     | Fixed                     | Decreases by $Fn$                          |
+| Advance or repayment     | Fixed                            | Fixed           | Fixed     | Fixed                     | Fixed                                      |
+| Donation                 | Fixed                            | Fixed           | Fixed     | Fixed                     | Fixed                                      |
 
-Unlike a floor raise (which preserves the main and adjusts the ramp), option
-execution shifts both schedules together. And unlike sell contraction (which
-shifts only the main down), option execution moves both schedules in the same
-direction by the same amount.
-
----
-
-## How $x_2$ moves
-
-$x_2$ is the ramp–main boundary. It shifts whenever either schedule moves:
-
-| Event                         | Ramp         | Main         | $x_2$ direction |
-| ----------------------------- | ------------ | ------------ | --------------- |
-| Floor raise (area-preserving) | adjusts      | —            | forward         |
-| Floor investment (surplus)    | —            | —            | —               |
-| Sell contraction              | —            | shifts down  | backward        |
-| Option execution              | shifts right | shifts right | forward         |
-
-Floor raising and sell contraction are complementary, not symmetric. Floor
-raising adjusts the ramp to reach a higher floor while leaving the main in
-place. Sell contraction shifts the main down while leaving the ramp in place.
-Option execution moves both together. Floor investment is the only mutation that
-moves $f$ alone — it changes the floor without touching either schedule.
-
----
-
-## The sell–raise cycle
-
-Sell contraction and floor raising interact in an important way. Selling into
-the ramp or floor shifts the main schedule down, pulling $x_2$ back. This lowers
-the bar for future floor raises: once $x_2$ has been pushed back, any subsequent
-buy that puts supply above $x_2$ re-enables floor raising — potentially at a
-lower price level than was previously possible.
-
-This means sell pressure does not permanently damage the floor mechanism. It can
-create the conditions for a higher floor afterward:
-
-1. Supply is above $x_2$. Floor can be raised.
-2. A large sell pushes supply down. The main schedule shifts down, pulling $x_2$
-   back to the new supply.
-3. New buys push supply up. Now supply is above $x_2$ again — a floor raise is
-   possible.
-4. The floor raise increases $f$ and adjusts the ramp, sliding $x_2$ forward
-   along the (now lower) main schedule.
-
-The system is self-healing: sell-offs create room for floor appreciation on
-recovery.
+A contraction can reduce the progress threshold from which further trading and
+floor raises are possible. A future floor increase still requires a valid,
+funded proposal; the trading cycle does not guarantee one.

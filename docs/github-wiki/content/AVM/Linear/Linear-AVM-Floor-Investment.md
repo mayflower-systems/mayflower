@@ -1,130 +1,86 @@
 <!--
 title: Linear AVM Floor Investment
 summary:
-  Linear implementation of surplus-funded floor raises with unchanged main
-  placement and reserve-backed ramp reshaping.
+  Exact backing increases for linear surplus-funded floor raises.
 tags:
   - linear-avm
   - floor
   - math
 -->
 
-The linear implementation of
-[floor investment](Floor-Investment). Surplus funding does not
-prescribe one unique reshape. It permits any valid linear segmented candidate
-that preserves the entire main schedule and whose required area is covered by
-effective reserve.
+[Floor investment](Floor-Investment) accepts a higher floor when existing
+surplus covers the increase in required backing. For the linear market, use
+main slope $m$, ramp slope $a>m$, main intercept $b$, floor $F$, joins $A,E$,
+progress $P$, circulation $T$, and $h=T-P$.
 
----
+## General candidate
 
-## State-variable changes
-
-Floor investment raises $f$ while preserving the main intercept $b_2$:
-
-| Variable | Constraint |
-| -------- | ---------- |
-| $f$ | **increases** by a positive increment |
-| $b_1$ | derived by anchoring the ramp at the proposed $x_2$ |
-| $b_2$ | unchanged |
-
-The slopes $m_1$ and $m_2$ are immutable. Continuity at the proposed ramp end
-requires:
+The proposal preserves $m,a,b,P,T$ and chooses $F'>F$, $A'$, and $E'$ with
 
 $$
-b_1^{\text{new}} = b_2 - (m_1-m_2)x_2^{\text{new}}
+A'\ge A,\qquad E'\ge E,\qquad 0\le A'\le E'\le P.
 $$
 
-The supplied ramp width determines $x_1^{\text{new}}$. Its floor join is checked
-against:
+Exact continuity requires
 
 $$
-f_{\text{new}} = m_1 x_1^{\text{new}} + b_1^{\text{new}}
+F'=aA'+b-(a-m)E'.
 $$
 
-with only a bounded upward gap permitted in fixed-point arithmetic. The ramp
-may shorten or collapse, and $x_2$ may stay fixed or advance. Both boundaries
-must remain at or behind current characteristic progress.
-
-## Main-price preservation
-
-Every main price remains $m_2 x + b_2$, independent of the proposed floor and
-ramp. Since the new ramp end cannot exceed progress, the current price remains
-on this unchanged main. No main-price tolerance is needed.
-
----
-
-## Surplus absorption
-
-The surplus required is the increase in total area at live supply:
+The resulting backing increase is
 
 $$
-\Delta R = \int_0^x y_{\text{new}}(s)\,ds - \int_0^x y_{\text{old}}(s)\,ds
+\Delta B=h(F'-F)
+ +\frac{a(A'^2-A^2)-(a-m)(E'^2-E^2)}2.
 $$
 
-For the fixed-$x_2$, fixed-intercept special case below, the floor replaces a
-portion of the old ramp. The area change simplifies to:
+It must be nonnegative, no larger than the permitted reserve budget, and covered
+by available surplus $H+D-B$. Numerical bounds and the allowed upward join gap
+follow the [general floor-raise rules](AVM-Floor-Raising).
+
+## Fixed-end special case
+
+Holding $E'=E$ also holds the ramp intercept $c=b-(a-m)E$ fixed. The higher
+floor shortens the ramp from below:
 
 $$
-\Delta R = \frac{(f_{\text{new}}-b_1)^2-(f-b_1)^2}{2m_1}
+A'=\frac{F'-c}{a},\qquad
+\Delta B=h(F'-F)+\frac{(F'-c)^2-(F-c)^2}{2a}.
 $$
 
-This is the amount of surplus consumed. If the available surplus is less than
-$\Delta R$, the floor can only be raised to whatever $f_{\text{new}}$ the
-surplus can support.
-
----
+The maximum floor for this fixed-end shape is $F'=mE+b$, at which $A'=E$ and
+the ramp has zero width. Funding alone does not authorize raising above that
+main price. Other candidates may advance $E'$ up to $P$.
 
 ## Worked example
 
-**Setup:** $m_1 = 0.0003$, $m_2 = 0.00015$, $f = 0.10$, $b_1 = 0.04$,
-$b_2 = 0.10$. Supply $= 600$.
+Use $m=8$, $a=25/2$, $b=1$, $F=16$, $A=3$, $E=5$, and $P=T=6$. Backing is
+150 and spot price is 49. The ramp intercept is $c=-43/2$.
 
-**Before the raise:**
-
-$$
-x_1 = \frac{0.10 - 0.04}{0.0003} = 200, \qquad x_2 = \frac{0.10 - 0.04}{0.0003 - 0.00015} = 400
-$$
-
-Price at $x_2$: $y(400) = 0.0003 \times 400 + 0.04 = 0.16$. This is the maximum
-floor for the fixed-$x_2$ special case.
-
-**Raise floor to $f_{\text{new}} = 0.12$ using the fixed-$x_2$ special case:**
-
-New $x_1$:
+Raise the floor to 21 while keeping $E=5$. Then
 
 $$
-x_1^{\,\text{new}} = \frac{0.12 - 0.04}{0.0003} = 266.\overline{6}
+A'=\frac{21+43/2}{25/2}=\frac{17}{5},\qquad
+W'=5-\frac{17}{5}=\frac85.
 $$
 
-$x_2$ unchanged at $400$. Spot price at supply $= 600$:
-$y(600) = 0.00015 \times 600 + 0.10 = 0.19$. Unchanged.
-
-Surplus consumed:
+Because $h=0$,
 
 $$
-\Delta R = \frac{0.08^2-0.06^2}{2 \times 0.0003}
-         = \frac{0.0028}{0.0006} = \frac{14}{3}
+\Delta B=\frac{25}{4}\left(\frac{289}{25}-9\right)=16.
 $$
 
-The floor rose 20% (from $0.10$ to $0.12$), the floor region widened from $200$
-to $266.\overline{6}$, and $4.\overline{6}$ units of capital were absorbed from surplus.
-Other legal proposals may move or collapse the ramp while satisfying the same
-main-preservation and backing rules.
+The proposed backing is 166. A donation of 16 to an exactly funded market
+supplies the needed surplus. After the accepted raise, main remains $8x+1$
+and spot stays 49. The ramp has narrowed from width 2 to $8/5$.
 
----
+If circulation were instead 8 with the same old geometry and progress, the
+backing increase would be $16+(8-6)(21-16)=26$. The extra floor-backed units
+must receive the same higher floor.
 
-## Contrast with the area-preserving raise
+## What the donation changes
 
-|                   | Area-preserving raise              | Floor investment                     |
-| ----------------- | ---------------------------------- | ------------------------------------ |
-| Source of backing | area rearranged under the schedule | reserve surplus                      |
-| $f$               | increases                          | increases                            |
-| Ramp              | adjusts                            | may shorten or collapse              |
-| $x_2$             | may advance                        | may stay fixed or advance            |
-| Required reserve  | preserved within tolerance         | may increase but must remain covered |
-| Live price        | preserved                          | preserved                            |
-
-The two mechanisms
-[compose](Floor-Investment#contrast-with-area-preserving-raise)
-because they use the same schedule representation with different action-level
-reserve policy.
+Donation increases held reserve and leaves the schedule unchanged. Investment
+then increases required backing without transferring reserve. Keeping these
+steps separate makes both the funding and the accepted geometry explicit.
+The amount of a donation does not select a unique floor or ramp shape.

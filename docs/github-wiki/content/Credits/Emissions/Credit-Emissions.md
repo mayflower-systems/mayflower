@@ -11,14 +11,15 @@ tags:
 The emission system allocates one global stream of
 [Mayflower credits](Mayflower-Credits), with a rate that declines continuously
 over time. Asset participation generates core rewards and referral commissions.
-Parents can share some of those commissions
-with their immediate children, weighted by the credits those children escrow.
-Collection turns a member's net earned entitlement into issued credits.
+Parents can share some of those commissions with their immediate children,
+weighted by the credits those children escrow. Collection turns a member's net
+earned entitlement into issued credits.
 
-These pages describe the design in the
-[referral implementation specification](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md).
-The kernel implements these allocation rules. The host supplies the emission
-schedule, asset eligibility, auction authority, and atomic token custody.
+The [referral specification](Referral-Network-Formal-Specification) defines who
+receives each lane's allocation. [Emission Accounting](Emission-Accounting)
+defines how changing balances and terms are settled. The emission schedule,
+asset eligibility, auction authority, and custody must provide authenticated
+inputs and apply their resulting transfers atomically.
 
 ## One budget, separate decisions
 
@@ -33,7 +34,7 @@ schedule, asset eligibility, auction authority, and atomic token custody.
    fixed commission for each earning ancestor.
 4. **Mutualization:** a parent may share a fraction of its gross referral
    commissions across all lanes. Its immediate children divide that pool by
-   their escrowed credits. Incoming gifts are kept whole.
+   their escrowed credits. Incoming family allocations are kept whole.
 5. **Collection:** each member collects its net entitlement. The same amount is
    removed from its uncollected balance and minted once.
 
@@ -45,26 +46,30 @@ across lanes; the common marketing weight is already-issued credit escrow.
 Each stage divides the same scheduled budget. Gauge weights, commissions,
 marketing, fees, and escrow do not create another emission stream. Unavailable
 routing, allocations to empty lanes, and numerical residuals are accounted for
-explicitly as unallocated, unissued budget. Later participants do not inherit it.
+explicitly as unallocated, unissued budget. Later participants do not inherit
+it.
 
 ## Membership and rewards
 
 Auctioned top-level seats have earning depth zero. The logical protocol root
 earns nothing. Ordinary members choose a permanent parent, and the maximum
 earning depth is $H$. A node at that limit can earn rewards but cannot recruit
-children. The fixed commission rate $q$ satisfies $q>0$ and $Hq<1$, leaving
-positive own-asset income at every permitted depth.
+children. In the intended referral configuration, the fixed commission rate
+$q>0$ satisfies $Hq<1$, leaving a positive own-asset fraction at every permitted
+depth. The general rule also permits the zero configurations described in
+[Parameters](Referral-Network-Parameters).
 
 A member can earn commissions from actual descendant assets without holding
-assets itself. It can also receive marketing gifts without holding assets,
+assets itself. It can also receive family allocations without holding assets,
 provided it escrows issued credits with its immediate parent. Neither an empty
 account nor an uncollected reward claim supplies marketing weight.
 
 Parents set their current join fee and marketing percentage independently. A
 marketing change applies prospectively at one common effective time across all
 of the parent's contributing lanes. Assets and credit escrow can change
-frequently without changing the parent connection. [Emission Accounting](Emission-Accounting)
-explains the checkpoints needed to preserve earlier rewards.
+frequently without changing the parent connection.
+[Emission Accounting](Emission-Accounting) explains the checkpoints needed to
+preserve earlier rewards.
 
 ## Earned, issued, and escrowed credits
 
@@ -72,17 +77,17 @@ Scheduled emission and earned entitlement are not automatically minted as time
 passes. Collection issues net earned credits. A documented bootstrap supply is
 separate from this ongoing issuance path.
 
-Family escrow holds already-issued credits as the child's withdrawable principal.
-An ordinary join fee transfers issued credits to the parent; a winning top-seat
-payment burns issued credits. Neither payment is family escrow. Burning credits
-does not replenish the emission budget. Custody rules also keep the same
-principal from simultaneously funding incompatible family, gauge, clearing, or
-auction commitments.
+Family escrow holds already-issued credits as the child's withdrawable
+principal. An ordinary join fee transfers issued credits to the parent; a
+winning top-seat payment burns issued credits. Neither payment is family escrow.
+Burning credits does not replenish the emission budget. Custody rules also keep
+the same principal from simultaneously funding incompatible family, gauge,
+clearing, or auction commitments.
 
 ## Chapters
 
-- [Emission Schedule](Emission-Schedule) — The declining rate, cumulative budget,
-  and the emitter-design boundary.
+- [Emission Schedule](Emission-Schedule) — The declining rate, cumulative
+  budget, and the emitter-design boundary.
 - [Emission Channel Weighting](Emission-Channel-Weighting) — The independent
   allocator and its chronological, budget-conserving interface.
 - [Participation and Referral Rewards](Participation-and-Referral-Rewards) —
@@ -92,5 +97,6 @@ auction commitments.
   settlement across lanes, custody, collection, and numerical requirements.
 
 See [Credit Channel Weighting](Credit-Channel-Weighting) for the allocator's
-broader role and [Long-Term Economics of Credits](Long-Term-Economics-of-Credits)
-for the relationships between credit demand, emissions, and clearing.
+broader role and
+[Long-Term Economics of Credits](Long-Term-Economics-of-Credits) for the
+relationships between credit demand, emissions, and clearing.
