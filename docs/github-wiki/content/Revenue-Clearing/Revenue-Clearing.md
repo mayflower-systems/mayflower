@@ -137,3 +137,10 @@ clearing-token price.
   change the [emission schedule](Emission-Schedule). Their combined
   effects contribute to the
   [long-term economics of credits](Long-Term-Economics-of-Credits).
+- Under the revised referral integration, credits committed here cannot also
+  back [family marketing escrow](Mutualization), a channel pledge, or a root-seat
+  bid. A member must release other commitments under their own rules before
+  committing the same principal to clearing.
+- The protocol's [root-seat auction](Referral-Network) allocates scarce referral
+  positions and burns the winning admission payment. It is a separate auction
+  from revenue clearing; neither auction replenishes scheduled credit emission.

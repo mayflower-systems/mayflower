@@ -12,9 +12,11 @@ pub struct CollectCreditsReceipt<I, N> {
     pub credits_collected: Amount,
 }
 
-/// Collect the whole credits a member keeps, from every lane. The fraction of a base unit stays
-/// for later. Credits a lane has not settled yet stay in that lane until it settles, for example
-/// by [`settle_node_in_lane`](super::settle_node_in_lane).
+/// Mint only already-accrued net entitlement; preserve the individual fraction.
+/// This does not settle sources. To collect through a snapshot, first settle
+/// the member's own lanes with [`settle_node_in_lane`](super::settle_node_in_lane)
+/// and incoming gifts with [`settle_family`](super::settle_family). A zero-asset
+/// child needs only the latter. Collection never changes escrow principal.
 pub fn collect_credits<I, N>(args: CollectCreditsArgs<I, N>) -> Result<CollectCreditsReceipt<I, N>>
 where
     I: Identifiable,

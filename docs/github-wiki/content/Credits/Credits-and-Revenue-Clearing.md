@@ -13,6 +13,10 @@ tags:
 during an epoch to claim shares of a pot funded with a reward asset. The reward
 asset can differ from credits.
 
+The [referral specification](https://github.com/mayflower-systems/mayflower/blob/a1f87bfa8469630444626ddbc11536512c78bb16/referral/rust/mayf-referral/SPEC.md)
+defines distinct family-escrow and admission uses for issued credits, implemented
+by the referral kernel. Those uses do not alter the clearing rules below.
+
 ## Committing and spending credits
 
 A deposit earns shares according to when it is made; an earlier deposit can
@@ -33,9 +37,25 @@ are described in [Time Weight](Revenue-Clearing-Time-Weight).
 
 ## How clearing relates to emission
 
-Clearing consumes already-issued credits. It does not change the
-[emission schedule](Emission-Schedule), and newly accrued emission
-does not itself fund a clearing pot. A credit pledged to a channel must first be
-released from that pledge before it can be committed to clearing. Issuance
-through collected rewards and forfeiture through clearing are separate flows
-affecting the supply of credits.
+Clearing consumes already-issued credits. It does not set the emitter's planned
+continuously decreasing rate `E(t)`. The [referral allocation model](Credit-Emissions)
+divides the scheduled budget, and newly accrued emission does not itself fund a
+clearing pot. Uncollected referral rewards must first be collected into issued
+credits before those credits can be committed to clearing.
+
+The reference integration uses exclusive custody across channel pledges, family
+escrow, clearing commitments, and auction bids. A credit in family escrow must
+first be withdrawn with its prior family earnings settled; a channel pledge
+must first be reduced. An auction bid must be released under that auction's
+rules before its principal can be used elsewhere.
+
+Family escrow is different from clearing: its principal remains withdrawable
+without a mandatory penalty or forfeiture. Ordinary referral admission transfers
+a credit fee to the parent, while a scarce top-level seat's winning auction
+payment burns credits. Neither payment creates clearing shares or funds the
+clearing pot.
+
+Collections add issued supply. Transfers and refundable custody movements do not
+change it. Clearing forfeitures remove credits from spendable circulation; their
+subsequent burn reduces mint supply. Root-auction payment burns also reduce
+supply. Neither burn authorizes replacement emission.

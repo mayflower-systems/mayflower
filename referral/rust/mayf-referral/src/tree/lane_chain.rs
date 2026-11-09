@@ -1,149 +1,113 @@
 use alloc::vec::Vec;
 use core::iter;
 
-use mayf_fixed_number::{FixedNumber, MathResult};
+use mayf_fixed_number::FixedNumber;
 
 use super::{Identifiable, LaneNode, NetworkTerms, Node};
 use crate::numbers::Change;
-use crate::{Amount, Error, Result};
+use crate::{Error, LaneId, Result};
 
-const HOLDS_MEMBER: &str = "a chain holds its member";
-
-/// A member and its lineage in one lane: each node with its lane node. What a lane action
-/// settles.
-///
-/// Every action on a member's lane settles this chain and nothing else. A member at the
-/// network's maximum depth has the longest lineage, so a chain holds at most that depth plus one
-/// nodes.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The original input buffers are also the output buffers. The path is never
+/// copied into an inline array or a second vector.
 pub(crate) struct LaneChain<I, N> {
-    /// From the top-level member down to the member, so each link's index is its depth. It is
-    /// never empty.
-    links: Vec<Link<I, N>>,
+    lane: LaneId,
+    member: Node<I, N>,
+    lineage: Vec<Node<I, N>>,
+    lane_nodes: Vec<(I, LaneNode<N>)>,
 }
 
-/// A node in a chain, with its lane node, and whether the host had that lane node
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Link<I, N> {
-    node: Node<I, N>,
-    lane_node: LaneNode<N>,
-    stored: bool,
-}
-
-/// A settled chain, taken apart for the receipt: the member, its lineage, parent first, and the
-/// lane nodes to store, by node id
 pub(crate) type ChainParts<I, N> = (Node<I, N>, Vec<Node<I, N>>, Vec<(I, LaneNode<N>)>);
 
 impl<I: Identifiable, N: FixedNumber> LaneChain<I, N> {
-    /// Pair `member` and its `lineage` with their lane nodes. `lane_nodes` holds the ones the host
-    /// has, by node id. A node the host has none for starts with an empty lane node.
     pub(crate) fn new(
+        terms: NetworkTerms,
+        lane: LaneId,
         member: Node<I, N>,
         lineage: Vec<Node<I, N>>,
-        mut lane_nodes: Vec<(I, LaneNode<N>)>,
+        lane_nodes: Vec<(I, LaneNode<N>)>,
     ) -> Result<Self> {
-        member.validate_lineage(&lineage)?;
-
-        let mut take = |id: I| match lane_nodes.iter().position(|(held, _)| *held == id) {
-            Some(index) => (lane_nodes.swap_remove(index).1, true),
-            None => (LaneNode::default(), false),
-        };
-        let links = lineage
-            .into_iter()
-            .rev()
-            .chain(iter::once(member))
-            .map(|node| {
-                let (lane_node, stored) = take(node.id);
-                Link {
-                    node,
-                    lane_node,
-                    stored,
-                }
-            })
-            .collect();
-
-        // Any lane node left over belongs to no node here, or repeats one.
-        if !lane_nodes.is_empty() {
+        member.validate_lineage(terms.max_depth(), &lineage)?;
+        if lane_nodes.len() > lineage.len() + 1 {
             return Err(Error::StrayLaneNode);
         }
-
-        Ok(Self { links })
-    }
-
-    /// The member's own lane node
-    pub(crate) fn member(&self) -> &LaneNode<N> {
-        &self.links.last().expect(HOLDS_MEMBER).lane_node
-    }
-
-    /// Settle every node at `reward_index`, top-level member first, so each one sees its
-    /// parent's settled gift index. Each member keeps its credits in its node.
-    pub(crate) fn settled(mut self, terms: NetworkTerms, reward_index: N) -> MathResult<Self> {
-        let mut parent_gift_index = N::ZERO;
-
-        for (depth, link) in self.links.iter_mut().enumerate() {
-            let (lane_node, sharing) = (&mut link.lane_node, link.node.sharing);
-            let kept = lane_node.settle(terms, depth, reward_index, parent_gift_index, sharing)?;
-            link.node.kept = link.node.kept.checked_add(kept)?;
-            parent_gift_index = lane_node.gift_index;
+        for (index, (id, _)) in lane_nodes.iter().enumerate() {
+            if lane_nodes[..index].iter().any(|(other, _)| other == id)
+                || !iter::once(&member)
+                    .chain(lineage.iter())
+                    .any(|node| node.id == *id && node.lanes.contains(lane))
+            {
+                return Err(Error::StrayLaneNode);
+            }
         }
+        for node in iter::once(&member).chain(lineage.iter()) {
+            if node.lanes.contains(lane) && !lane_nodes.iter().any(|(id, _)| *id == node.id) {
+                return Err(Error::MissingLaneNode);
+            }
+        }
+        Ok(Self {
+            lane,
+            member,
+            lineage,
+            lane_nodes,
+        })
+    }
 
+    pub(crate) fn balance(&self) -> u64 {
+        self.lane_nodes
+            .iter()
+            .find(|(id, _)| *id == self.member.id)
+            .map_or(0, |(_, state)| state.balance)
+    }
+
+    /// Settle sources and terminal incoming gifts, top ancestor first. This
+    /// settles only this lane; it never changes the family's sharing terms.
+    pub(crate) fn settled(mut self, terms: NetworkTerms, reward_index: N) -> Result<Self> {
+        let mut parent_index = N::ZERO;
+        for node in self
+            .lineage
+            .iter_mut()
+            .rev()
+            .chain(iter::once(&mut self.member))
+        {
+            if let Some((_, state)) = self.lane_nodes.iter_mut().find(|(id, _)| *id == node.id) {
+                let (own, overrides) = state.settle(terms, node.depth, reward_index)?;
+                node.earn(own, overrides)?;
+            }
+            node.receive_gift(parent_index)?;
+            parent_index = node.gift_index;
+        }
         Ok(self)
     }
 
-    /// Settle at `reward_index`, then add `amount` to the member's balance.
-    pub(crate) fn deposit(
-        self,
-        terms: NetworkTerms,
-        reward_index: N,
-        amount: Amount,
-    ) -> MathResult<Self> {
-        let mut chain = self.settled(terms, reward_index)?;
-        chain.change_balance(Change::Add(amount));
-        Ok(chain)
-    }
-
-    /// Settle at `reward_index`, then remove `amount` from the member's balance, which holds it.
-    pub(crate) fn withdraw(
-        self,
-        terms: NetworkTerms,
-        reward_index: N,
-        amount: Amount,
-    ) -> MathResult<Self> {
-        let mut chain = self.settled(terms, reward_index)?;
-        chain.change_balance(Change::Remove(amount));
-        Ok(chain)
-    }
-
-    /// Take the chain apart for the receipt. It leaves out a lane node the host had none for while
-    /// that lane node still holds nothing, so an action never creates an empty record.
-    pub(crate) fn into_parts(self) -> ChainParts<I, N> {
-        let mut nodes = Vec::with_capacity(self.links.len());
-        let mut lane_nodes = Vec::with_capacity(self.links.len());
-
-        for link in self.links {
-            if link.stored || !link.lane_node.holds_nothing() {
-                lane_nodes.push((link.node.id, link.lane_node));
+    /// Every prior balance earned through this index before any total changes.
+    /// A new position starts at the current index, with no historical claim.
+    pub(crate) fn change_balance(mut self, change: Change, reward_index: N) -> Result<Self> {
+        if matches!(change, Change::Add(0) | Change::Remove(0)) {
+            return Ok(self);
+        }
+        self.lane_nodes
+            .reserve(self.lineage.len() + 1 - self.lane_nodes.len());
+        let member_id = self.member.id;
+        for node in iter::once(&mut self.member).chain(self.lineage.iter_mut()) {
+            let index = match self.lane_nodes.iter().position(|(id, _)| *id == node.id) {
+                Some(index) => index,
+                None => {
+                    self.lane_nodes.push((node.id, LaneNode::at(reward_index)));
+                    node.lanes.insert(self.lane);
+                    self.lane_nodes.len() - 1
+                }
+            };
+            let state = &mut self.lane_nodes[index].1;
+            if node.id == member_id {
+                state.change_balance(change)?;
+            } else {
+                state.change_downline(change)?;
             }
-            nodes.push(link.node);
         }
-
-        let member = nodes.pop().expect(HOLDS_MEMBER);
-        nodes.reverse();
-        (member, nodes, lane_nodes)
+        Ok(self)
     }
 
-    /// Change the member's balance, and each total that includes it: every upline member's
-    /// downline, and the parent's children.
-    fn change_balance(&mut self, change: Change) {
-        let (member, upline) = self.links.split_last_mut().expect(HOLDS_MEMBER);
-        member.lane_node.change_balance(change);
-
-        for link in upline.iter_mut() {
-            link.lane_node.change_downline(change);
-        }
-
-        if let Some(parent) = upline.last_mut() {
-            parent.lane_node.change_children(change);
-        }
+    pub(crate) fn into_parts(self) -> ChainParts<I, N> {
+        (self.member, self.lineage, self.lane_nodes)
     }
 }

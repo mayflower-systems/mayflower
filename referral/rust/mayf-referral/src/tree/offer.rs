@@ -1,8 +1,8 @@
 use crate::Amount;
 
-/// The price of a seat: a node's price for new children, or the protocol's price for top-level
-/// members. Each join charges the current fee, then raises it by the increment, up to
-/// `Amount::MAX`. A fee of 10 with an increment of 2 charges 10, 12, then 14.
+/// A parent's ordinary admission fee in issued credits. Each join charges the
+/// current fee, then raises it by the increment, saturating at `Amount::MAX`.
+/// A fee of 10 with an increment of 2 charges 10, 12, then 14; zero/zero is free.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Offer {
     pub current_fee: Amount,

@@ -3,7 +3,7 @@
 //! Fractional values, such as indexes and kept rewards, use the host's fixed-point type `N`
 //! through [`FixedNumber`](mayf_fixed_number::FixedNumber).
 
-/// Whole token base units: credits, AVA balances, gauge votes, and join fees
+/// Whole token base units: credits, asset balances, gauge votes, and join fees
 pub type Amount = u64;
 
 /// A Unix time or a duration, in whole seconds
@@ -27,14 +27,11 @@ impl Change {
     }
 
     /// Apply the change to `total`, which includes the changed balance.
-    pub fn apply(self, total: Amount) -> Amount {
+    pub fn apply(self, total: Amount) -> crate::Result<Amount> {
         match self {
-            Self::Add(amount) => total
-                .checked_add(amount)
-                .expect("a total fits a token supply"),
-            Self::Remove(amount) => total
-                .checked_sub(amount)
-                .expect("a total holds each of its parts"),
+            Self::Add(amount) => total.checked_add(amount),
+            Self::Remove(amount) => total.checked_sub(amount),
         }
+        .ok_or(crate::Error::NumberOutOfRange)
     }
 }

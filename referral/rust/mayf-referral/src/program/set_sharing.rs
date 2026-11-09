@@ -1,33 +1,50 @@
+use alloc::vec::Vec;
 use mayf_fixed_number::FixedNumber;
 
-use crate::{Identifiable, MicroBasisPoints, Node};
+use crate::tree::{close_sources, settle_sources};
+use crate::{
+    Emission, Identifiable, Lane, LaneId, LaneNode, MicroBasisPoints, Node, Protocol, Result,
+};
 
 pub struct SetSharingArgs<I, N> {
+    pub protocol: Protocol<N>,
     pub member: Node<I, N>,
-    /// The portion of the credits it earns, in every lane, that the member shares with its
-    /// direct children
+    /// Global lane records, exactly matching the member's lane mask.
+    pub lanes: Vec<Lane<N>>,
+    /// The member's positions in those lanes. Returned in the same allocation.
+    pub lane_nodes: Vec<(LaneId, LaneNode<N>)>,
     pub sharing: MicroBasisPoints,
+    pub emission: Emission<N>,
 }
 
 pub struct SetSharingReceipt<I, N> {
+    pub protocol_next: Protocol<N>,
+    pub lanes_next: Vec<Lane<N>>,
     pub member_next: Node<I, N>,
+    pub lane_nodes_next: Vec<(LaneId, LaneNode<N>)>,
 }
 
-/// Set the portion of its credits a member shares with its direct children, in every lane.
-///
-/// Each lane applies the new portion from its next settlement, and until then uses the portion
-/// it last settled with. So a change never reaches back into credits already earned. A deposit
-/// or withdrawal by the member or any of its descendants settles the member in that lane, and
-/// anyone can settle it there with [`settle_node_in_lane`](super::settle_node_in_lane).
-pub fn set_sharing<I, N>(args: SetSharingArgs<I, N>) -> SetSharingReceipt<I, N>
-where
-    I: Identifiable,
-    N: FixedNumber,
-{
-    let member_next = Node {
-        sharing: args.sharing,
-        ..args.member
-    };
-
-    SetSharingReceipt { member_next }
+/// Change the marketing portion of gross overrides prospectively. Every source
+/// lane first earns under the old rate and old escrow total, including idle lanes.
+pub fn set_sharing<I: Identifiable, N: FixedNumber>(
+    mut args: SetSharingArgs<I, N>,
+) -> Result<SetSharingReceipt<I, N>> {
+    settle_sources(
+        &args.protocol,
+        &mut args.member,
+        &args.lanes,
+        &mut args.lane_nodes,
+        args.emission,
+    )?;
+    if args.member.sharing != args.sharing {
+        close_sources(&mut args.protocol, &mut args.lanes, args.emission)?;
+        args.member.close_family()?;
+        args.member.sharing = args.sharing;
+    }
+    Ok(SetSharingReceipt {
+        protocol_next: args.protocol,
+        lanes_next: args.lanes,
+        member_next: args.member,
+        lane_nodes_next: args.lane_nodes,
+    })
 }

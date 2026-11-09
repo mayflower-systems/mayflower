@@ -1,34 +1,39 @@
 use mayf_fixed_number::MathError;
 
-/// Every input the kernel rejects
+/// Rejected inputs and checked arithmetic failures. Failed actions return no state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
-    /// The maximum depth times the override rate is not below 100%, so the deepest members would
-    /// keep nothing
+    InvalidDepth,
     OverrideRateTooLargeForDepth,
-    /// The parent is at the network's maximum depth, so it cannot admit children
     ParentAtMaxDepth,
-    /// The lineage is not the node's: its parent first, each next node the parent of the one
-    /// before, up to a top-level member
     BrokenLineage,
-    /// A lane node belongs to no node of the member and its lineage, or repeats one
     StrayLaneNode,
-    /// The withdrawal is more than the member's balance in the lane
-    WithdrawalExceedsBalance,
-    /// The host's fixed-point number type cannot hold a value the kernel computes
+    MissingLaneNode,
+    InvalidLane,
+    TooManyLanes,
+    IncompleteSources,
+    WrongParent,
+    JoinFeeExceeded,
+    SeatAlreadyActivated,
+    TimeWentBack,
+    IndexWentBack,
+    InvalidEmission,
+    /// An amount or arithmetic result cannot be represented.
     NumberOutOfRange,
-    /// The host's fixed-point number type rounds in steps coarser than 2^-64. Rounding could
-    /// then move a credit base unit or more each time anyone settles.
+    /// Invalid numeric state, such as a negative earning amount or zero divisor.
+    InvalidAccountingState,
+    /// The selected number driver cannot perform a required exact operation.
+    UnsupportedArithmetic,
     GridTooCoarse,
 }
 
-/// [`create_protocol`](crate::program::create_protocol) accepts only number types that hold
-/// every value the kernel computes, and those values never go negative and are never divided by
-/// zero. So after that, a fixed-point failure means the host broke a duty, for example by passing
-/// a clock that went back.
 impl From<MathError> for Error {
-    fn from(_: MathError) -> Self {
-        Self::NumberOutOfRange
+    fn from(error: MathError) -> Self {
+        match error {
+            MathError::Overflow | MathError::NegativeToUnsigned => Self::NumberOutOfRange,
+            MathError::DivisionByZero | MathError::Domain => Self::InvalidAccountingState,
+            MathError::Inexact | MathError::UnsupportedRange => Self::UnsupportedArithmetic,
+        }
     }
 }
 

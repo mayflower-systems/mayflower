@@ -1,117 +1,117 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-//! The Mayflower referral and emissions kernel, as a pure state machine.
+//! Pure referral accounting: validated actions in [`program`], plain state, and
+//! receipts. There is no I/O, serialization, account allocation, or token mint here.
 //!
-//! Credits are emitted at a known rate. Gauge votes split them among lanes, where a lane is
-//! one deposit token, such as Mayflower-ETH. Members form a referral tree with no root node:
-//! top-level members are siblings, and every other member joined directly under a parent. Every
-//! lane runs along all of the tree's links, like the fibers of a bundle. In each lane, the tree
-//! divides the lane's credits among the members who hold it, by their balances there. Each
-//! member pays an override to its upline, and shares a portion of what it earns with its direct
-//! children. There is one credits token, so a member's sharing and the credits it keeps belong
-//! to its node, across all lanes. The wiki's Credit Emissions and Referral Network pages specify
-//! the rules.
+//! # Allocation
 //!
-//! # Layers
+//! A source at depth `d` keeps `1 - d*q` of its stake-weighted lane allocation;
+//! each earning ancestor receives `q`. The logical protocol root earns nothing.
+//! Top seats have depth zero. The configured maximum depth `H` permits at most
+//! `H + 1` earning members per path; it is not fixed to a particular deployment.
+//! Lane allocations follow proportional gauge weights, without mixing asset units.
+//! Network terms require `H*q < 1`, preserving a positive own-asset share.
+//! Zero depth and zero commission are valid configurations. The host chooses
+//! the network terms; parents cannot change them through ordinary actions.
 //!
-//! The kernel has three layers. Each keeps an index, a running total per unit, and the layer
-//! below uses that index as its clock:
-//! - Emission turns seconds into the total credits emitted.
-//! - Weighting turns credits emitted into credits per gauge vote, and so into each lane's
-//!   allocation.
-//! - The tree turns a lane's allocation into credits per unit of balance, and so into each
-//!   member's rewards and gifts.
+//! A parent markets only its gross overrides: it shares portion `sharing` among
+//! immediate children in proportion to their escrowed, already-issued credits.
+//! Own income and incoming gifts stay with the node. Gifts are terminal. With no
+//! child escrow, all overrides stay with the parent. Escrow never auto-compounds.
 //!
-//! A record stores the index it last saw, and earns its weight times the index's growth since
-//! then. So an action settles only the records it touches. A vote touches one lane. A balance
-//! change touches one lane, and the nodes and lane nodes of the member and its lineage, which
-//! the network's maximum depth bounds. No action loads a sibling, a child, or another lane.
+//! # Lazy state
 //!
-//! # Records
+//! [`Protocol`] holds immutable tree terms and the gauge. Each [`Lane`] holds a
+//! reward index. Each [`Node`] holds its permanent parent, cached depth, family
+//! index, escrow and net accrued credits. A [`LaneNode`] holds only that node's
+//! personal and strict-descendant balances and source checkpoints in one asset.
 //!
-//! The host stores five kinds of record:
-//! - one [`Protocol`]: the network's terms, the price of a top-level seat, the emitter, and the
-//!   gauge
-//! - one [`Lane`] per lane
-//! - one [`GaugeVote`] per voter and lane
-//! - one [`Node`] per member, by node id: its parent's id, its offer, its sharing, and the
-//!   credits it keeps from every lane
-//! - one [`LaneNode`] per lane and node: the node's balances in that lane, stored once an action
-//!   first returns it
+//! [`program::set_balance`] touches one lane and the member's ancestry. Family
+//! rate and escrow changes settle all of the parent's source lanes at one
+//! snapshot before changing terms. The permanent [`LaneMask`] makes omissions
+//! detectable; zeroed positions must remain stored. No action scans descendants
+//! or siblings. Path work scales with the configured depth, independently of
+//! the network's population. The lane mask has capacity for sixteen lanes;
+//! this storage limit is separate from tree height. Input vectors are reused
+//! in receipts. The host must validate its chosen height against execution limits.
 //!
-//! A [`Protocol`] holds an [`Emitter`] and a [`Gauge`], and a [`Lane`] holds a [`LaneGauge`] and
-//! a [`LanePool`]. Records are plain data with public fields. The kernel does not serialize
-//! them: the host stores their fields however it likes, and rebuilds each record from exactly
-//! the fields it stored. Only the actions in [`program`] create and change records.
+//! # Emission and arithmetic
 //!
-//! A node joins the tree only through its parent's id. A node's lineage is its parent, its
-//! parent's parent, and so on up to a top-level member. An action that needs a lineage takes it
-//! as a list of nodes, checks that the list links up from the node and ends at a top-level
-//! member, and counts depths from it, so no record stores a depth or a list of ancestors. The
-//! kernel does keep running totals, such as a lane node's downline and children balances and a
-//! lane's pool balance, so that no action loads descendants. The host never edits them.
+//! [`Emission`] is the authenticated cumulative integral of the host's emission
+//! schedule. Its type is the accounting number `N`, not a token amount;
+//! lifetime emission does not saturate at `u64::MAX`.
+//! Mayflower's planned schedule declines continuously, but the referral kernel
+//! neither selects nor enforces a decay curve or its parameters.
 //!
-//! # Actions
+//! Whole balances use [`Amount`]. Indexes and fractional claims use a checked
+//! [`mayf_fixed_number::FixedNumber`]. Use a wide driver such as `U192F64` for
+//! cumulative accounting and rate intermediates. The host chooses lifetime
+//! bounds; arithmetic failure returns an error rather than wrapping or capping
+//! emission. Collection floors once to whole token units and preserves the rest.
+//! Division and rational-rate carries remove settlement-frequency dependence
+//! while eligibility is unchanged. Actual asset changes commit and close the
+//! gauge's shared remainder; family term changes also commit and close every
+//! source lane's remainder. Family-index and marketing carries close at the
+//! same boundary. This prevents upstream dust arriving under new terms.
+//! Shared residuals become explicit unallocated budget, never a newcomer's
+//! claim. These operations write shared records and therefore contend across
+//! branches; bounded memory does not imply unconstrained transaction throughput.
+//! Empty-lane and zero-vote allocation is unissued, with no later backpay.
 //!
-//! [`program`] lists every action. An action takes the records it needs by value, and returns
-//! a receipt with the records it changed or created and the amounts the host must move. The
-//! host stores every record in the receipt. A failed action returns an [`Error`] and no
-//! records, so it changes nothing. The kernel panics only if the host breaks one of the duties
-//! below.
+//! For grid quantum `Q`, a gauge, lane, or family index remainder is less than
+//! its integer denominator times `Q`; a marketing-rate carry is less than `Q`
+//! credits. An actual asset change closes less than `Q*(votes + lane_balance)`.
+//! A family change closes less than
+//! `Q*(votes + sum(source_lane_balances) + child_escrow + 1)`.
+//! At sixteen lanes, u64 totals and Q <= 2^-64, these bounds are below 2 and
+//! 18 credit base units respectively. No-op settlement
+//! closes nothing. Unrelated members of a closed source lane also forgo its
+//! unattributed dust; already-attributed individual fractions remain owned.
 //!
-//! # Numbers
+//! # Host contract
 //!
-//! Amounts are whole token base units. Indexes and kept rewards are fractional, in the host's
-//! fixed-point type `N`, which implements [`FixedNumber`](mayf_fixed_number::FixedNumber).
-//! Collecting also needs [`IntegralRounding`](mayf_fixed_number::IntegralRounding), to take
-//! whole base units.
+//! The host authenticates records and authorizes the owner-controlled actions.
+//! It supplies unique node IDs, binds every lane position to its canonical
+//! `(network, lane, node)` key, and preserves all fields between actions. It
+//! supplies one canonical emission total at the current monotone clock, rather
+//! than accepting a caller's claimed total. Read-only projections are safe only
+//! when subsequent canonical mutations settle the old interval first.
 //!
-//! Emission, indexes, rewards, gifts, and collections round down, so rounding never pays out
-//! more than was emitted. Nothing is emitted while no lane has gauge votes, and emission that
-//! reaches no balance, such as a lane's share while no one holds it, is never minted.
+//! The host atomically persists each receipt and its custody effects: asset
+//! changes, ordinary credit fees to parents, root-auction burns, escrow transfers,
+//! and minting collected **net** rewards. Escrow is exclusively held and cannot
+//! simultaneously fund gauges, clearing, other families, or bids. Root awards
+//! come from the protocol auction and are consumed once. Bootstrap credits for
+//! the first auction are external to the emission allocation tracked here.
 //!
-//! Every balance and total fits a token supply, below 2^64 base units, and total emission stops
-//! at `Amount::MAX`. Every factor the kernel applies to a balance is at most one: the override
-//! rate times a depth, a sharing portion, and a lane's share of the gauge votes. Every index is
-//! credits divided by a total of balances or votes, so no index exceeds total emission. So every
-//! value the kernel computes stays below 2^64. [`create_protocol`](program::create_protocol)
-//! therefore requires an `N` that holds every value below 2^64 on a grid at least as fine as
-//! 2^-64, such as `U64F64` or `U192F64`. Each rounding step then moves less than one credit base
-//! unit, and settling more often changes results by less than that per settlement.
-//!
-//! # The host
-//!
-//! The host operates the kernel, and the kernel trusts it. The host:
-//! - authorizes each action, for example that only a node's owner sets its offer. Anyone may
-//!   call [`settle_node_in_lane`](program::settle_node_in_lane).
-//! - stores records by key, keeps node ids unique, and never deletes a lane node
-//! - passes each lane node it has under its own node's id, from the action's lane
-//! - passes a clock, `now`, that never goes back
-//! - bounds each voter's gauge votes, for example by its voting power, so that the votes on
-//!   all lanes sum to at most `Amount::MAX`
-//! - deposits and withdraws whenever a member's AVA position in a lane changes, so the balances
-//!   in a lane sum to at most the token's supply
-//! - rejects a join whose fee is above the most the new member agreed to pay
-//! - moves each join fee from the new member to the parent's owner, or to the protocol for a
-//!   top-level seat, and mints collected credits
+//! Solana adapters should deserialize bounded vectors directly into heap storage
+//! or borrow account data; never build a whole lineage of records on the stack.
+//! Dispatch large actions through separate non-inlined instruction handlers:
+//! keeping several owned argument/receipt sets in one frame can exceed 4 KiB.
+//! The default bump allocator does not reclaim dropped buffers during a call,
+//! so reuse returned vectors when composing actions. Budget compute for the
+//! complete host transaction, including decoding, persistence, and custody CPIs.
+//! This crate guarantees bounded work, not a particular host's compute budget.
 
 extern crate alloc;
 
 mod emission;
 mod error;
 mod lane;
+mod lanes;
 mod numbers;
 pub mod program;
 mod protocol;
 mod tree;
 mod weighting;
 
-pub use emission::{EmissionRate, Emitter};
+pub use emission::Emission;
 pub use error::{Error, Result};
 pub use lane::Lane;
+pub use lanes::{LaneId, LaneMask, MAX_LANES};
 pub use mayf_micro_basis_points::MicroBasisPoints;
-pub use numbers::{Amount, Seconds};
+pub use numbers::{Amount, Change, Seconds};
 pub use protocol::Protocol;
-pub use tree::{Depth, Identifiable, LaneNode, LanePool, NetworkTerms, Node, Offer};
+pub use tree::{Depth, Identifiable, LaneNode, LanePool, NetworkTerms, Node, Offer, RootSeat};
 pub use weighting::{Gauge, GaugeVote, LaneGauge};
