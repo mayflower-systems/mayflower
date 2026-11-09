@@ -1,232 +1,217 @@
 <!--
 title: AVM Specification
 summary:
-  General definition of the AVM price curve — three monotonic segments (floor,
-  ramp, main), the ramp constraint, boundary points, the solvency invariant,
-  buying, selling, contraction, and the guaranteed-vs-discovery value
-  decomposition.
+  State, pricing, backing, settlement, and numerical rules for the AVM.
 tags:
   - avm
-  - pricing
   - math
 -->
 
-The AVM price curve is a continuous, monotonically non-decreasing function of
-supply that determines the price of every buy and every sell. This note defines
-the curve in terms of general monotonic functions — the constraints any
-conforming implementation must satisfy — without specifying a particular
-functional form.
+This page specifies the [Amplifying Value Machine](Amplifying-Value-Machine).
+The equations describe exact arithmetic unless the numerical rules explicitly
+say otherwise. [AVM Rationale](AVM-Rationale) explains the design choices;
+[AVM Evolution](AVM-Evolution) gives the state transitions.
 
----
+## State and units
 
-## Definition
+Each market fixes a smooth, strictly increasing characteristic function $g(x)$
+with $g(0)=0$ and a ramp multiplier $k>1$. The function and multiplier remain
+fixed throughout the market's lifetime. The characteristic is evaluated on its
+supported nonnegative domain; out-of-domain inputs and unrepresentable
+arithmetic fail.
 
-The price curve $y(x)$ has three segments:
+| Symbol        | Meaning                                               |
+| ------------- | ----------------------------------------------------- |
+| $F\ge0$       | Floor price, in reserve units per AVA                 |
+| $E\ge0$       | Ramp end, on the progress axis                        |
+| $W\in[0,E]$   | Ramp width                                            |
+| $A=E-W$       | Ramp start                                            |
+| $b$           | Signed vertical offset of the main schedule           |
+| $P\ge E$      | Pricing progress, in AVA units                        |
+| $T\ge0$       | Actual circulating AVA supply                         |
+| $J=T-P+A\ge0$ | Physical floor-tail quantity                          |
+| $H\ge0$       | Liquid reserve held by the market                     |
+| $D\ge0$       | Outstanding reserve advances secured by AVA positions |
+| $B$           | Required backing for the current circulation          |
+
+Progress and circulation are separate quantities. Ordinary issuance advances
+both; floor issuance and special floor redemption change only circulation.
+Consequently, price must be evaluated at $P$, not at $T$.
+
+## Price schedule
+
+Define the main and ramp functions:
 
 $$
-y(x) = \begin{cases}
-f & 0 \le x \le x_1 \quad \text{(floor)} \\[4pt]
-R(x) & x_1 < x < x_2 \quad \text{(ramp)} \\[4pt]
-M(x) & x_2 \le x \quad \text{(main)}
+M(x)=g(x)+b,
+\qquad
+R(x)=M(E)+k\bigl(g(x)-g(E)\bigr).
+$$
+
+The schedule is
+
+$$
+y(x)=
+\begin{cases}
+F,&0\le x\le A,\ x<E,\\
+R(x),&A<x<E,\\
+M(x),&x\ge E.
 \end{cases}
 $$
 
-**Floor.** A constant function at height $f$. This is the guaranteed minimum
-redemption price for every token in circulation. The floor can only increase,
-never decrease.
+At $E$, including when $A=E$, main takes precedence. At $A<E$, the point value
+is $F$ even if an upward floor-join gap is permitted. The ramp meets main at $E$
+by construction. In the continuous reference model, $R(A)=F$; if $W=0$, this
+condition means $M(E)=F$. Numerical acceptance may permit a bounded upward
+floor-join gap, as specified below. A downward gap is not permitted.
 
-**Ramp.** A strictly increasing function $R(x)$ on the interval $(x_1, x_2)$.
-The ramp is the transition zone between the floor guarantee and the open market.
-It is steeper than the main schedule — early capital moves price faster here.
-
-**Main.** A strictly increasing function $M(x)$ on $[x_2, \infty)$. This is the
-long-run pricing schedule where the market spends most of its life.
-
-**Continuity.** The curve is continuous at both boundaries:
+The spot price is $y(P)=M(P)$. For $A<x<E$,
 
 $$
-R(x_1) = f, \qquad R(x_2) = M(x_2)
+M(x)-R(x)=(k-1)\bigl(g(E)-g(x)\bigr)>0.
 $$
 
-The ramp meets the floor at $x_1$ and meets the main at $x_2$. There are no
-jumps.
-
----
-
-## The Ramp Constraint
-
-The ramp function must satisfy one critical structural property:
-
-$$
-R(x) < M(x) \quad \text{for all } x \in (x_1, x_2)
-$$
-
-In the ramp region, the ramp sits **below** the main function. Both are
-increasing functions that meet at $x_2$, but the ramp approaches from below — it
-rises steeply from the floor while the main, extrapolated backward, would be at
-a higher level throughout the transition zone.
-
-This is the property that makes floor raising possible. When the ramp–main
-boundary $x_2$ advances, a strip of the curve that was priced on the main
-schedule is replaced by ramp. Because the ramp is lower than the main in that
-strip, the area under the curve **decreases**. This decrease is what funds the
+This is the **ramp constraint**: the ramp occupies less area than extending main
+backward over the same interval. Floor raises can use this difference to fund a
 higher floor.
 
-Without this constraint, there is no area deficit to redistribute, and floor
-raising cannot preserve solvency.
+## Launch
 
----
-
-## Boundary Points
-
-$x_1$ and $x_2$ are not free parameters — they are determined by the floor level
-and the shapes of $R$ and $M$:
-
-- $x_1$ is where the ramp meets the floor: $R(x_1) = f$.
-- $x_2$ is where the ramp meets the main: $R(x_2) = M(x_2)$.
-
-When the floor rises, $x_1$ and $x_2$ move as a consequence. At launch, both
-boundaries coincide ($x_1 = x_2$) and the ramp has zero width. Floor raises are
-what create and widen the ramp.
-
----
-
-## Initial Conditions
-
-At launch:
+A fresh market starts with
 
 $$
-x_1 = x_2 = 0, \quad x = 0, \quad R = 0
+P=T=E=W=0,\qquad F=F_0\ge0,\qquad b=F_0.
 $$
 
-The floor and ramp have zero width. The entire curve is the main schedule $M(x)$
-starting from the initial floor price $f_0$. The first buy walks up this
-schedule. The ramp does not exist as a distinct segment until a floor raise
-separates the boundaries.
+Its initial schedule is $M(x)=g(x)+F_0$ and required backing is zero. An initial
+donation may add surplus reserve. A nonempty restored market must also satisfy
+the geometry, backing, custody, and collateral conditions in this specification.
 
----
+## Required backing and reserve coverage
 
-## Reserve and Solvency
-
-The **reserve** is the total capital backing all tokens in circulation. It
-equals the area under the price curve from $0$ to the current supply:
+The physical floor tail has $J$ AVA units. The remaining $P-A$ units are backed
+by the ramp and main portions of the schedule:
 
 $$
-R(x) = \int_0^x y(s)\, ds
+B=FJ+\int_A^P y(x)\,dx.
 $$
 
-This is the **solvency invariant**: the reserve holds enough capital to redeem
-every token at the price the curve assigns. No token is unbacked. This invariant
-is maintained through every operation — buys, sells,
-[floor raises](AVM-Floor-Raising), and
-[option executions](Call-Options).
-
----
-
-## Buying (Issuance)
-
-A buy increases supply from $x$ to $x' > x$. The buyer pays the integral of the
-curve over the new region:
+Equivalently,
 
 $$
-\text{cost} = \int_x^{x'} y(s)\, ds
+B=\int_0^P y(x)\,dx+(T-P)F
+ =FT+\int_A^P\bigl(y(x)-F\bigr)\,dx.
 $$
 
-This capital is added to the reserve. The buyer's fill price is the average:
+When $T=P$, this reduces to the area from zero to circulation. In general,
+circulation cannot replace progress as the integration limit. The backing
+condition is
 
 $$
-\bar{y} = \frac{1}{x' - x} \int_x^{x'} y(s)\, ds
+H+D\ge B.
 $$
 
-Buys do not alter the curve — they move supply along the existing schedule. The
-shape of $R$, $M$, and the positions of $x_1$, $x_2$ are unchanged.
+Equality describes an exactly funded market without surplus. Donations and
+conservative rounding can leave surplus. Advances move backing from liquid
+reserve into collateralized positions; $H+D$ is an accounting total, not an
+amount immediately available for transfer. Every payout must separately be
+covered by liquid reserve after any simultaneous repayment or purchase.
 
----
+For a position with $n$ AVA and outstanding advance $d$, the collateral rule is
+$d\le Fn$. Collateral cannot also be transferred or redeemed free of its
+advance. [Cash Advance Mechanics](Cash-Advance-Mechanics) describes combined
+settlement.
 
-## Selling (Redemption)
+## Issuance and redemption
 
-A sell decreases supply from $x$ to $x' < x$. The seller receives the integral:
+For ordinary issuance of $n>0$:
 
 $$
-\text{proceeds} = \int_{x'}^{x} y(s)\, ds
+C=\int_P^{P+n}y(x)\,dx,\qquad P'=P+n,\qquad T'=T+n.
 $$
 
-This capital is removed from the reserve.
+The buyer supplies $C$ of backing plus the issuance fee. Geometry is unchanged.
+Since $P\ge E$, ordinary purchases begin on main.
 
-If the sell keeps supply at or above $x_2$, the curve is unchanged — the sell
-simply moves supply down the main schedule.
+For ordinary redemption of $0<n\le T$, set $Q=\max(P-n,0)$. Gross proceeds are
+quoted on the **old** schedule:
 
----
+$$
+V=\int_Q^P y(x)\,dx+F\max(n-P,0),
+\qquad P'=Q,\qquad T'=T-n.
+$$
 
-## Contraction
+If the sale reaches below the old ramp end, the schedule contracts after the
+quote. The exact contraction rules are in [AVM Evolution](AVM-Evolution).
+Redemption fees and any required advance repayment reduce the holder's net
+payout. Numerical contraction may also require a conservative backing deduction.
 
-When a sell pushes supply below $x_2$, the curve must adapt. There are two
-cases.
+Authorized [floor issuance](Call-Options) adds $n$ AVA and $Fn$ of backing while
+leaving $P$ and geometry unchanged. Special floor redemption removes $0<n\le J$
+AVA for gross proceeds $Fn$, also leaving $P$ and geometry unchanged. Both
+operations change $T$ and $J$ by the same amount. Special floor redemption is
+bounded by the available floor tail; it is not an unlimited liquidity source.
 
-**Sell into ramp** ($x_1 \le x' < x_2$). The ramp is unchanged. The main
-schedule shifts down so that it meets the ramp at the new, lower supply. The
-ramp–main boundary contracts: $x_2$ moves back to the new supply.
+## Floor raises
 
-**Sell into floor** ($x' < x_1$). The ramp collapses to zero width. Both the
-ramp and main schedules re-anchor at the new supply point at height $f$, so
-$x_1 = x_2 = x'$. If supply returns all the way to $0$, the curve resets to its
-launch shape (though $f$ may have been raised by prior floor raises).
+A proposal chooses $F'>F$, $E'$, and $W'$, with $A'=E'-W'$. It must satisfy
 
-In both cases, contraction is permanent with respect to buying: subsequent buys
-walk up the shifted curve without restoring the old main schedule. Only a floor
-raise can advance $x_2$ again.
+$$
+0\le A'\le E'\le P,\qquad A'\ge A,\qquad E'\ge E.
+$$
 
-See [Evolution](AVM-Evolution) for the complete walkthrough of every state
-change, and [Floor Raising](AVM-Floor-Raising) for the area-preserving
-mechanism that advances $x_2$.
+The main offset $b$, characteristic $g$, multiplier $k$, progress $P$, and
+circulation $T$ are unchanged. These conditions preserve the live main price.
+Both joins move forward or stay fixed; the ramp width may grow or shrink.
 
----
+The proposal must pass the floor-join check and the chosen backing-change
+policy. An area-preserving raise has $B'=B$ in exact arithmetic. A
+[surplus-funded raise](Floor-Investment) permits $B'\ge B$, funded by existing
+reserve surplus. Both require $H+D\ge B'$ and change no reserve balance by
+themselves. [AVM Floor Raising](AVM-Floor-Raising) defines the full checks.
 
-## Properties
+## Numerical and settlement rules
 
-### Floor as Guaranteed Redemption
+Calculations produce lower and upper bounds enclosing exact values. Issuance
+charges the upper reserve bound; redemption pays the lower bound. Rounding an
+updated main offset upward during contraction may increase retained backing;
+that increase is reserved from redemption proceeds. An operation fails when its
+bounds cannot certify the required inequalities.
 
-In the floor region ($0 \le x \le x_1$), the price is constant at $f$:
+For a floor raise, let $G$ be the new ramp's value at $A'$ minus $F'$; for a
+zero-width ramp use $M(E')-F'$. With configured allowances $\epsilon_p$ in price
+units and $\epsilon_B$ in reserve units:
 
-- Selling into the floor has **zero price impact** — the floor provides infinite
-  sell-side liquidity.
-- The floor price is the guaranteed minimum redemption value for every token,
-  backed by the reserve.
-- The floor can only increase (via [floor raises](AVM-Floor-Raising) or
-  [floor investment](Floor-Investment)), never decrease.
+- The entire enclosure for $G$ must lie in $[0,\epsilon_p]$.
+- An ordinary raise requires the entire enclosure for $B'-B$ to lie in
+  $[-\epsilon_B,0]$.
+- A surplus-funded raise requires it to lie in $[0,\epsilon_B]$.
+- The upper bound for $B'$ must be covered by $H+D$.
 
-### Market Value and Guaranteed Value
+These are directional acceptance intervals, not symmetric error margins. Setting
+both allowances to zero requests exact joins and exact backing preservation.
 
-Every token has two values: the **market price** $y(x)$ at the current supply,
-and the **guaranteed value** $f$ (the floor). The difference is the token's
-exposure to price discovery.
+Fees are charged in the reserve asset. With integer fee rate $r$ and denominator
+$10^6$, a fee on amount $v$ is $\lceil vr/10^6\rceil_\delta$, where
+$\lceil\cdot\rceil_\delta$ rounds upward to the chosen arithmetic grid. The
+protocol-fee allocation is rounded upward in the same way; the market-owner fee
+allocation receives the remainder. The protocol rate applies to the collected
+operation fee, not directly to the transaction's full reserve amount. Issuance,
+redemption, newly drawn advances, and issuance or redemption at the floor use
+their respective configured fees. Advance repayment has no fee, and configured
+rates may be zero. Token-unit normalization and final transfer rounding must
+preserve these conservative charge and payout bounds.
 
-The area under the curve decomposes into two regions:
+In the intended Mayflower integration, each fee-bearing AVM action transfers its
+protocol allocation into [revenue clearing](Revenue-Clearing) in the same
+transaction. The destination is a pot for the market's base reserve asset in an
+epoch accepting funding. Token transfer and recognition of funding must succeed
+together with the AVM transition; a failed required funding step fails the
+transaction. There is no deferred transfer through an operator's fee wallet or
+conversion into another asset. This routing belongs to the integrating AVM
+program, while the arithmetic specifies the fee amounts.
 
-- **Guaranteed region** — the rectangle from $0$ to supply at height $f$. This
-  is $f \cdot x$: the total value backed unconditionally. Every token can be
-  redeemed for at least $f$ regardless of what other participants do.
-- **Discovery region** — the area above $f$, between $x_1$ and supply. This is
-  where all price volatility lives. It exists only because supply is above $x_1$
-  — it is created by demand and destroyed by sells.
-
-Floor raising converts discovery-region area into guaranteed-region area. The
-total reserve is unchanged, but more of it becomes unconditional. After a raise,
-the floor is higher, the volatile pocket is smaller, and each token's guaranteed
-value has increased.
-
-### Sensitivity
-
-The steepness of the active segment determines the market's price sensitivity to
-supply changes:
-
-- **Floor**: zero sensitivity — infinite sell-side liquidity.
-- **Ramp**: high sensitivity — price moves rapidly. This is the transition zone
-  between the floor guarantee and the open market.
-- **Main**: moderate sensitivity — the long-run regime where the market spends
-  most of its life. Designed for stability.
-
-The ramp is steeper than main by construction. This is not incidental — it is
-the structural property that makes floor raising possible. A single uniform
-pricing schedule cannot support area-preserving floor raises; the two-schedule
-design (steep ramp, gentle main) is the minimum structure required.
+An integrating application must authenticate market and position state, bind the
+same characteristic parameters, enforce collateral custody and any option
+authorization, and atomically settle token supply, reserve transfers, fees, and
+new state. The arithmetic alone does not establish those external facts.

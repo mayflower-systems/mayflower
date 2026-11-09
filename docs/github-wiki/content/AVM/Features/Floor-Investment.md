@@ -1,115 +1,90 @@
 <!--
 title: Floor Investment
 summary:
-  Surplus-funded floor raises that preserve the main schedule and verify
-  the reserve budget for proposed floor and ramp geometry.
+  Raising the floor with existing reserve surplus while preserving main pricing.
 tags:
   - avm-features
   - floor
 -->
 
-Floor investment is a mechanism for raising the floor using reserve surplus,
-distinct from the area-preserving [floor raise](AVM-Floor-Raising). Its
-defining property is the source of backing: the increase in required reserve is
-paid by surplus rather than by an equal decrease elsewhere under the schedule.
+Floor investment names a surplus-funded [floor raise](AVM-Floor-Raising). It
+permits required backing to increase while preserving the market's live price
+and entire main schedule.
 
----
+Donation and floor raising do not themselves create a funder position, repayment
+balance, or reward allocation. The name describes a reserve-accounting
+operation.
 
-## Surplus
+## Available surplus
 
-The reserve equals the area under the [price curve](AVM-Specification) from
-$0$ to supply. This is the minimum capital required for solvency — every token
-must be redeemable at the price the curve assigns.
-
-Effective reserve includes held reserve and outstanding collateralized advances.
-If this backing exceeds the required area, the difference is **surplus**:
+Let $H$ be held reserve, $D$ outstanding collateralized advances, and $B$ the
+required backing from the [AVM specification](AVM-Specification). Then
 
 $$
-\text{surplus} = R_{\text{held}} + R_{\text{advanced}} - \int_0^x y(s)\, ds
+S=H+D-B\ge0
 $$
 
-Surplus can arise from external donations. A market operator (or anyone) can
-deposit capital into the reserve without buying tokens. This capital goes
-directly toward increasing the guaranteed value of every token in circulation.
-
----
-
-## Accepted reshape
-
-- $f$ increases — the floor rises.
-- $x_1$ advances.
-- The ramp may shorten or collapse to zero width.
-- $x_2$ may remain fixed or advance, including past the old $x_2$.
-
-The main schedule is preserved exactly. The proposal supplies a positive floor
-increment, ramp end, and ramp width; it cannot change main placement. The ramp
-is anchored to main at its proposed end. The floor join is checked separately,
-allowing only an explicitly bounded upward gap for fixed-point rounding.
-
-The new ramp end must be at or below characteristic progress. Therefore the
-live price remains on the unchanged main schedule. Crossing the old ramp end
-is legal; placing the new end beyond progress is not.
-
----
-
-## Why the spot price doesn't change
-
-Main evaluation depends on the immutable characteristic and a separately stored
-vertical offset. Floor raising preserves that offset, so it cannot change any
-main price. This is a property of the state transition, not a tolerated
-live-price difference.
-
-## Surplus absorbed
-
-At current supply $x$, the backing consumed by an accepted reshape is the
-increase in required reserve:
+is backing surplus. In particular,
 
 $$
-\Delta R = \int_0^x y_{\text{new}}(s)\,ds - \int_0^x y_{\text{old}}(s)\,ds
+B=F(T-P+A)+\int_A^P y(x)\,dx,
 $$
 
-The surplus action requires the full computed enclosure to satisfy
-$0 \le \Delta R \le G$, where $G$ is the caller's absolute reserve budget.
-The proposed backing upper bound must also be covered by held reserve plus
-outstanding collateralized advances. Authorization belongs to the host program.
+where $F$ is the floor, $T$ circulation, $P$ progress, and $A$ the ramp start.
+This includes floor issuance and redemption when $T\ne P$.
 
-Only the area through the new ramp end can change. When floor issuance or
-redemption has made circulation differ from characteristic progress, the
-comparison must include the resulting physical floor tail. On the progress
-axis, add $(T-P)\Delta f$ to the change in the schedule's prefix integral.
+A donation increases $H$ without increasing $B$. It creates surplus but does not
+itself change the floor. A subsequent authorized, valid raise is required. A
+reserve advance merely exchanges held reserve for an outstanding advance; it
+does not increase $S$.
 
----
+## Accepted proposal
 
-## Contrast with area-preserving raise
+The proposal increases $F$ and supplies a new ramp end $E'$ and width $W'$, with
+$A'=E'-W'$. It preserves the characteristic, ramp multiplier, main offset,
+progress, and circulation. It must satisfy
 
-|                   | Area-preserving raise               | Floor investment                         |
-| ----------------- | ----------------------------------- | ---------------------------------------- |
-| Source of backing | area rearranged under the schedule  | existing reserve surplus                 |
-| $f$               | increases                           | increases                                |
-| Ramp              | adjusts                             | may shorten or collapse                  |
-| $x_2$             | may advance                         | may stay fixed or advance past old $x_2$ |
-| Required reserve  | may shrink by an absolute tolerance  | may grow by an absolute funded budget   |
-| Main schedule     | unchanged                           | unchanged                               |
+$$
+A'\ge A,\qquad E'\ge E,\qquad 0\le A'\le E'\le P.
+$$
 
-The two mechanisms compose because they differ in acceptance policy rather than
-in the schedule representation.
+The floor join must be continuous in the exact model, or have only an allowed
+upward gap in bounded arithmetic. The ramp may narrow or collapse; its end may
+stay fixed or advance. The live price stays on unchanged main.
 
----
+For a nonnegative reserve budget $G$, numerical acceptance requires the entire
+backing-change enclosure to satisfy
 
-## Why it matters
+$$
+0\le B'-B\le G,
+$$
 
-Floor investment gives market operators a tool to directly strengthen the floor
-without depending on organic buy volume pushing supply far beyond $x_2$. It
-turns external capital into guaranteed value for every token holder.
+and the upper bound for $B'$ must be covered by $H+D$. The budget is a maximum
+permitted increase, not a transfer of funds. No reserve balance changes during
+the raise itself.
 
-An operator donating to the reserve is making a verifiable commitment: the floor
-should be higher. Unlike spending capital on marketing or liquidity incentives,
-the capital goes permanently into the reserve. It cannot be withdrawn. It backs
-real tokens at a higher guaranteed price. Every unit donated translates directly
-into a higher floor for the entire supply.
+## Limits
 
-It also means the floor can rise even during periods of declining supply. The
-area-preserving raise generally needs room to advance $x_2$. Floor investment
-can use a fixed-$x_2$ reshape when surplus and the existing main price permit it. If a market is contracting but the operator believes in its long-term
-value, donating capital and raising the floor signals conviction in a way that
-is cryptographically verifiable and permanent.
+Surplus alone does not make an arbitrary floor reachable. With main preserved
+and $E'\le P$, the floor cannot exceed the live price in a valid continuous
+proposal. For example, if the live price already equals the floor, preserving
+that live price prevents a positive increase even when surplus exists.
+
+Donated capital strengthens backing immediately. How much becomes floor backing
+depends on the accepted geometry and the outstanding circulation. There is no
+one-unit-donation-to-one-unit-floor conversion.
+
+## Relationship to ordinary floor raising
+
+| Property                             | Ordinary floor raise                     | Floor investment                                |
+| ------------------------------------ | ---------------------------------------- | ----------------------------------------------- |
+| Main schedule and live price         | Preserved                                | Preserved                                       |
+| Floor                                | Increases                                | Increases                                       |
+| Progress and circulation             | Preserved                                | Preserved                                       |
+| Required backing in exact arithmetic | Unchanged                                | May increase                                    |
+| Numerical backing-change allowance   | $[-\epsilon_B,0]$                        | $[0,G]$                                         |
+| Source of additional floor backing   | Reallocation within existing requirement | Existing surplus plus any internal reallocation |
+
+Both use the same geometry and coverage checks.
+[Linear AVM Floor Investment](Linear-AVM-Floor-Investment) gives an exact worked
+example.

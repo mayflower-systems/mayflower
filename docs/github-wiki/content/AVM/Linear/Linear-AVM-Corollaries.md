@@ -1,149 +1,109 @@
 <!--
 title: Linear AVM Corollaries
 summary:
-  Derived geometric properties of the piecewise-linear price curve — slope from
-  cost-to-double, the square root law for capital vs. ROI, why the ramp matters
-  for early adoption, maximum floor raise bounds, and price impact formulas per
-  segment.
+  Derived price-impact, capital, and floor-limit relationships with explicit assumptions.
 tags:
   - linear-avm
   - math
 -->
 
-Useful geometric properties derived from the
-[piecewise-linear price curve](Linear-AVM-Specification). These help with
-parameter selection, modeling, and intuition. They depend on the linear
-structure — none of them generalize to an arbitrary [AVM](AVM-Specification)
-without modification.
+These are consequences of the [linear AVM specification](Linear-AVM-Specification),
+not additional operating rules. They use exact arithmetic and exclude fees,
+advances, floor changes, and external exchange-rate movements unless stated.
 
----
+## Price impact on a single linear segment
 
-## Slope from floor price and cost-to-double
-
-On a linear segment with slope $m$ and starting price $f$, the cost to double
-the price (from $f$ to $2f$) is:
+For a segment with slope $s\ge0$, starting price $p_0$, and positive quantity
+$n$, moving forward by $n$ changes the price by $sn$ and costs
 
 $$
-K = \frac{3\, f^2}{2\, m}
+C=n\left(p_0+\frac{sn}{2}\right).
 $$
 
-Rearranging gives the slope as a function of $f$ and $K$:
+The average price is $p_0+sn/2$. A sale moving backward by $n$ has gross average
+price $p_0-sn/2$, provided it stays on that segment. Cross-segment sales require
+summing separate integrals.
+
+In the AVM, ordinary purchases begin on main, whose slope is $m$. Redemptions can
+cross the ramp, whose slope is $a>m$, and floor, whose slope is zero. The ramp's
+larger slope describes greater price sensitivity per AVA within that interval;
+it does not guarantee higher returns or measure statistical volatility.
+
+## Cost to double a positive price
+
+On an unchanged linear segment with slope $s>0$ and starting price $p_0>0$,
+reaching $2p_0$ requires $n=p_0/s$. The cost is
 
 $$
-m = \frac{3\, f^2}{2\, K}
+K=\frac{3p_0^2}{2s},\qquad s=\frac{3p_0^2}{2K}.
 $$
 
-This works for any magnitude of $f$. If $f$ is tiny (e.g., $10^{-18}$), $m$
-becomes extremely small — but the relationships hold exactly.
+For ordinary issuance, use $s=m$ and the current main price for $p_0$.
+For example, $p_0=0.1$ and $K=100$ imply $m=0.00015$ and
+$n=666.\overline6$. These values concern movement along that unchanged main
+line; they do not calibrate every later market state automatically.
 
-**Example:** $f = 0.1$, $K = 100$. Then $m = 3 \cdot 0.01 / 200 = 0.00015$. The
-supply needed to double the price is $\Delta x = f/m = 666.67$ tokens, and the
-cost is the trapezoid: $(0.1 + 0.2)/2 \times 666.67 = 100 = K$. ✓
+## Price multiplier versus capital
 
----
-
-## The square root law
-
-On a single linear segment starting at price $f$, the price multiplier (ROI)
-after $C$ total capital inflow is:
+Starting at $p_0$ on the same unchanged line, capital inflow $C$ yields spot
+price $p_1$ satisfying
 
 $$
-\text{ROI} = \sqrt{1 + \frac{3\,C}{K}}
+p_1^2=p_0^2+2sC.
 $$
 
-Price grows with the **square root** of capital. Doubling the capital does not
-double the price — it barely moves. The curve gets "heavier" the higher the
-price goes.
-
-| Target ROI | Capital required ($C/K$) |
-| :--------: | :----------------------: |
-|     2x     |            1             |
-|     5x     |            8             |
-|    10x     |            33            |
-|    50x     |           833            |
-|    100x    |          3,333           |
-
-Inverted — the capital required to hit a given ROI:
+Using the cost-to-double $K$ above,
 
 $$
-C = \frac{K}{3} \cdot (\text{ROI}^2 - 1)
+\frac{p_1}{p_0}=\sqrt{1+\frac{3C}{K}},\qquad
+\frac CK=\frac{(p_1/p_0)^2-1}{3}.
 $$
 
-Capital scales with the **square** of the return. A 10x return costs 33 times
-more capital than a 2x return. A 100x return costs 3,333 times more.
+| Spot-price multiplier | Required $C/K$ |
+| --------------------- | -------------- |
+| $2$                   | $1$            |
+| $5$                   | $8$            |
+| $10$                  | $33$           |
+| $50$                  | $833$          |
+| $100$                 | $3333$         |
 
----
+These are **spot-price multipliers**, not realized investment returns. A buyer
+pays an average fill price and a seller receives an average fill price; both
+can differ from the marginal spot quote. Fees and subsequent state changes
+further affect returns.
 
-## Why the ramp matters
+## Ramp geometry
 
-On the main segment alone (slope $m_2$), the cost-to-double $K$ is large — by
-design, for stability. Early capital would need enormous inflows to move the
-price.
+For a given endpoint, the ramp lies below main before their intersection. Its
+purpose in floor raising is to provide a lower-area transition that can replace
+part of main while maintaining the endpoint price.
 
-The ramp (slope $m_1 > m_2$) has a lower effective $K$:
+This is not an early-buyer ramp: launch has zero ramp width, and after every
+accepted ordinary redemption the next purchase begins on main. Applying the
+ramp's slope to estimate ordinary buy-driven returns would describe a path the
+market does not take.
 
-$$
-K_{\text{ramp}} = \frac{3\, f^2}{2\, m_1} < \frac{3\, f^2}{2\, m_2} = K_{\text{main}}
-$$
+## Maximum constant-backing floor
 
-If $m_1 = 2\, m_2$, the ramp's cost-to-double is half that of main. Early
-capital moves the price faster through the ramp, allowing meaningful ROI
-(10x–20x) with reasonable inflows, before the heavier main curve takes over for
-long-run stability.
+There is no universal floor-to-spot percentage. The bound depends on existing
+geometry and on both circulation and progress. The complete derivation is in
+[Linear AVM Floor Raising](Linear-AVM-Floor-Raising).
 
-This is the geometric justification for the piecewise design: a single-slope
-curve is either too heavy for early adoption or too light for stability. The
-ramp solves both by giving early capital a steeper, cheaper path that
-transitions into the stable main curve. See also the
-[ramp constraint](AVM-Specification#the-ramp-constraint) for the general
-structural property this exploits.
-
----
-
-## Maximum floor raise
-
-The floor can be raised as long as $\text{supply} > x_2$. The maximum new floor
-is bounded by the area-preservation constraint: the increase in floor area
-($\Delta f \cdot \text{supply}$) must equal the decrease in area from sliding
-$x_2$ forward (replacing main-slope area with ramp-slope area).
-
-For a market sitting entirely on the main segment (supply well above $x_2$), the
-approximate maximum floor as a fraction of the current price is:
+For the special unraised state with $A=E=0$, $T=P$, and $F=b$, main slope $m$
+and ramp multiplier $k=a/m$ give
 
 $$
-\frac{f_{\max}}{y(\text{supply})} \approx 1 - \sqrt{\frac{m_2}{m_1}}
+F_{\max}=b+mP\left(\sqrt{k(k-1)}-(k-1)\right).
 $$
 
-If $m_1 = 2\, m_2$: $f_{\max}/y \approx 1 - 1/\sqrt{2} \approx 29\%$ of the
-current price can be locked in as floor in a single raise (with enough room). In
-practice, the actual limit depends on how far supply exceeds $x_2$ and the
-current floor level. See [Linear AVM Floor Raising](Linear-AVM-Floor-Raising) for the full derivation.
+At $k=2$, the increase above $b$ is approximately $0.4142mP$. The fraction of
+the full spot price $mP+b$ depends on $b$ as well. Prior floor operations require
+the general state-dependent expression.
 
----
+## Floor backing is finite
 
-## Price impact on each segment
-
-For a buy of $\Delta x$ tokens on a single segment with slope $m$:
-
-$$
-\Delta y = m \cdot \Delta x
-$$
-
-$$
-\text{cost} = \Delta x \cdot \left(y_{\text{start}} + \frac{m \cdot \Delta x}{2}\right)
-$$
-
-$$
-\bar{y} = y_{\text{start}} + \frac{m \cdot \Delta x}{2}
-$$
-
-The fill price is the midpoint between the starting and ending price. This is
-exact for a linear segment — no approximation.
-
-On the floor ($m = 0$): $\Delta y = 0$, fill price = $f$. No slippage.
-
-On the ramp ($m = m_1$): price impact is $m_1 \cdot \Delta x$ per token of
-supply change. This is the most volatile region.
-
-On main ($m = m_2$): price impact is $m_2 \cdot \Delta x$. Smaller per unit of
-supply, but this is where the market spends most of its life.
+The floor component is $FT$ in the exact backing decomposition. It supports a
+minimum gross reserve claim, subject to collateral obligations. Special
+price-preserving floor redemption is limited by the physical floor tail
+$J=T-P+A$ and available liquid reserve. A zero slope is not infinite capital
+or an unlimited withdrawal right.

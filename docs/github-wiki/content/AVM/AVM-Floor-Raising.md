@@ -1,144 +1,116 @@
 <!--
 title: AVM Floor Raising
 summary:
-  How the area-preserving floor raise works — the ramp constraint creates an
-  area deficit that funds a higher floor, preserving the reserve and spot price
-  while converting volatile area into guaranteed area.
+  Geometry, backing conservation, and numerical acceptance of a floor raise.
 tags:
   - avm
   - floor
 -->
 
-Floor raising is the mechanism that evolves the
-[price curve](AVM-Specification) over time. It increases the floor price $f$,
-advances the ramp–main boundary $x_2$, and widens the ramp — all without
-changing the reserve or the spot price. The result: more of the reserve becomes
-unconditional, and every token's guaranteed value rises.
+A floor raise increases the minimum reserve-denominated redemption value of
+AVA while preserving the live price. The
+[AVM specification](AVM-Specification) defines the schedule and backing; this
+page specifies the proposal and acceptance conditions. A surplus-funded variant
+is described in [Floor Investment](Floor-Investment).
 
-The floor can also rise through
-[floor investment](Floor-Investment), which uses external capital
-rather than rearranging the existing curve.
+## Proposal and fixed quantities
 
----
-
-## What changes
-
-- $f$ increases — the floor line rises.
-- The ramp adjusts to connect the higher floor to the unchanged main schedule.
-- $x_1$ and $x_2$ advance — the ramp widens.
-- The main schedule $M(x)$ does not move.
-
-At launch, the ramp has zero width ($x_1 = x_2$). Floor raises are what create
-and widen the ramp. Each raise pushes the ramp–main boundary further along the
-main schedule, opening up a larger transition zone behind the current supply.
-
----
-
-## Invariants preserved
-
-- **Reserve** — the total area under the curve from $0$ to supply is unchanged.
-- **Spot price** — the price at the current supply does not move. Only the floor
-  moves up.
-- **Main schedule** — $M(x)$ is entirely untouched. The raise operates only on
-  the floor and ramp.
-
----
-
-## Why it works
-
-The [ramp constraint](AVM-Specification) is the structural property that makes
-this possible:
+Let the old floor, ramp start, ramp end, progress, and circulation be
+$F,A,E,P,T$. A proposal supplies $F'>F$, a new ramp end $E'$, and a new width
+$W'$, giving $A'=E'-W'$. It must satisfy
 
 $$
-R(x) < M(x) \quad \text{for all } x \in (x_1, x_2)
+0\le A'\le E'\le P,\qquad A'\ge A,\qquad E'\ge E.
 $$
 
-When $x_2$ advances, a strip of the curve that was priced on the main schedule
-is replaced by ramp. Because the ramp sits below the main in that strip, the
-area under the curve **decreases**. This decrease compensates for the
-**increase** in area from the taller floor rectangle ($\Delta f \cdot x_1$
-grows). The two changes cancel exactly, and the reserve is unchanged.
+The characteristic $g$, ramp multiplier $k$, main offset $b$, progress $P$,
+and circulation $T$ are unchanged. Main remains $M(x)=g(x)+b$, so the live
+price stays $M(P)$. Both joins move forward or remain fixed, but the ramp's
+width is allowed to decrease.
 
-In other words: the ramp traces a lower path than the main would through the
-transition region. The area it _doesn't_ use — the deficit between ramp and main
-— is the budget available for raising the floor. Every floor raise spends some
-of this budget.
+The new ramp is anchored to unchanged main:
 
----
+$$
+R'(x)=M(E')+k\bigl(g(x)-g(E')\bigr).
+$$
 
-## Precondition
+For exact continuity, $R'(A')=F'$. If the ramp has zero width, the condition is
+$M(E')=F'$.
 
-Supply must be above $x_2$ — the current price must be on the main schedule. If
-supply is in the ramp or floor region, there is no room for $x_2$ to advance,
-and no area deficit to redistribute.
+## Required backing
 
----
+The old and proposed backing are
 
-## Magnitude
+$$
+B=F(T-P+A)+\int_A^P y(x)\,dx,
+$$
 
-The new $x_2$ cannot exceed the current supply. If it did, the spot price would
-change, violating the invariant. The further supply sits beyond $x_2$, the more
-room there is to raise the floor. If the gap is large, the floor can increase
-substantially in a single raise — the only limit is the area-preservation
-constraint.
+$$
+B'=F'(T-P+A')+\int_{A'}^P y'(x)\,dx.
+$$
 
----
+An exact area-preserving raise requires $B'=B$. Because main is unchanged beyond
+$E'$, the backing difference can also be written as
 
-## What floor raising does to the value decomposition
+$$
+\Delta B=\int_0^{E'}\bigl(y'(x)-y(x)\bigr)\,dx+(T-P)(F'-F).
+$$
 
-Every token has a market price $y(x)$ and a guaranteed value $f$. The area under
-the curve splits into a **guaranteed region** (the rectangle at height $f$) and
-a **discovery region** (the area above $f$). Floor raising converts
-discovery-region area into guaranteed-region area. The total reserve is
-unchanged, but more of it is unconditional. After a raise, the volatile pocket
-is smaller and each token's guaranteed minimum has increased.
+The second term is essential after floor issuance or special floor redemption.
+Integrating only from zero to progress is insufficient when circulation differs
+from progress.
 
-This is the core promise of the AVM: participation in price discovery does not
-come at the cost of permanent risk. Over time, the floor rises to capture gains,
-and capital that was once exposed to volatility becomes permanently secured.
+Both held reserve $H$ and outstanding collateralized advances $D$ stay fixed.
+The proposed backing must remain covered: $H+D\ge B'$. Raising the floor does
+not create reserve assets.
 
----
+## Why the geometry can fund a raise
 
-## The sell–raise cycle
+Within a nonempty ramp,
 
-Contraction and floor raising interact in an important way. Selling into the
-ramp or floor shifts the main schedule down (see [Evolution](AVM-Evolution)),
-which pulls $x_2$ back. This **lowers the bar** for future floor raises: once
-$x_2$ has been pushed back, any subsequent buy that puts supply above $x_2$
-re-enables floor raising — potentially at a lower price level than was
-previously possible.
+$$
+M(x)-R(x)=(k-1)\bigl(g(E)-g(x)\bigr)>0.
+$$
 
-The system is self-healing. Sell-offs create the conditions for floor
-appreciation on recovery. In the extreme case where supply is sold all the way
-back to zero, the very next buy creates supply beyond $x_2$, enabling a floor
-raise immediately.
+Moving the ramp end forward replaces part of the old main tail with a lower
+ramp. This can offset the extra backing required by the higher floor. A valid
+proposal balances the complete backing expression, including the physical floor
+tail. The operation redistributes existing backing from price-sensitive value
+into floor value.
 
----
+The available raise depends on the current geometry, characteristic, circulation,
+and progress. Every proposal must satisfy the complete geometry and backing
+checks above. The condition $P>E$ alone does not establish that a proposed floor
+is feasible. The same checks apply to zero-circulation states and to numerical
+proposals with a permitted floor-join gap.
 
-## Contrast with floor investment
+## Numerical acceptance
 
-The area-preserving raise rearranges existing reserve: the ramp eats into
-main-schedule territory to compensate for the taller floor.
-[Floor investment](Floor-Investment) instead permits required
-reserve to increase when existing surplus covers the candidate. Its geometry may
-shorten or collapse the ramp and may move beyond the old $x_2$. Both actions
-preserve the entire main schedule and require the new ramp end not to exceed
-characteristic progress.
+Let $G=R'(A')-F'$ be the floor-join gap; use $M(E')-F'$ when $W'=0$. An ordinary
+raise supplies two nonnegative allowances:
 
-The two mechanisms compose. An operator can donate capital (creating surplus),
-raise the floor from surplus, and then — if supply is beyond $x_2$ — perform an
-additional area-preserving raise on top.
+| Allowance    | Units           | Required interval for the entire calculated enclosure |
+| ------------ | --------------- | ----------------------------------------------------- |
+| $\epsilon_p$ | Reserve per AVA | $G\in[0,\epsilon_p]$                                  |
+| $\epsilon_B$ | Reserve         | $\Delta B\in[-\epsilon_B,0]$                          |
 
-## Numerical policy
+An upward floor-join step may be allowed; a downward step is rejected. The
+backing allowance permits only a bounded decrease, never an increase. The upper
+bound for $B'$ must also be covered by $H+D$.
 
-The program accepts a positive floor increment and proposed ramp geometry. An
-ordinary raise permits only a bounded decrease in required backing:
-$-\epsilon \le \Delta R \le 0$, with $\epsilon$ expressed as an absolute
-reserve amount. It never permits area growth. The entire fixed-point enclosure
-must fit this interval. A client can bias its candidate slightly downward when
-an exactly balanced candidate cannot be certified on the numeric grid.
+The two allowances are independent. Neither permits the main offset to change.
+They are absolute quantities in the stated units, not percentages. Exact
+preservation sets them both to zero; a coarse numeric grid may require a small
+conservative allowance to admit a candidate.
 
-Main placement is stored independently of the floor and ramp and is copied
-unchanged during a raise. The ramp joins main at its end by construction; a
-separate floor-join allowance permits only a bounded upward step. Neither
-numerical allowance authorizes a change to main prices.
+## Finding and verifying a proposal
+
+A proposer can solve for geometry off-chain and submit the resulting floor
+increment, ramp end, and width. Acceptance checks the supplied candidate against
+all constraints; it does not rely on the proposer's claimed precision or reserve
+calculation. A candidate that cannot be certified within the allowances is
+rejected.
+
+[Linear AVM Floor Raising](Linear-AVM-Floor-Raising) gives closed-form equations
+and a complete example for the linear characteristic. Other characteristics
+require their own numerical search, while retaining these same acceptance rules.

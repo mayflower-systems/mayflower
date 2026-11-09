@@ -1,30 +1,21 @@
 <!--
 title: AVM Features
 summary:
-  Optional features built on top of the core AVM — add-ons that extend the
-  pricing mechanism without being required for its operation.
+  Optional features built on the AVM pricing and backing rules.
 tags:
   - avm-features
 -->
 
-Optional features that extend the [AVM](Amplifying-Value-Machine) beyond its core pricing mechanism.
-These are add-ons that individual markets may enable or disable. The core AVM
-(issuance, redemption, floor raising, contraction) functions without any of
-them.
+These features build on the [AVM](Amplifying-Value-Machine). An application can
+choose which operations to expose and how to authorize them. Each operation must
+preserve the [pricing, backing, and settlement rules](AVM-Specification).
 
----
+| Feature                                          | Purpose                                                                 |
+| ------------------------------------------------ | ----------------------------------------------------------------------- |
+| [Cash advances](Cash-Advance-Overview)           | Release reserve against the floor value of an encumbered AVA position   |
+| [Cash advance mechanics](Cash-Advance-Mechanics) | Define capacity, collateral, fees, repayment, and net settlement        |
+| [Call options](Call-Options)                     | Authorize issuance at the current floor without moving pricing progress |
+| [Floor investment](Floor-Investment)             | Increase the floor using existing reserve surplus                       |
 
-## Notes
-
-- [Call Options](Call-Options) — Perpetual call options with
-  strike equal to the floor. Mints tokens at floor price, translates the curve
-  rightward, preserves the reserve invariant.
-- [Floor Investment](Floor-Investment) — Surplus-funded floor
-  raises that preserve the live price while allowing the floor/ramp geometry to
-  consume old boundaries.
-- [Cash Advance Overview](Cash-Advance-Overview) — What the cash
-  advance is, why zero interest and non-recourse are possible, fee structure,
-  and why it is powerful.
-- [Cash Advance Mechanics](Cash-Advance-Mechanics) — How advance
-  capacity is sized, collateral locking and automatic deleveraging, repayment,
-  the reserve as liquidity source, and economics of full utilization.
+The core market's ordinary issuance, redemption, contraction, and area-preserving
+floor raising do not require an option-grant mechanism or an advance facility.

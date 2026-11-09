@@ -1,144 +1,67 @@
 <!--
 title: Cash Advance Overview
 summary:
-  What the cash advance is and why it matters — a non-recourse, zero-interest
-  facility that lets m-token holders draw liquidity up to the floor value of
-  their collateral, with no obligation to repay and no possibility of forced
-  close-out.
+  Reserve advances against AVA floor value, their purpose, and their limits.
 tags:
   - avm-features
   - cash-advance
 -->
 
-The Mayflower cash advance is a non-recourse facility that lets m-token holders
-draw liquidity against their collateral at zero interest, with no obligation to
-repay and no risk of forced close-out. It is funded directly from the market's
-reserve — the same capital that backs all redemptions. The only cost is a flat
-origination fee. See [Mechanics](Cash-Advance-Mechanics) for the
-full specification.
+A cash advance releases reserve against the floor value of an AVA position.
+The holder keeps the AVA position, but its collateral remains encumbered by the
+outstanding advance. The facility uses the same reserve asset as the market;
+it has no separate lender pool.
 
----
+This page explains the economic rationale. [Cash Advance Mechanics](Cash-Advance-Mechanics)
+specifies the accounting and settlement rules.
 
-## What it is
+## Why the floor supports an advance
 
-Holders pledge m-tokens as collateral and draw an advance up to the total
-[floor value](AVM-Floor-Raising) of their position. The advance is denominated
-in the market's reserve asset — if the market is denominated in USDC, the
-advance is in USDC; if in gold, the advance is in gold. The holder is not
-borrowing a foreign asset against volatile collateral. They are unlocking
-liquidity that is already guaranteed by the reserve.
+For $n$ AVA at floor price $F$, the gross floor value is $Fn$. An advance of
+$d\le Fn$ releases part of this value now. The holder cannot also withdraw the
+same backing by freely transferring or redeeming the collateral.
 
-The facility has three properties that distinguish it from every conventional
-lending product:
+The reserve amount moves from liquid holdings to an outstanding collateralized
+advance. Total backing is unchanged. This explains both the capacity limit and
+the need to distinguish backing from available cash.
 
-**Zero interest.** There is no carrying cost. The advance accrues nothing over
-time. The holder can carry it indefinitely — a day, a year, forever — at the
-same cost as the moment they drew it.
+## No time-based interest
 
-**Non-recourse.** The protocol's only claim is the pledged collateral. If the
-holder walks away without repaying, the protocol retains the locked m-tokens and
-the matter is settled. There is no personal obligation, no deficiency judgment,
-no recourse beyond the collateral itself.
+Outstanding principal does not accrue interest in this design. A newly drawn
+amount incurs a configured reserve-access fee; repayment has no separate fee.
+There is no time-based maturity or liquidation trigger in the accounting rules.
 
-**No forced close-out.** The advance can never exceed the floor value of the
-collateral, and the floor can never decrease. The position is solvent by
-construction at every moment. There is no margin call, no forced close-out, no
-default trigger — because the condition that would trigger one is mathematically
-impossible.
+With fixed collateral quantity, a floor that stays fixed or rises cannot reduce
+the position's advance capacity. This removes the usual price-fall trigger for
+undercollateralization in the reserve denomination. It still depends on correct
+collateral custody, authorized state transitions, and the reserve asset itself.
 
----
+## What the holder receives and retains
 
-## Why these properties are possible
+Suppose an AVA position has a floor value of 90 reserve units. A draw of 90 pays
+90 less the reserve-access fee, if liquid reserve is available. The holder
+retains the position's remaining economic exposure, with 90 units of advance
+principal to repay before the position can be released unencumbered.
 
-Traditional lending requires interest because a human lender needs compensation
-for the time value of capital and the risk of default. Both of these disappear
-in the Mayflower facility.
+A later floor increase can increase capacity or reduce the minimum collateral
+quantity needed for the same principal. It does not automatically transfer more
+reserve or repay the existing advance.
 
-**No default risk.** The advance is capped at the floor value of the collateral.
-The floor is a hard guarantee backed by the reserve — it cannot decrease. A
-traditional lender prices default risk into the interest rate; here, default is
-structurally impossible, so there is nothing to price.
+The facility can be useful when a holder wants reserve liquidity while retaining
+a position. Full utilization is a choice, not a universal optimal strategy:
+fees, collateral restrictions, liquidity needs, and the risks of deploying the
+released capital all matter. Receiving advance proceeds is not by itself an
+unencumbered investment profit.
 
-**No human counterparty.** The protocol itself is the lender. It does not need
-interest to incentivize lending — the reserve already exists and already
-guarantees the floor. Advancing floor value against pledged tokens does not
-create a new liability; it accelerates one that already exists (the reserve owes
-floor value to every m-token in circulation). The protocol is simply disbursing
-early what it would pay on redemption.
+## Repayment and exit
 
-**No interest accrual.** This is also a design choice, not just a consequence.
-Interest accrual would create a growing obligation that could eventually exceed
-the collateral's floor value — reintroducing the possibility of insolvency and
-the need for forced close-out. That contradicts Mayflower's core guarantee. A
-flat origination fee avoids this entirely: the cost is fixed at the moment of
-the advance and never grows.
+The holder can repay principal to restore held reserve and reduce the
+encumbrance. A sale and repayment can be settled together, using sale proceeds
+to help repay the advance. The resulting position must still satisfy its
+collateral constraint, and the market must have enough liquid reserve for the
+net payout.
 
----
-
-## Fee structure
-
-The only cost is an **origination fee** — a flat percentage of the amount
-advanced, charged once at the time of the draw. There is no repayment fee, no
-periodic interest, no penalty for early or late repayment (the concept of "late"
-does not apply). The origination fee is set through the market's authorized fee
-configuration.
-
----
-
-## Why it is powerful
-
-### Liquidity recovery
-
-The advance lets holders recover most of the capital locked in their position.
-If the market price is $1.00 and the floor is $0.90, a holder can deposit $1.00,
-pledge the resulting m-token, and immediately draw $0.90. Their net capital
-commitment is $0.10 for full exposure to a $1.00 position. They have recovered
-90% of their liquidity while retaining all upside above the floor.
-
-This is not leverage in the traditional sense — the holder is not borrowing a
-different asset against volatile collateral. They are reclaiming liquidity that
-the reserve already guarantees to them. The advance cannot be called, cannot
-grow, and cannot default.
-
-### Profit extraction without selling
-
-When the floor rises above the holder's cost basis, the advance becomes a tool
-for realizing profit without disposing of the asset. A holder who deposited
-$1.00 and whose floor has since risen to $1.20 can draw an advance of $1.20 —
-more than their entire initial outlay — while still holding the m-token. They
-have extracted their original capital plus a $0.20 profit, and they remain fully
-exposed to any further appreciation.
-
-In traditional markets, this requires selling (triggering a taxable disposition)
-or borrowing against the asset (incurring interest and forced close-out risk).
-The cash advance achieves the same outcome with neither.
-
-### Automatic expansion
-
-As the floor rises, advance capacity grows automatically. The holder does
-nothing — their credit line increases in lockstep with the floor, and if they
-have an outstanding advance, the collateral required to secure it shrinks.
-Capital that was locked gradually becomes free, available to withdraw or pledge
-elsewhere. The facility improves over time by construction.
-
----
-
-## A note on vocabulary
-
-This facility is deliberately called a **cash advance**, not a loan. The
-distinction matters both economically and legally.
-
-A loan implies a creditor-debtor relationship: the borrower owes a debt, the
-lender has recourse, interest accrues, and failure to repay constitutes default.
-None of these apply here. There is no debt obligation, no recourse beyond the
-collateral, no interest, and no concept of default. The holder can walk away at
-any time, forfeiting only the pledged m-tokens.
-
-The closest traditional analogue is a **repurchase agreement**: the holder
-effectively sells their m-tokens to the protocol at the floor price and receives
-an option to repurchase them by repaying the advance. But unlike a standard
-repo, there is no fixed term, no coupon, and no obligation to repurchase.
-
-The term "cash advance" — as in a merchant cash advance — captures the right
-structure: a non-recourse disbursement against a future receivable (the floor
-value), with a flat fee and no ongoing obligation.
+A holder may leave a collateralized position outstanding without an interest
+clock increasing the principal. That does not cancel the advance or create a
+second claim on its collateral. Legal classification, tax treatment, and any
+additional application lifecycle are outside these accounting rules.
