@@ -7,19 +7,20 @@ tags:
   - cash-advance
 -->
 
-A cash advance releases reserve against the floor value of an AVA position.
-The holder keeps the AVA position, but its collateral remains encumbered by the
-outstanding advance. The facility uses the same reserve asset as the market;
-it has no separate lender pool.
+A cash advance releases reserve against the floor value of an AVA position. The
+holder keeps the AVA position, but its collateral remains encumbered by the
+outstanding advance. The facility uses the same reserve asset as the market; it
+has no separate lender pool.
 
-This page explains the economic rationale. [Cash Advance Mechanics](Cash-Advance-Mechanics)
-specifies the accounting and settlement rules.
+This page explains the economic rationale.
+[Cash Advance Mechanics](Cash-Advance-Mechanics) specifies the accounting and
+settlement rules.
 
 ## Why the floor supports an advance
 
-For $n$ AVA at floor price $F$, the gross floor value is $Fn$. An advance of
-$d\le Fn$ releases part of this value now. The holder cannot also withdraw the
-same backing by freely transferring or redeeming the collateral.
+For $`n`$ AVA at floor price $`F`$, the gross floor value is $`Fn`$. An advance
+of $`d\le Fn`$ releases part of this value now. The holder cannot also withdraw
+the same backing by freely transferring or redeeming the collateral.
 
 The reserve amount moves from liquid holdings to an outstanding collateralized
 advance. Total backing is unchanged. This explains both the capacity limit and

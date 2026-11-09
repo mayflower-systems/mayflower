@@ -19,98 +19,109 @@ limits; it does not add exceptions to the rules.
 
 There is one logical non-earning protocol root. Its scarce auctioned seats have
 **earning depth 0**; the protocol root receives no override. Every ordinary node
-has one permanent parent, and a node at maximum depth $H$ cannot accept
+has one permanent parent, and a node at maximum depth $`H`$ cannot accept
 children.
 
-$$H\in\mathbb{Z}_{\ge0},\qquad 0\le q\le1,\qquad Hq<1,\qquad 0\le d_i\le H.$$
+```math
+H\in\mathbb{Z}_{\ge0},\qquad 0\le q\le1,\qquad Hq\lt 1,\qquad 0\le d_i\le H.
+```
 
-$H$ and $q$ are fixed network terms. $d_i$ counts earning ancestors, so a
-maximum-depth path contains $H+1$ earning members. The intended referral
-configuration uses $H>0$ and $q>0$. The general allocation rule also permits
-$H=0$ (only auctioned seats) and $q=0$ (no ancestor commissions).
+$`H`$ and $`q`$ are fixed network terms. $`d_i`$ counts earning ancestors, so a
+maximum-depth path contains $`H+1`$ earning members. The intended referral
+configuration uses $`H\gt 0`$ and $`q\gt 0`$. The general allocation rule also permits
+$`H=0`$ (only auctioned seats) and $`q=0`$ (no ancestor commissions).
 
 A member cannot change parent, insert an intermediary into an existing edge,
 sever its ancestry, or create a cycle. Withdrawing all balances does not delete
 membership or descendants. One owner may control multiple members.
 
-| Symbol       | Meaning                                                        |
-| ------------ | -------------------------------------------------------------- |
-| $E(t)$       | Global credit emission rate, decreasing continuously over time |
-| $e_\ell$     | Credit emission rate allocated to asset lane $\ell$            |
-| $p_{i,\ell}$ | Member $i$'s own eligible asset balance in that lane           |
-| $D_{i,\ell}$ | Sum of eligible balances of all strict descendants of $i$      |
-| $P_\ell$     | Sum of all members' own eligible balances in the lane          |
-| $s_i$        | Issued credits escrowed by $i$ with its immediate parent       |
-| $S_i$        | Sum of credit escrow over $i$'s immediate children             |
-| $\mu_i$      | Member $i$'s discretionary marketing fraction, from 0 to 1     |
+| Symbol         | Meaning                                                        |
+| -------------- | -------------------------------------------------------------- |
+| $`E(t)`$       | Global credit emission rate, decreasing continuously over time |
+| $`e_\ell`$     | Credit emission rate allocated to asset lane $`\ell`$          |
+| $`p_{i,\ell}`$ | Member $`i`$'s own eligible asset balance in that lane         |
+| $`D_{i,\ell}`$ | Sum of eligible balances of all strict descendants of $`i`$    |
+| $`P_\ell`$     | Sum of all members' own eligible balances in the lane          |
+| $`s_i`$        | Issued credits escrowed by $`i`$ with its immediate parent     |
+| $`S_i`$        | Sum of credit escrow over $`i`$'s immediate children           |
+| $`\mu_i`$      | Member $`i`$'s discretionary marketing fraction, from 0 to 1   |
 
-$D$ excludes the member's own balance. $S$ excludes descendant escrow beyond the
-immediate children. Credits in family escrow do not enter any asset denominator.
+$`D`$ excludes the member's own balance. $`S`$ excludes descendant escrow beyond
+the immediate children. Credits in family escrow do not enter any asset
+denominator.
 
 ## Core allocation
 
-The following rate equations apply at time $t$; time arguments are omitted for
+The following rate equations apply at time $`t`$; time arguments are omitted for
 readability. Interval entitlements integrate these rates over their actual
 history, including changes to emission and balances.
 
-For $P_\ell>0$, member $i$'s own-asset and override income rates are
+For $`P_\ell\gt 0`$, member $`i`$'s own-asset and override income rates are
 
-$$
+```math
 A_{i,\ell}=\frac{e_\ell}{P_\ell}(1-d_iq)p_{i,\ell},
 \qquad
 O_{i,\ell}=\frac{e_\ell}{P_\ell}qD_{i,\ell}.
-$$
+```
 
 Its total core income and gross override income are
 
-$$C_i=\sum_\ell(A_{i,\ell}+O_{i,\ell}),\qquad O_i=\sum_\ell O_{i,\ell}.$$
+```math
+C_i=\sum_\ell(A_{i,\ell}+O_{i,\ell}),\qquad O_i=\sum_\ell O_{i,\ell}.
+```
 
-Each source funds one $q$ commission for each of its $d_i$ earning ancestors and
-retains the complement. Therefore
+Each source funds one $`q`$ commission for each of its $`d_i`$ earning ancestors
+and retains the complement. Therefore
 
-$$\sum_i\bigl[(1-d_iq)p_{i,\ell}+qD_{i,\ell}\bigr]=P_\ell.$$
+```math
+\sum_i\bigl[(1-d_iq)p_{i,\ell}+qD_{i,\ell}\bigr]=P_\ell.
+```
 
 Core income sums to each nonempty lane's assigned emission. An ancestor's cut is
 calculated from the source's original attribution, not compounded from what
 another ancestor leaves behind. A member can earn overrides without own assets.
 
-In ordinary active operation the allocator supplies $\sum_\ell e_\ell(t)=E(t)$.
-The interval budget is $\int E(t)\,dt$. Unavailable routing, empty-lane
-allocation, and numerical residuals must be recorded as unallocated, unissued
-budget. An empty lane has no earned allocation, and later deposits receive no
-backpay. Asset values are compared within lanes; the external allocator
-determines their relative credit budgets.
+In ordinary active operation the allocator supplies
+$`\sum_\ell e_\ell(t)=E(t)`$. The interval budget is $`\int E(t)\,dt`$.
+Unavailable routing, empty-lane allocation, and numerical residuals must be
+recorded as unallocated, unissued budget. An empty lane has no earned
+allocation, and later deposits receive no backpay. Asset values are compared
+within lanes; the external allocator determines their relative credit budgets.
 
 ## Discretionary mutualization
 
 The parent's outgoing marketing rate is
 
-$$
+```math
 M_i=\begin{cases}
-\mu_i O_i,&S_i>0,\\
+\mu_i O_i,&S_i\gt 0,\\
 0,&S_i=0.
 \end{cases}
-$$
+```
 
-For an immediate child $c$, when $S_i>0$:
+For an immediate child $`c`$, when $`S_i\gt 0`$:
 
-$$G_{i\to c}=M_i\frac{s_c}{S_i}.$$
+```math
+G_{i\to c}=M_i\frac{s_c}{S_i}.
+```
 
 The member's final income rate is
 
-$$R_i=C_i-M_i+G_{parent(i)\to i},$$
+```math
+R_i=C_i-M_i+G_{parent(i)\to i},
+```
 
 with incoming family allocation zero for an auctioned seat. Every family
 allocation is a deduction from one member and an addition to another, so
-$\sum_iR_i=\sum_iC_i$.
+$`\sum_iR_i=\sum_iC_i`$.
 
-Only gross overrides fund $M_i$. Own-asset earnings, admission fees, escrow
+Only gross overrides fund $`M_i`$. Own-asset earnings, admission fees, escrow
 principal, auction payments, and incoming family allocations are excluded.
 Incoming family allocations are kept in full and never shared again. A
-zero-escrow child receives no family family allocation; if $S_i=0$, the parent
+zero-escrow child receives no family family allocation; if $`S_i=0`$, the parent
 keeps the override income.
 
-A parent can change $\mu_i$ prospectively at any time. The previous terms must
+A parent can change $`\mu_i`$ prospectively at any time. The previous terms must
 be settled across all contributing lanes before the change. Credit escrow is
 withdrawable after settling earlier entitlement; no permanent income ownership
 or mandatory lock is created.
@@ -138,13 +149,13 @@ operation performs those steps in that order.
 
 The authoritative aggregates are
 
-$$
+```math
 P_l=\sum_i p_{i,l},\qquad
 D_{i,l}=\sum_{c\text{ child of }i}(p_{c,l}+D_{c,l}),\qquad
 S_i=\sum_{c\text{ child of }i}s_c.
-$$
+```
 
-Each asset position enters $P_l$ once. Descendant caches do not create
+Each asset position enters $`P_l`$ once. Descendant caches do not create
 additional eligible assets. Custody must prevent two records from claiming the
 same underlying position. A member's historical set of lane records remains
 complete even when a balance becomes zero.
@@ -156,13 +167,13 @@ escrow still requires full settlement under the old family terms. Missing lane
 positions begin at the lane's current index, with no claim on earlier emission.
 
 An admission offer contains two unsigned whole credit-base-unit amounts,
-`current_fee` and `increment`, each at most $2^{64}-1$. The price after a
+`current_fee` and `increment`, each at most $`2^{64}-1`$. The price after a
 successful join is
 
-$$
-\operatorname{next\_fee}=\min(\operatorname{current\_fee}
-+\operatorname{increment},\;2^{64}-1).
-$$
+```math
+\mathrm{next\_fee}=\min(\mathrm{current\_fee}
++\mathrm{increment},\;2^{64}-1).
+```
 
 This saturation is a quote rule. Other balances, totals, and accrued claims use
 checked arithmetic; they must not silently saturate.

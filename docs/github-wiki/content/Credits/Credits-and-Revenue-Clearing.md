@@ -51,7 +51,7 @@ are described in [Time Weight](Revenue-Clearing-Time-Weight).
 ## How clearing relates to emission
 
 Clearing consumes already-issued credits. It does not set the emitter's planned
-continuously decreasing rate $E(t)$. The
+continuously decreasing rate $`E(t)`$. The
 [referral allocation model](Credit-Emissions) divides the scheduled budget, and
 newly accrued emission does not itself fund a clearing pot. Uncollected referral
 rewards must first be collected into issued credits before those credits can be

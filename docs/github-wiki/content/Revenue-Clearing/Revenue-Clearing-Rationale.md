@@ -108,21 +108,24 @@ lot-ordering and rounding details.
 
 ## Why reward earlier entry?
 
-For elapsed time $t$ in an epoch of duration $T$, the ideal entry weight is
+For elapsed time $`t`$ in an epoch of duration $`T`$, the ideal entry weight is
 
-$$w(t)=1+b\left(1-\frac{t}{T}\right),\qquad 0\le b\le2.$$
+```math
+w(t)=1+b\left(1-\frac{t}{T}\right),\qquad 0\le b\le2.
+```
 
-A deposit earns its principal multiplied by this weight in shares. At $b=1$, the
-weight starts at 2 and approaches 1 at the deadline. At $b=0$, every deposit has
-the same weight. The highest permitted bonus gives a starting weight of 3.
+A deposit earns its principal multiplied by this weight in shares. At $`b=1`$,
+the weight starts at 2 and approaches 1 at the deadline. At $`b=0`$, every
+deposit has the same weight. The highest permitted bonus gives a starting weight
+of 3.
 
 The early bonus offers more shares while the eventual pot and other commitments
 are less certain. Whether that makes entry worthwhile depends on the
 participant's expectations. Waiting can reveal more information, but each token
 earns less weight as time passes. A linear curve spreads this tradeoff evenly
-through the epoch: for a fixed $b$, ideal weight decreases at a constant rate. A
-larger $b$ places more emphasis on early commitment; a smaller $b$ gives more
-equal treatment across entry times.
+through the epoch: for a fixed $`b`$, ideal weight decreases at a constant rate.
+A larger $`b`$ places more emphasis on early commitment; a smaller $`b`$ gives
+more equal treatment across entry times.
 
 New deposits increase total shares and dilute existing shares of a fixed pot.
 Earlier weight favors early entrants who commit before those later actions are
@@ -136,15 +139,17 @@ share look small. If that commitment could be removed freely near the deadline,
 the participant could later recover the tokens after discouraging competition.
 The exit penalty makes such a late reversal costly.
 
-For a withdrawal at elapsed time $t$, the ideal penalty fraction is
+For a withdrawal at elapsed time $`t`$, the ideal penalty fraction is
 
-$$p(t)=\left(\frac{t}{T}\right)^k,\qquad k\in\{1,2,3,4\}.$$
+```math
+p(t)=\left(\frac{t}{T}\right)^k,\qquad k\in\{1,2,3,4\}.
+```
 
-The reference $k=2$ gives a 25% penalty halfway through and 81% at 90% elapsed.
-Larger exponents make early and middle withdrawals cheaper and concentrate the
-penalty closer to the deadline; $k=1$ makes the ideal penalty linear. The clock
-starts with the epoch, so a fresh lot does not create a cheaper exit at the same
-time.
+The reference $`k=2`$ gives a 25% penalty halfway through and 81% at 90%
+elapsed. Larger exponents make early and middle withdrawals cheaper and
+concentrate the penalty closer to the deadline; $`k=1`$ makes the ideal penalty
+linear. The clock starts with the epoch, so a fresh lot does not create a
+cheaper exit at the same time.
 
 The entry and exit rules address different decisions: entry weight rewards
 earlier commitment, while the exit curve prices a later decision to reverse it.

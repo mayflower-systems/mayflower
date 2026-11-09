@@ -23,12 +23,12 @@ inputs and apply their resulting transfers atomically.
 
 ## One budget, separate decisions
 
-1. **Global emission:** the continuously declining rate $E(t)$ establishes the
+1. **Global emission:** the continuously declining rate $`E(t)`$ establishes the
    credit budget by integration over time. The exact curve and its parameters
    belong to the emitter design.
 2. **Lane allocation:** an external allocator, such as gauge voting, assigns
    that budget to asset lanes. In ordinary active operation, lane rates sum to
-   $E(t)$. One active lane with no gauge competition receives the whole rate.
+   $`E(t)`$. One active lane with no gauge competition receives the whole rate.
 3. **Core referral allocation:** each lane divides its allocation using its own
    eligible asset balances. Every source funds its own retained share and a
    fixed commission for each earning ancestor.
@@ -53,11 +53,11 @@ it.
 
 Auctioned top-level seats have earning depth zero. The logical protocol root
 earns nothing. Ordinary members choose a permanent parent, and the maximum
-earning depth is $H$. A node at that limit can earn rewards but cannot recruit
+earning depth is $`H`$. A node at that limit can earn rewards but cannot recruit
 children. In the intended referral configuration, the fixed commission rate
-$q>0$ satisfies $Hq<1$, leaving a positive own-asset fraction at every permitted
-depth. The general rule also permits the zero configurations described in
-[Parameters](Referral-Network-Parameters).
+$`q\gt 0`$ satisfies $`Hq\lt 1`$, leaving a positive own-asset fraction at every
+permitted depth. The general rule also permits the zero configurations described
+in [Parameters](Referral-Network-Parameters).
 
 A member can earn commissions from actual descendant assets without holding
 assets itself. It can also receive family allocations without holding assets,

@@ -19,13 +19,15 @@ custody remain distinct from the core referral calculation.
 
 ## The allocator's contract
 
-Let $E(t)$ be the continuously declining global emission rate and $e_l(t)$ the
-rate assigned to lane $l$. In ordinary active operation the allocator routes the
-full budget:
+Let $`E(t)`$ be the continuously declining global emission rate and $`e_l(t)`$
+the rate assigned to lane $`l`$. In ordinary active operation the allocator
+routes the full budget:
 
-$$\sum_l e_l(t)=E(t).$$
+```math
+\sum_l e_l(t)=E(t).
+```
 
-One active lane with no gauge competition receives $E(t)$. Adding a lane does
+One active lane with no gauge competition receives $`E(t)`$. Adding a lane does
 not create another emission stream. The allocator must supply authenticated,
 chronological allocations; a new weight affects future accrual after the
 previous interval has been settled.
@@ -42,10 +44,12 @@ empty lanes, provided that policy is explicit and preserves the global budget.
 
 ## A proportional gauge adapter
 
-For an adapter using nonnegative lane weights $v_l$ with total $V=\sum_l v_l>0$,
-a conventional proportional rule is
+For an adapter using nonnegative lane weights $`v_l`$ with total
+$`V=\sum_l v_l\gt 0`$, a conventional proportional rule is
 
-$$e_l(t)=E(t)\frac{v_l}{V}.$$
+```math
+e_l(t)=E(t)\frac{v_l}{V}.
+```
 
 For example, unchanged weights 2 and 1 divide an interval's integrated
 300-credit budget into 200 and 100, even while its emission rate declines. Equal
@@ -56,17 +60,19 @@ allocation.
 The formula alone does not settle how voting power is acquired or held.
 [Credit Channel Weighting](Credit-Channel-Weighting) specifies the credit-pledge
 policy and exclusive custody. If such an adapter has no valid allocation because
-$V=0$, it must report the unavailable routing budget rather than quietly change
-the global emission schedule or give a later voter the backlog.
+$`V=0`$, it must report the unavailable routing budget rather than quietly
+change the global emission schedule or give a later voter the backlog.
 
 An adapter may preserve changing weights through a cumulative index such as
 
-$$K(t)=\int_{t_0}^{t}\mathbf{1}_{V(u)>0}\frac{E(u)}{V(u)}\,du,$$
+```math
+K(t)=\int_{t_0}^{t}\mathbf{1}_{V(u)\gt 0}\frac{E(u)}{V(u)}\,du,
+```
 
-where the integrand is defined as zero when $V(u)=0$; that interval's scheduled
-budget is recorded separately as unallocated.
+where the integrand is defined as zero when $`V(u)=0`$; that interval's
+scheduled budget is recorded separately as unallocated.
 
-A lane whose weight stays constant during an interval receives $v_l\Delta K$.
+A lane whose weight stays constant during an interval receives $`v_l\Delta K`$.
 The changing emission rate is integrated over time; it does not require a new
 transaction at every instant. Weight changes must checkpoint the old interval
 before taking effect. An implementation cannot multiply today's weight by an
@@ -74,8 +80,8 @@ entire unprocessed past interval and call that historical allocation.
 
 ## Asset units stay inside their lanes
 
-For lane $l$, the core referral denominator is $P_l=\sum_i p_{i,l}$, the sum of
-members' own eligible balances in that asset. The system never adds raw BTC,
+For lane $`l`$, the core referral denominator is $`P_l=\sum_i p_{i,l}`$, the sum
+of members' own eligible balances in that asset. The system never adds raw BTC,
 ETH, or other asset quantities into one balance denominator. Gauge allocation
 expresses the chosen relative earning power by routing credit budgets; it does
 not make unlike asset units interchangeable.

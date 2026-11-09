@@ -17,19 +17,23 @@ collectible entitlement.
 
 ## Rate and cumulative budget
 
-Let $E(t)\ge0$ be the continuously declining emission rate in credit base units
-per unit of time, and let $t_0$ be the schedule's start. The ideal cumulative
-scheduled budget is
+Let $`E(t)\ge0`$ be the continuously declining emission rate in credit base
+units per unit of time, and let $`t_0`$ be the schedule's start. The ideal
+cumulative scheduled budget is
 
-$$B(t)=\int_{t_0}^{t}E(u)\,du,\qquad t\ge t_0.$$
+```math
+B(t)=\int_{t_0}^{t}E(u)\,du,\qquad t\ge t_0.
+```
 
-For any $t_b\ge t_a\ge t_0$, the interval budget is
+For any $`t_b\ge t_a\ge t_0`$, the interval budget is
 
-$$\Delta B=B(t_b)-B(t_a)=\int_{t_a}^{t_b}E(u)\,du.$$
+```math
+\Delta B=B(t_b)-B(t_a)=\int_{t_a}^{t_b}E(u)\,du.
+```
 
 The rate decreases while the cumulative budget continues to increase wherever
-$E(t)>0$. A smaller flow still adds to the cumulative scheduled budget; it does
-not subtract from credits scheduled earlier.
+$`E(t)\gt 0`$. A smaller flow still adds to the cumulative scheduled budget; it
+does not subtract from credits scheduled earlier.
 
 For example, if two successive intervals have integrated budgets of 300 and 250
 credits, their combined budget is 550. Splitting them into more settlement calls
@@ -50,12 +54,14 @@ marketing.
 
 ## Lane allocation follows the scheduled stream
 
-An external allocator supplies each lane's rate $e_l(t)$. In ordinary active
+An external allocator supplies each lane's rate $`e_l(t)`$. In ordinary active
 operation:
 
-$$\sum_l e_l(t)=E(t).$$
+```math
+\sum_l e_l(t)=E(t).
+```
 
-With one active lane and no gauge competition, that lane receives $E(t)$.
+With one active lane and no gauge competition, that lane receives $`E(t)`$.
 Changing gauge weights can move the scheduled stream between lanes, but cannot
 silently reduce the global budget or replace the schedule with another rate
 policy.
