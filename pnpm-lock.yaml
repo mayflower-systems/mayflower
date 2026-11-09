@@ -283,6 +283,19 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  avm/sol-programs/linear-engine/ts:
+    dependencies:
+      borsh:
+        specifier: 'catalog:'
+        version: 2.0.0
+      bs58:
+        specifier: 'catalog:'
+        version: 6.0.0
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   reward-clearing/sol-programs/reward-clearing/ts:
     dependencies:
       borsh:

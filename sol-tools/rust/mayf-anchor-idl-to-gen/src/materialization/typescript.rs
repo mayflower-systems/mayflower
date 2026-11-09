@@ -307,10 +307,10 @@ fn models(
 ) -> Result<String> {
     let mut out = String::new();
     header(&mut out);
-    out.push_str(
-        "\nimport type { Schema } from \"borsh\";\n\
-         import type { PublicKeyBytes } from \"./codecs.js\";\n",
-    );
+    out.push_str("\nimport type { Schema } from \"borsh\";\n");
+    if program.types.iter().any(definition_uses_public_key) {
+        out.push_str("import type { PublicKeyBytes } from \"./codecs.js\";\n");
+    }
 
     if !program.constants.is_empty() {
         section(&mut out, "constants");
@@ -577,6 +577,25 @@ fn definition_dependencies<'a>(definition: &'a TypeDefinition, out: &mut BTreeSe
             }
         }
         TypeDefinitionKind::Alias(alias) => type_dependencies(alias, out),
+    }
+}
+
+/// Whether a model's own fields hold a public key, so that `models.ts` needs
+/// the `PublicKeyBytes` type.
+fn definition_uses_public_key(definition: &TypeDefinition) -> bool {
+    let fields_use_public_key = |fields: Option<&DefinedFields>| match fields {
+        None => false,
+        Some(DefinedFields::Named(fields)) => fields
+            .iter()
+            .any(|field| type_uses_direct_public_key(&field.ty)),
+        Some(DefinedFields::Tuple(types)) => types.iter().any(type_uses_direct_public_key),
+    };
+    match &definition.kind {
+        TypeDefinitionKind::Struct { fields } => fields_use_public_key(fields.as_ref()),
+        TypeDefinitionKind::Enum { variants } => variants
+            .iter()
+            .any(|variant| fields_use_public_key(variant.fields.as_ref())),
+        TypeDefinitionKind::Alias(alias) => type_uses_direct_public_key(alias),
     }
 }
 
@@ -1483,18 +1502,25 @@ mod tests {
     }
 
     #[test]
-    fn programs_without_events_or_fixed_addresses_omit_unused_imports() {
+    fn generated_modules_import_only_what_they_use() {
+        // No events, fixed addresses, or public-key fields.
         let generated = materialize(&nested_byte_array_seed_program())
             .expect("program without events should materialize");
         let events = String::from_utf8(generated.events_ts).expect("events should be UTF-8");
         let instructions =
             String::from_utf8(generated.instructions_ts).expect("instructions should be UTF-8");
+        let models = String::from_utf8(generated.models_ts).expect("models should be UTF-8");
 
         assert!(!events.contains("import "));
         // Without fixed addresses, the builders use no value from solana.ts.
         assert!(instructions.contains(
             "import type { AccountMeta, PublicKey, TransactionInstruction } from \"./solana.js\";"
         ));
+        assert!(!models.contains("PublicKeyBytes"));
+
+        let sample = materialize(&sample_program()).expect("program data should materialize");
+        let models = String::from_utf8(sample.models_ts).expect("models should be UTF-8");
+        assert!(models.contains("import type { PublicKeyBytes } from \"./codecs.js\";"));
     }
 
     #[test]
