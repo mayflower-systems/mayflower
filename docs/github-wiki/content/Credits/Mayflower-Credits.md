@@ -78,11 +78,12 @@ pledges, bids, or escrow. Collection debits the entitlement and issues the
 corresponding credits. Transfers and escrow movements leave supply unchanged;
 burns reduce supply. Burning credits does not authorize replacement emission.
 
-The global emission rate $E(t)$ is planned to decrease continuously. The emitter
-determines that rate; channel weights and family marketing divide the scheduled
-budget for each interval without increasing it. A declining rate still adds to
-cumulative scheduled emission while it remains positive. Net issued supply also
-depends on collection and burns, so it need not move in the same direction.
+The global emission rate $`E(t)`$ is planned to decrease continuously. The
+emitter determines that rate; channel weights and family marketing divide the
+scheduled budget for each interval without increasing it. A declining rate still
+adds to cumulative scheduled emission while it remains positive. Net issued
+supply also depends on collection and burns, so it need not move in the same
+direction.
 
 The first credit-paid seat auction requires documented, pre-existing bootstrap
 credits. The referral system does not mint credits to pay its own auction. Once

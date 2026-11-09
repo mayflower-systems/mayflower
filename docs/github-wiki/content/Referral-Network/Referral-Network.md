@@ -47,27 +47,29 @@ voting, divides the global credit budget among lanes. Each lane compares
 eligible asset balances within that lane; it does not add raw BTC, ETH, and SOL
 quantities.
 
-At depth $d$, a member retains $1-dq$ of the gross attribution from its own
-eligible assets. Each of its $d$ earning ancestors receives a fixed fraction
-$q$. The intended referral configuration fixes maximum depth $H>0$ and override
-rate $q$, with
+At depth $`d`$, a member retains $`1-dq`$ of the gross attribution from its own
+eligible assets. Each of its $`d`$ earning ancestors receives a fixed fraction
+$`q`$. The intended referral configuration fixes maximum depth $`H\gt 0`$ and
+override rate $`q`$, with
 
-$$q>0,\qquad Hq<1.$$
+```math
+q\gt 0,\qquad Hq\lt 1.
+```
 
-For example, at depth 2 with $q=10\%$, a source's gross attribution is divided
+For example, at depth 2 with $`q=10\%`$, a source's gross attribution is divided
 80% to its holder, 10% to its parent, and 10% to its grandparent. The deposited
 principal is not divided. A grandparent benefits from descendant assets even if
 the intervening parent has no assets of its own.
 
-A node at depth $H$ cannot recruit children, but retains a positive own-asset
+A node at depth $`H`$ cannot recruit children, but retains a positive own-asset
 share and can participate in its parent's family marketing pool.
 
 ## Credits divide the optional family budget
 
-A parent chooses a marketing fraction $\mu$ between 0% and 100%. It shares that
-fraction of its **gross downline override income**, aggregated in credits across
-all asset lanes. Its own-asset earnings and incoming family allocations are
-outside this budget.
+A parent chooses a marketing fraction $`\mu`$ between 0% and 100%. It shares
+that fraction of its **gross downline override income**, aggregated in credits
+across all asset lanes. Its own-asset earnings and incoming family allocations
+are outside this budget.
 
 Immediate children divide the budget in proportion to their escrowed credits.
 Their assets, number of accounts, and descendants' escrow are not the weights. A
@@ -77,9 +79,9 @@ keeps the otherwise undistributed budget.
 
 This gives families distinct offers. A productive downline can fund a larger
 pool, while more competing child escrow reduces each staker's fraction. A parent
-can change $\mu$ at any time for future accrual. It is a discretionary marketing
-budget, not a permanent yield commitment. [Mutualization](Mutualization)
-explains the mechanism.
+can change $`\mu`$ at any time for future accrual. It is a discretionary
+marketing budget, not a permanent yield commitment.
+[Mutualization](Mutualization) explains the mechanism.
 
 ## Balances change; history does not
 

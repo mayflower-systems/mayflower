@@ -40,7 +40,7 @@ unallocated budget rather than passing it to the other channels. When no channel
 has weight, the unavailable allocation is unallocated and unissued. Neither case
 creates backpay for the first later participant or pledger.
 
-Weights divide the emitter's global rate $E(t)$, which is planned to decrease
+Weights divide the emitter's global rate $`E(t)`$, which is planned to decrease
 continuously. They do not choose its decay curve, create additional emission, or
 compare raw quantities of different assets. Over each interval the lanes share
 the budget accumulated from that time-varying rate.

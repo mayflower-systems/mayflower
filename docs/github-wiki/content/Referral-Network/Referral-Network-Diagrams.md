@@ -8,7 +8,7 @@ tags:
 -->
 
 These diagrams illustrate the [Referral Network](Referral-Network). Examples use
-$H=2$ and $q=10\%$ for clarity; they are not deployment defaults. Reward
+$`H=2`$ and $`q=10\%`$ for clarity; they are not deployment defaults. Reward
 attribution changes who earns credits, not ownership of deposited assets.
 
 ## The root does not earn
@@ -23,7 +23,7 @@ Protocol root: no assets, commission, or family pool
 ```
 
 Winning seat payments in credits are burned. Bob's join fee instead goes to
-Alice, and Carol's goes to Bob. Carol is at depth $H$ and cannot accept
+Alice, and Carol's goes to Bob. Carol is at depth $`H`$ and cannot accept
 children, but can earn from her own assets and escrow credits with Bob.
 
 Every accepted parent edge is permanent. Changes to asset balances or credit

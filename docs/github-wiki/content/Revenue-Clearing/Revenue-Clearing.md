@@ -39,7 +39,7 @@ do and do not establish.
 - **Reward asset and pot:** the asset supplied for distribution. It can be
   different from the clearing token. Recognized funding adds to the pot during
   the epoch. Clearing itself charges no funding fee.
-- **Epoch:** a window of duration $T$. Deposits, withdrawals, and funding are
+- **Epoch:** a window of duration $`T`$. Deposits, withdrawals, and funding are
   accepted before its deadline; settlement follows the deadline.
 - **Share:** a unit of entitlement to the pot. A deposit earns shares according
   to its entry time. Shares are accounting units: their value depends on the
@@ -55,11 +55,11 @@ do and do not establish.
 
 1. Funders add rewards to the epoch pot. The accepted amount is transferred to
    its escrow and recorded for distribution.
-2. Participants deposit clearing tokens. A deposit at elapsed time $t$ earns
-   shares using the epoch's entry weight $w(t)$.
+2. Participants deposit clearing tokens. A deposit at elapsed time $`t`$ earns
+   shares using the epoch's entry weight $`w(t)`$.
 3. Before the deadline, participants can withdraw from their newest surviving
    lots. One request can span several lots. It removes shares, returns principal
-   after the penalty $p(t)$, and burns that penalty.
+   after the penalty $`p(t)`$, and burns that penalty.
 4. At the deadline, deposits, withdrawals, and funding stop. Finalization burns
    remaining principal and fixes the reward pot and surviving shares.
 5. Each position claims its proportion of the fixed pot. Payouts round down to
@@ -73,30 +73,32 @@ reward pot.
 
 ## The basic equations
 
-Let $t$ be elapsed time in an epoch of duration $T$. The epoch fixes an **entry
-bonus slope** $b$ and an **exit penalty exponent** $k$:
+Let $`t`$ be elapsed time in an epoch of duration $`T`$. The epoch fixes an
+**entry bonus slope** $`b`$ and an **exit penalty exponent** $`k`$:
 
-$$
+```math
 w(t)=1+b\left(1-\frac{t}{T}\right),\qquad 0\le b\le2,
-$$
+```
 
-$$
+```math
 p(t)=\left(\frac{t}{T}\right)^k,\qquad k\in\{1,2,3,4\}.
-$$
+```
 
-In ideal arithmetic, a deposit of $a$ clearing tokens earns $a\,w(t)$ shares. A
-withdrawal of $x$ tokens returns $x(1-p(t))$ and forfeits $xp(t)$, while
-removing the corresponding shares from the consumed lots. The entry weight is
-fixed at deposit; the exit penalty is calculated from time since the epoch
-began. Actual accounting uses directed rounding described in the
+In ideal arithmetic, a deposit of $`a`$ clearing tokens earns $`a\,w(t)`$
+shares. A withdrawal of $`x`$ tokens returns $`x(1-p(t))`$ and forfeits
+$`xp(t)`$, while removing the corresponding shares from the consumed lots. The
+entry weight is fixed at deposit; the exit penalty is calculated from time since
+the epoch began. Actual accounting uses directed rounding described in the
 [formal specification](Revenue-Clearing-Formal-Specification).
 
-If the finalized pot is $R$, the surviving total is $S>0$, and a position has
-$S_i$ shares, its payout is
+If the finalized pot is $`R`$, the surviving total is $`S\gt 0`$, and a position
+has $`S_i`$ shares, its payout is
 
-$$P_i=\left\lfloor\frac{R S_i}{S}\right\rfloor_{\text{reward unit}}.$$
+```math
+P_i=\left\lfloor\frac{R S_i}{S}\right\rfloor_{\text{reward unit}}.
+```
 
-$R/S$ is reward per weighted share. A participant's reward per clearing token
+$`R/S`$ is reward per weighted share. A participant's reward per clearing token
 also depends on entry weight, withdrawals, and rounding. The pot and surviving
 shares arise from the actions taken during the epoch; there is no preset
 clearing-token price.

@@ -18,29 +18,31 @@ balance change to rewrite an earlier entitlement.
 
 ## Lane history and core accrual
 
-Let $E(t)$ be the continuously declining global rate and $e_l(t)$ the
-authenticated rate assigned to lane $l$. Let $P_l(t)$ be that lane's total own
-eligible asset balance. Its ideal cumulative reward per asset unit is
+Let $`E(t)`$ be the continuously declining global rate and $`e_l(t)`$ the
+authenticated rate assigned to lane $`l`$. Let $`P_l(t)`$ be that lane's total
+own eligible asset balance. Its ideal cumulative reward per asset unit is
 
-$$I_l(t)=\int_{t_0}^{t}\mathbf{1}_{P_l(u)>0}\frac{e_l(u)}{P_l(u)}\,du,$$
+```math
+I_l(t)=\int_{t_0}^{t}\mathbf{1}_{P_l(u)\gt 0}\frac{e_l(u)}{P_l(u)}\,du,
+```
 
-where the integrand is defined as zero when $P_l(u)=0$.
+where the integrand is defined as zero when $`P_l(u)=0`$.
 
 Allocation to an empty lane is unallocated and unissued, not a backlog for its
 next depositor. The external allocator must preserve previous weight intervals;
 using today's weight for an entire unprocessed past interval is incorrect.
 
-The tree fixes maximum earning depth $H$ and ancestor commission $q$, with
-$Hq<1$. The intended referral configuration uses $H>0$ and $q>0$; the zero
+The tree fixes maximum earning depth $`H`$ and ancestor commission $`q`$, with
+$`Hq\lt 1`$. The intended referral configuration uses $`H\gt 0`$ and $`q\gt 0`$; the zero
 configurations are defined in [Parameters](Referral-Network-Parameters).
-Auctioned seats have depth zero. For a member whose own balance $p_{i,l}$ and
-strict descendant balance $D_{i,l}$ remain constant between lane checkpoints, an
-index increment $\Delta I_l$ produces
+Auctioned seats have depth zero. For a member whose own balance $`p_{i,l}`$ and
+strict descendant balance $`D_{i,l}`$ remain constant between lane checkpoints,
+an index increment $`\Delta I_l`$ produces
 
-$$
+```math
 \Delta A_{i,l}=(1-d_iq)p_{i,l}\Delta I_l,\qquad
 \Delta O_{i,l}=qD_{i,l}\Delta I_l.
-$$
+```
 
 The first term is own-asset income; the second is gross referral commission.
 Together they are the member's core earnings from that interval. Raw asset units
@@ -60,10 +62,10 @@ escrow, or policy changes preserve the relevant intervals.
 
 ## One family index across lanes
 
-For parent $i$, let $s_c$ be each immediate child's issued-credit escrow and
-$S_i=\sum_c s_c$. The parent's discretionary marketing fraction is $\mu_i$. Its
-cumulative family index $F_i$ measures marketing credits allocated per escrowed
-credit, not per BTC or ETH unit.
+For parent $`i`$, let $`s_c`$ be each immediate child's issued-credit escrow and
+$`S_i=\sum_c s_c`$. The parent's discretionary marketing fraction is $`\mu_i`$.
+Its cumulative family index $`F_i`$ measures marketing credits allocated per
+escrowed credit, not per BTC or ETH unit.
 
 For a valid member/lane settlement under unchanged family state:
 
@@ -92,11 +94,11 @@ kept_c += s_c * (F_parent - f_c_seen)
 f_c_seen = F_parent
 ```
 
-This family allocation does not update the child's own $F_c$. Family allocations
-are terminal, and parents cannot also collect the gross commissions already
-assigned to their children. An unchanged child balance can remain lazy while the
-parent's index advances; siblings do not all need to be loaded for each
-settlement.
+This family allocation does not update the child's own $`F_c`$. Family
+allocations are terminal, and parents cannot also collect the gross commissions
+already assigned to their children. An unchanged child balance can remain lazy
+while the parent's index advances; siblings do not all need to be loaded for
+each settlement.
 
 ## Frequent asset changes
 
@@ -104,7 +106,7 @@ A buy, sale, deposit, withdrawal, or other authenticated eligible-position
 change first advances the affected lane to the event time under its old total.
 It then settles the affected path from the earning seat toward the member under
 the old balances, before updating the member's own balance, every ancestor's
-descendant total, and $P_l$.
+descendant total, and $`P_l`$.
 
 This preserves earnings before the trade and applies new balances only to future
 accrual. Credit escrow does not change automatically with an asset trade, and
@@ -143,15 +145,15 @@ captures 50 credits from before its deposit. A single aggregate family index
 does not prevent this error without the complete barrier.
 
 Withdrawals and marketing-rate changes require the same protection. The first
-staker receives no backpay from intervals with $S_i=0$; the last unstaker keeps
-its earned claim. A stake-and-unstake cycle at one timestamp earns no
+staker receives no backpay from intervals with $`S_i=0`$; the last unstaker
+keeps its earned claim. A stake-and-unstake cycle at one timestamp earns no
 intervening reward.
 
 ## Initial state and complete collection
 
 A new member starts with zero own balances, descendant balances, credit escrow,
 child escrow total, family index, marketing fraction, and accrued entitlement.
-An ordinary child's incoming checkpoint starts at its parent's stored $F$; a
+An ordinary child's incoming checkpoint starts at its parent's stored $`F`$; a
 top-level seat has no incoming family claim. The first positive credit stake
 still performs the all-source barrier before it becomes active.
 
@@ -161,8 +163,8 @@ descendant balance, including an ancestor's first activation. A zero-escrow
 member still advances its incoming checkpoint when settled.
 
 Collection can mint already-accrued net entitlement without eagerly processing
-every source. An operation advertised as collecting everything through time $t$
-must first settle the member's own core sources and its immediate parent's
+every source. An operation advertised as collecting everything through time
+$`t`$ must first settle the member's own core sources and its immediate parent's
 gross-override sources, then advance the incoming family checkpoint. Iterating
 only the claimant's own asset lanes is insufficient: a member with no asset
 records can still earn family allocations funded by every lane of its parent.
@@ -193,8 +195,8 @@ against old income. A simple index does not by itself establish that property.
 ## Finite precision and residual ownership
 
 The following policy makes the ideal equations executable on a finite grid. Let
-$Q>0$ be the accounting quantum and define
-$\lfloor x\rfloor_Q=Q\lfloor x/Q\rfloor$. Asset balances, credit escrow, gauge
+$`Q\gt 0`$ be the accounting quantum and define
+$`\lfloor x\rfloor_Q=Q\lfloor x/Q\rfloor`$. Asset balances, credit escrow, gauge
 votes, and fees are whole base units. Indices and accrued credits retain
 fractional base units on the selected grid. The accounting representation must
 hold every intermediate and lifetime total; overflow or an invalid decrease in
@@ -202,39 +204,40 @@ an index rejects the action.
 
 ### Index division
 
-A shared pool with newly available credits $X$, carried residual $r$, and
-integer denominator $n>0$ advances its index by
+A shared pool with newly available credits $`X`$, carried residual $`r`$, and
+integer denominator $`n\gt 0`$ advances its index by
 
-$$
+```math
 \Delta J=\left\lfloor\frac{X+r}{n}\right\rfloor_Q,
 \qquad r'=X+r-n\Delta J.
-$$
+```
 
-Thus $0\le r'<nQ$. This rule applies to the global gauge ($n=V$), a lane
-($n=P_l$), and a family ($n=S_i$). Multiplication by integer balances is exact
-on the accounting grid, subject to range checks. A zero-vote or empty-asset
-interval is recorded as unallocated rather than carried for later arrivals. A
-family with no child escrow retains its overrides instead of funding a pool.
+Thus $`0\le r'\lt nQ`$. This rule applies to the global gauge ($`n=V`$), a lane
+($`n=P_l`$), and a family ($`n=S_i`$). Multiplication by integer balances is
+exact on the accounting grid, subject to range checks. A zero-vote or
+empty-asset interval is recorded as unallocated rather than carried for later
+arrivals. A family with no child escrow retains its overrides instead of funding
+a pool.
 
 ### Exact rates and individual carries
 
 Commission and marketing fractions use exact integer numerators over
-$D=1{,}000{,}000$: $q=a/D$ and $\mu_i=b_i/D$. The depth check is the exact
-integer comparison $Ha<D$. No binary approximation of $q$ is independently used
-for its source deduction and ancestor commission.
+$`D=1{,}000{,}000`$: $`q=a/D`$ and $`\mu_i=b_i/D`$. The depth check is the exact
+integer comparison $`Ha\lt D`$. No binary approximation of $`q`$ is independently
+used for its source deduction and ancestor commission.
 
-For a member/lane increment, let $X=p_{i,l}\Delta I_l$ and
-$Y=D_{i,l}\Delta I_l$. The own-income numerator is $X(D-d_i a)$ with divisor
-$D$. The retained-override numerator is $Ya(D-b_i)$ and the marketed numerator
-is $Ya b_i$, each with divisor $D^2$. Use $b_i=0$ for both override calculations
-when $S_i=0$.
+For a member/lane increment, let $`X=p_{i,l}\Delta I_l`$ and
+$`Y=D_{i,l}\Delta I_l`$. The own-income numerator is $`X(D-d_i a)`$ with divisor
+$`D`$. The retained-override numerator is $`Ya(D-b_i)`$ and the marketed
+numerator is $`Ya b_i`$, each with divisor $`D^2`$. Use $`b_i=0`$ for both
+override calculations when $`S_i=0`$.
 
-For each such numerator $z$, divisor $k$, and previous carry $c$:
+For each such numerator $`z`$, divisor $`k`$, and previous carry $`c`$:
 
-$$
+```math
 x=\left\lfloor\frac{z+c}{k}\right\rfloor_Q,
 \qquad c'=z+c-kx.
-$$
+```
 
 Own-income carries belong to that member's lane position. Retained-override
 carries belong to the parent individually. They survive asset withdrawals and
@@ -255,7 +258,7 @@ residuals:
 
 A closed residual is not awarded to later participants or returned as extra
 parent income. The marketing-rate carry is recorded in its exact numerator
-units; its credit value is that counter divided by $D^2$. A change in
+units; its credit value is that counter divided by $`D^2`$. A change in
 participants matters even if another action later restores the old denominator.
 No-op settlement closes nothing. Already-attributed individual fractions remain
 owned.
@@ -264,14 +267,16 @@ Closing a source lane's shared residual also affects other members of that lane:
 no one had yet received that residual as an individual entitlement. This is an
 explicit precision loss, not confiscation of accrued personal claims.
 
-For one actual asset change the closed amount is at most $Q(V+P_l)$. For one
+For one actual asset change the closed amount is at most $`Q(V+P_l)`$. For one
 family change it is less than
 
-$$Q\left(V+\sum_{l\in\mathcal L_i}P_l+S_i+1\right),$$
+```math
+Q\left(V+\sum_{l\in\mathcal L_i}P_l+S_i+1\right),
+```
 
-where $\mathcal L_i$ is the parent's complete historical source set. A gauge
-change closes at most $QV$. A zero denominator has zero residual; the gauge and
-asset bounds are strict when their denominator sums are positive. These are
+where $`\mathcal L_i`$ is the parent's complete historical source set. A gauge
+change closes at most $`QV`$. A zero denominator has zero residual; the gauge
+and asset bounds are strict when their denominator sums are positive. These are
 per-change bounds, not a lifetime cap; cumulative unallocated amounts remain
 recorded. Precision and supported totals must make them acceptable for the
 deployment. Repeated settlement with unchanged eligibility carries fractions

@@ -18,17 +18,17 @@ admission terms can change.
 
 | Consideration                  | What it changes                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------ |
-| Depth $d$                      | The own-asset retention fraction $1-dq$                                        |
-| Remaining depth $H-d$          | How many generations can grow beneath the new node                             |
+| Depth $`d`$                    | The own-asset retention fraction $`1-dq`$                                      |
+| Remaining depth $`H-d`$        | How many generations can grow beneath the new node                             |
 | Join fee                       | Credits paid to the parent to enter                                            |
 | Fee increment                  | The quoted price after subsequent successful joins                             |
-| Marketing fraction $\mu$       | How much of the parent's gross override income is currently shared             |
+| Marketing fraction $`\mu`$     | How much of the parent's gross override income is currently shared             |
 | Parent's gross override income | The size of the credit-funded opportunity across asset lanes                   |
 | Competing child escrow         | How much of that marketing budget a given credit stake receives                |
 | Expected participant behavior  | Future recruitment, participation, prices, and discretionary marketing changes |
 
 Shallower positions retain more of their own asset attribution and have more
-recruiting room. A node at depth $H$ cannot recruit, but can earn from its own
+recruiting room. A node at depth $`H`$ cannot recruit, but can earn from its own
 assets and stake credits in its parent's family pool.
 
 ## Ordinary admission is priced in credits
@@ -62,21 +62,23 @@ responsibilities. A public referral link cannot create another top-level seat.
 
 ## Estimate the current family income
 
-Use the parent's offered budget $B=\mu O$, where $O$ is its current gross
-override income in credits per day. If other children have $S$ credits escrowed,
-adding your $s>0$ credits gives the current rate, assuming the source income is
-otherwise unchanged:
+Use the parent's offered budget $`B=\mu O`$, where $`O`$ is its current gross
+override income in credits per day. If other children have $`S`$ credits
+escrowed, adding your $`s\gt 0`$ credits gives the current rate, assuming the
+source income is otherwise unchanged:
 
-$$\text{your family allocation rate}=B\frac{s}{S+s}.$$
+```math
+\text{your family allocation rate}=B\frac{s}{S+s}.
+```
 
-The denominator must include the new stake. If $S=0$, your stake activates the
+The denominator must include the new stake. If $`S=0`$, your stake activates the
 offered budget for future accrual; it does not claim the parent's earlier
 earnings. For example:
 
 | Family | Offered budget per day | Other child escrow | Your added escrow | Your current family allocation rate (credits/day) |
 | ------ | ---------------------: | -----------------: | ----------------: | ------------------------------------------------: |
 | A      |                     30 |                200 |               100 |                                                10 |
-| B      |                     20 |                 50 |               100 |                                   $13\frac{1}{3}$ |
+| B      |                     20 |                 50 |               100 |                                 $`13\frac{1}{3}`$ |
 
 The smaller pool can offer the better current rate because fewer credits compete
 for it. If joining also changes asset participation, the preview must include
@@ -84,14 +86,14 @@ that change to the parent's income and global allocation.
 
 These are current rates expressed per day, not promises of that amount over the
 next day. Actual receipts integrate the declining emission schedule and changing
-family state. Parents can change $\mu$, other children can stake or withdraw,
+family state. Parents can change $`\mu`$, other children can stake or withdraw,
 assets can move, and lane allocations can change. A popular sibling's future
 recruits may enlarge the pool, but that expectation is not a guaranteed return.
 
 Escrowing credits does not require recruiting or depositing assets. A recipient
 may simply compete for the parent's subsidy. The displayed offer is a current
-quote, not a contract fixing future marketing payments; the parent may set $\mu$
-to zero after admission.
+quote, not a contract fixing future marketing payments; the parent may set
+$`\mu`$ to zero after admission.
 
 ## Permanent edges, flexible balances
 

@@ -16,12 +16,12 @@ by escrowing credits.
 ## What funds the pool
 
 Consider an interval with unchanged marketing fraction and child escrow
-balances. Let $O$ be the parent's **gross referral override income**, in
+balances. Let $`O`$ be the parent's **gross referral override income**, in
 credits, during that interval. It includes commissions from every permitted
 descendant generation and every asset lane. The parent chooses a fraction
-$\mu\in[0,1]$.
+$`\mu\in[0,1]`$.
 
-If any immediate child has credits escrowed, the marketing pool is $\mu O$.
+If any immediate child has credits escrowed, the marketing pool is $`\mu O`$.
 Children do not receive a fraction of the parent's own-asset income, admission
 fees, or incoming family allocations. Those amounts remain outside this pool.
 
@@ -31,10 +31,12 @@ principal.
 
 ## How children divide it
 
-If child $c$ has $s_c$ credits escrowed, and the immediate children together
-have $S=\sum_c s_c$, then for $S>0$:
+If child $`c`$ has $`s_c`$ credits escrowed, and the immediate children together
+have $`S=\sum_c s_c`$, then for $`S\gt 0`$:
 
-$$G_c=\mu O\frac{s_c}{S}.$$
+```math
+G_c=\mu O\frac{s_c}{S}.
+```
 
 The same credit escrow divides the combined override earnings from all lanes. A
 child does not need BTC to receive credits attributed through the BTC lane, or
@@ -42,12 +44,12 @@ ETH to receive credits attributed through the ETH lane. The assets weight
 scheduled credit allocation; their principal does not fund the family pool. Raw
 asset balances and the number of child accounts do not enter this division.
 
-A child with zero credit escrow receives no family allocation. If $S=0$, the
+A child with zero credit escrow receives no family allocation. If $`S=0`$, the
 parent keeps all of its override income for that interval. A child that stakes
 later receives nothing from that earlier interval.
 
-For example, a parent earning 120 override credits chooses $\mu=25\%$, creating
-a 30-credit pool:
+For example, a parent earning 120 override credits chooses $`\mu=25\%`$,
+creating a 30-credit pool:
 
 | Child | Credits escrowed | Fraction of pool | Family allocation |
 | ----- | ---------------: | ---------------: | ----------------: |
@@ -88,7 +90,7 @@ He can collect the credits and explicitly restake them for subsequent income.
 
 ## A changing offer with withdrawable principal
 
-A parent can change $\mu$ at any time for future accrual, including setting it
+A parent can change $`\mu`$ at any time for future accrual, including setting it
 to zero. A current percentage is a participant-controlled allocation rule, not
 ownership of a permanent fraction of future earnings. The parent may participate
 through its own child accounts under the same escrow rules.

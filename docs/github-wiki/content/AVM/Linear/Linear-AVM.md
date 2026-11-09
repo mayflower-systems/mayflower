@@ -6,15 +6,15 @@ tags:
   - linear-avm
 -->
 
-The linear AVM uses the characteristic $g(x)=mx$, with fixed $m>0$, in the
+The linear AVM uses the characteristic $`g(x)=mx`$, with fixed $`m\gt 0`$, in the
 [general AVM](Amplifying-Value-Machine). Its main and ramp are straight lines,
 so prices, trade integrals, and floor-raise candidates can be expressed
 algebraically.
 
-Main has slope $m$. The ramp has slope $a=km$ for fixed $k>1$. Floor price,
-ramp geometry, main placement, pricing progress, and circulating supply make up
-the changing market state. Progress and circulation are distinct, just as in
-the general model.
+Main has slope $`m`$. The ramp has slope $`a=km`$ for fixed $`k\gt 1`$. Floor
+price, ramp geometry, main placement, pricing progress, and circulating supply
+make up the changing market state. Progress and circulation are distinct, just
+as in the general model.
 
 ## Read the linear specification
 

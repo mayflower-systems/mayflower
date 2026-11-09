@@ -14,33 +14,33 @@ are application rules. The pricing operation alone grants no exercise right.
 
 ## Exercise
 
-Use $F$ for floor price, $P$ for pricing progress, $T$ for circulation,
-$J=T-P+A$ for the physical floor tail, $B$ for required backing, and $H$ for
-held reserve, as in the [AVM specification](AVM-Specification).
+Use $`F`$ for floor price, $`P`$ for pricing progress, $`T`$ for circulation,
+$`J=T-P+A`$ for the physical floor tail, $`B`$ for required backing, and $`H`$
+for held reserve, as in the [AVM specification](AVM-Specification).
 
-An authorized exercise for $n>0$ AVA has the exact changes
+An authorized exercise for $`n\gt 0`$ AVA has the exact changes
 
-$$
+```math
 T'=T+n,\qquad J'=J+n,\qquad B'=B+Fn,\qquad H'=H+Fn.
-$$
+```
 
-The holder pays $Fn$ plus the configured exercise fee and receives $n$ AVA.
-Progress $P$, floor $F$, ramp boundaries, and main offset all stay fixed.
-Consequently, the live price $M(P)$ stays fixed.
+The holder pays $`Fn`$ plus the configured exercise fee and receives $`n`$ AVA.
+Progress $`P`$, floor $`F`$, ramp boundaries, and main offset all stay fixed.
+Consequently, the live price $`M(P)`$ stays fixed.
 
 There is no rightward translation of the stored curve. Separating circulation
 from progress accounts for the additional floor-backed supply directly.
 
 ## Backing and settlement
 
-The added backing requirement is exactly $Fn$ in real arithmetic. The payment
+The added backing requirement is exactly $`Fn`$ in real arithmetic. The payment
 covers that requirement; an exercise does not create an unfunded floor claim.
 With bounded arithmetic, the reserve charge is rounded conservatively upward.
 The holder's maximum reserve payment includes the exercise fee.
 
-The application must verify and consume the exercise entitlement, collect reserve,
-issue the correct AVA amount, distribute fees, and commit the next state in one
-atomic settlement.
+The application must verify and consume the exercise entitlement, collect
+reserve, issue the correct AVA amount, distribute fees, and commit the next
+state in one atomic settlement.
 
 ## Economic effect
 

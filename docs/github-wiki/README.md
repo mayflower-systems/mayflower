@@ -83,6 +83,14 @@ If the push is rejected, the wiki has changes that your branch lacks. Run the
   opening metadata comment; use sentence-case section headings and page-name
   links. Lead overview pages with purpose and navigation rather than accounting
   details.
+- **Protect mathematical notation from Markdown.** Use fenced `math` blocks for
+  display equations and dollar-delimited code spans for inline equations (for
+  example, ``$`R^*`$``). Plain dollar delimiters can let Markdown alter escapes,
+  superscripts, and less-than signs before GitHub renders the math. Use `\lt`
+  and `\gt` for comparisons: the math renderer can interpret raw angle brackets
+  as HTML even inside fenced math. Check rendered output as well as source
+  syntax. GitHub also restricts some TeX
+  macros; use `\mathrm{...}` for upright labels instead of `\operatorname{...}`.
 - **Describe an open-source protocol.** Identify participants, state, configured
   roles, and custody rules rather than implying a company or managed service.
   Distinguish permissionless public actions from ownership and configuration

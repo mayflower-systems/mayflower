@@ -20,7 +20,7 @@ conditional comparisons, not additional algorithm rules or return guarantees.
 
 ## Earning and directing credits
 
-The emitter supplies a credit rate $E(t)$ that is planned to decrease
+The emitter supplies a credit rate $`E(t)`$ that is planned to decrease
 continuously. Its integral determines the scheduled budget over an interval.
 Channel pledges direct that budget's relative distribution among asset lanes;
 they do not choose the emitter's decay curve. Within a lane, actual eligible
@@ -112,17 +112,19 @@ For a restricted benchmark, assume one asset lane, unchanged eligible balances
 throughout the earning interval, and no family marketing. All and only the
 credits earned in that interval are collected and committed to one pot at the
 same entry weight, and remain committed through finalization. Ignore rounding
-and old credit inventories. A member with core numerator $K=(1-dq)p+qD$ and
-global eligible balance $P$ then receives $K/P$ of a pot containing $R$
+and old credit inventories. A member with core numerator $`K=(1-dq)p+qD`$ and
+global eligible balance $`P`$ then receives $`K/P`$ of a pot containing $`R`$
 reward-asset units:
 
-$$\text{reward payout}=R\frac{K}{P}.$$
+```math
+\text{reward payout}=R\frac{K}{P}.
+```
 
-If, additionally, genuine funded revenue scales as $R=rP$ for constant $r$,
-recruiting $x$ additional eligible units into that member's downline changes its
-payout from $rK$ to $r(K+qx)$: a gain of $rqx$. Its credit share can still fall
-because the denominator grows. If the reward pot instead stays fixed, that
-revenue-growth benefit does not exist.
+If, additionally, genuine funded revenue scales as $`R=rP`$ for constant $`r`$,
+recruiting $`x`$ additional eligible units into that member's downline changes
+its payout from $`rK`$ to $`r(K+qx)`$: a gain of $`rqx`$. Its credit share can
+still fall because the denominator grows. If the reward pot instead stays fixed,
+that revenue-growth benefit does not exist.
 
 These assumptions are not properties of the auction. Real outcomes also depend
 on credit inventories, other uses of credits, entry times, and bidding choices.
@@ -159,11 +161,11 @@ unchanged. Auction payment burns and clearing burns reduce supply without
 replenishing the emission budget. Locked principal remains part of issued supply
 until an actual burn occurs.
 
-The cumulative scheduled emission continues increasing while $E(t)$ is positive,
-even as its rate declines. This cumulative amount is distinct from issued
-supply: uncollected entitlements and unallocated budget are not issued tokens.
-The intended scarcity effect is a progressively smaller flow of new credits; it
-does not imply a progressively smaller outstanding stock.
+The cumulative scheduled emission continues increasing while $`E(t)`$ is
+positive, even as its rate declines. This cumulative amount is distinct from
+issued supply: uncollected entitlements and unallocated budget are not issued
+tokens. The intended scarcity effect is a progressively smaller flow of new
+credits; it does not imply a progressively smaller outstanding stock.
 
 The issued supply balance is documented bootstrap supply plus collected emission
 claims minus burns. It may rise or fall depending on those flows. Neither the
