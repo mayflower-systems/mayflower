@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // The generated instruction builders use Node's global Buffer.
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

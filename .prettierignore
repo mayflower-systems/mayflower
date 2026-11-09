@@ -1,5 +1,5 @@
 # Prettier formats only the files this list lets through: Markdown anywhere in
-# the repo, and the TypeScript packages under sol-tools/ts/. Everything else is
+# the repo, and the TypeScript packages listed below. Everything else is
 # ignored, so new file types are left alone until a rule below adds them.
 #
 # Prettier also skips everything in .gitignore (node_modules/, dist/, target/,
@@ -15,6 +15,7 @@
 
 # The TypeScript packages.
 !/sol-tools/ts/**
+!/reward-clearing/sol-programs/reward-clearing/ts/**
 
 # Markdown that another source owns. Formatting these files makes them differ
 # from that source.

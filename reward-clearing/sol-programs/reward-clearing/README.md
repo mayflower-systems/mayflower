@@ -3,29 +3,39 @@
 Run `./build.sh` to build all artifacts. The script resolves paths from its own
 location, so it also works when invoked from the repository root or elsewhere.
 It requires `cargo-build-sbf` and uses Solana platform tools `v1.58` plus the
-repository's pinned Rust toolchain and dependencies.
+repository's pinned Rust toolchain and dependencies. The TypeScript steps use
+the pnpm workspace, so run `pnpm install` at the repository root first.
 
-| Directory | Contents |
-| --- | --- |
-| `prog/` | Anchor program source |
-| `bin/` | Built `mayf_reward_clearing_sol.so` |
-| `idl/` | Generated `mayf_reward_clearing_sol.json` |
-| `cpi/` | Generated Rust library `mayf-reward-clearing-sol-cpi` |
+| Directory | Contents                                                                 |
+| --------- | ------------------------------------------------------------------------ |
+| `prog/`   | Anchor program source                                                    |
+| `bin/`    | Built `mayf_reward_clearing_sol.so`                                      |
+| `idl/`    | Generated `mayf_reward_clearing_sol.json`                                |
+| `cpi/`    | Generated Rust library `mayf-reward-clearing-sol-cpi`                    |
+| `ts/`     | Generated TypeScript package `@mayflower-sys/reward-clearing-sol-client` |
 
 The script builds the program with its default features, extracts its IDL,
 generates the CPI bindings using `mayf-anchor-idl-to-gen`, formats them, and
-checks that the crate compiles. Cargo's intermediate files and automatic
-deployment keypair remain in `target/`.
+checks that the crate compiles. It then generates the TypeScript client with the
+same tool, formats it with Prettier, and compiles it with `tsc`. Cargo's
+intermediate files and automatic deployment keypair remain in `target/`.
 
 Keep `cpi/Cargo.toml` as the crate definition. The generated bindings take the
 program address through `MayfRewardClearingApi::new(program_id)` and include
 instruction builders, account layouts, and argument models.
 
+Keep `ts/package.json` and `ts/tsconfig.json` as the package definition. The
+TypeScript config extends the repository's `tsconfig.base.json` and adds Node's
+types, because the generated instruction builders use Node's global `Buffer`.
+The generated `create…Instruction` builders take the program address as their
+first argument.
+
 Channel group and epoch PDA seeds depend on counters stored in accounts.
 Generation uses `--manual-pdas`, so callers supply the PDA addresses explicitly.
-The small `cpi/src/pda.rs` interface is maintained by hand and preserved on
-regeneration; the other files in `cpi/src/` are generated. Creation instructions
-validate derived addresses; subsequent operations use stored relationships.
+The small `cpi/src/pda.rs` and `ts/src/pda.ts` modules are maintained by hand and
+preserved on regeneration; the other files in `cpi/src/` and `ts/src/` are
+generated. Creation instructions validate derived addresses; subsequent
+operations use stored relationships.
 
 ## State-machine integration
 
