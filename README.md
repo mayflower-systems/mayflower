@@ -8,7 +8,7 @@ The [Reward Distributor](./reward-clearing/rust/mayf-reward-clearing/README.md) 
 
 ## Getting acquainted
 
-Explore the [wiki](https://github.com/mayflower-system/mayflower/wiki) for a specification and overview of the modules.
+Explore the [wiki](https://github.com/mayflower-system/mayflower/wiki) for explanation & specification of the modules.
 
 Engage in [discussions](https://github.com/mayflower-system/mayflower/discussions). Announcements will be posted here.
 
