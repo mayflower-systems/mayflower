@@ -1,0 +1,29 @@
+[package]
+name = "mayf-weighted-emitter-sol-litesvm"
+version = "0.1.0"
+description = "Runtime boundary tests for the weighted emitter Solana program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+autotests = false
+
+[[test]]
+name = "runtime"
+path = "tests/runtime.rs"
+
+[dev-dependencies]
+litesvm.workspace = true
+mayf-weighted-emitter-sol-cpi.workspace = true
+mayf-weighted-emitter-test-caller = { path = "test-program", features = ["no-entrypoint"] }
+solana-account.workspace = true
+solana-address = { workspace = true, features = ["curve25519"] }
+solana-clock.workspace = true
+solana-instruction.workspace = true
+solana-instruction-error.workspace = true
+solana-keypair.workspace = true
+solana-program-pack.workspace = true
+solana-signer.workspace = true
+solana-transaction.workspace = true
+solana-transaction-error.workspace = true
+spl-token-interface.workspace = true

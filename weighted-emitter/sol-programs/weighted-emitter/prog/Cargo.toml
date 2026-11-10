@@ -1,0 +1,31 @@
+[package]
+name = "mayf-weighted-emitter-sol"
+version = "0.1.0"
+description = "Mayflower weighted emitter Solana program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mayf_weighted_emitter_sol"
+doctest = false
+
+[features]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+default = ["no-log-ix-name"]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+mayf-weighted-emitter.workspace = true
+mayf-fixed-drivers.workspace = true
+mayf-fixed-number.workspace = true

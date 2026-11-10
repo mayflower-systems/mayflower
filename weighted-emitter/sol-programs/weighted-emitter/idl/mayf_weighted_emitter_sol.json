@@ -1,0 +1,907 @@
+{
+  "address": "6tdyEnBkiNYwbF5FmiF4Dq8piqq16CA642JEkMS88RgL",
+  "metadata": {
+    "name": "mayf_weighted_emitter_sol",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Mayflower weighted emitter Solana program",
+    "repository": "https://github.com/mayflower-systems/mayflower"
+  },
+  "instructions": [
+    {
+      "name": "create_emitter",
+      "discriminator": [
+        119,
+        238,
+        254,
+        153,
+        168,
+        36,
+        22,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "emitter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vote_mint"
+        },
+        {
+          "name": "emission_mint"
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "emitter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateEmitterArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_gauge",
+      "discriminator": [
+        36,
+        92,
+        148,
+        102,
+        185,
+        224,
+        141,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "emitter",
+          "writable": true
+        },
+        {
+          "name": "gauge",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_vote_position",
+      "discriminator": [
+        209,
+        143,
+        132,
+        123,
+        199,
+        109,
+        170,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "emitter",
+          "relations": [
+            "gauge"
+          ]
+        },
+        {
+          "name": "gauge"
+        },
+        {
+          "name": "vote_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gauge"
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_mint",
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "vote_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vote_position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deposit_vote",
+      "discriminator": [
+        242,
+        79,
+        103,
+        5,
+        170,
+        216,
+        43,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "emitter",
+          "writable": true,
+          "relations": [
+            "gauge"
+          ]
+        },
+        {
+          "name": "gauge",
+          "writable": true,
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "vote_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gauge"
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_mint",
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "vote_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vote_position"
+              }
+            ]
+          },
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "vote_source",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_emitter_decay_rate",
+      "discriminator": [
+        55,
+        248,
+        227,
+        148,
+        156,
+        232,
+        95,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "emitter",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "SetEmitterDecayRateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_emission",
+      "discriminator": [
+        206,
+        121,
+        221,
+        190,
+        111,
+        232,
+        51,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "emitter",
+          "writable": true,
+          "relations": [
+            "gauge"
+          ]
+        },
+        {
+          "name": "gauge",
+          "writable": true
+        },
+        {
+          "name": "emission_mint",
+          "writable": true,
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "mint_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "emitter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "emission_destination",
+          "docs": [
+            "The emitter authority chooses the recipient; its token owner is unrestricted."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_vote",
+      "discriminator": [
+        243,
+        255,
+        70,
+        200,
+        3,
+        242,
+        103,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "emitter",
+          "writable": true,
+          "relations": [
+            "gauge"
+          ]
+        },
+        {
+          "name": "gauge",
+          "writable": true,
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "vote_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gauge"
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_mint",
+          "relations": [
+            "emitter"
+          ]
+        },
+        {
+          "name": "vote_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  111,
+                  116,
+                  101,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vote_position"
+              }
+            ]
+          },
+          "relations": [
+            "vote_position"
+          ]
+        },
+        {
+          "name": "vote_destination",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Emitter",
+      "discriminator": [
+        4,
+        60,
+        118,
+        104,
+        34,
+        153,
+        156,
+        218
+      ]
+    },
+    {
+      "name": "Gauge",
+      "discriminator": [
+        9,
+        19,
+        249,
+        189,
+        158,
+        171,
+        226,
+        205
+      ]
+    },
+    {
+      "name": "VotePosition",
+      "discriminator": [
+        121,
+        54,
+        167,
+        23,
+        147,
+        96,
+        61,
+        209
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TimeWentBack",
+      "msg": "The clock moved backwards"
+    },
+    {
+      "code": 6001,
+      "name": "GaugeEmitterMismatch",
+      "msg": "The gauge belongs to a different emitter"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidState",
+      "msg": "The supplied accounting state is inconsistent"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientPrecision",
+      "msg": "The accounting number has insufficient precision"
+    },
+    {
+      "code": 6004,
+      "name": "ArithmeticOverflow",
+      "msg": "An accounting amount overflowed"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidTimestamp",
+      "msg": "The clock timestamp is negative"
+    },
+    {
+      "code": 6006,
+      "name": "NativeEmissionMint",
+      "msg": "The native mint cannot be an emission mint"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidMintAuthority",
+      "msg": "The emission mint authority must be the emitter's mint authority PDA"
+    },
+    {
+      "code": 6008,
+      "name": "ZeroAmount",
+      "msg": "A vote deposit or withdrawal must be positive"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientDeposit",
+      "msg": "The withdrawal exceeds this position's recorded deposit"
+    },
+    {
+      "code": 6010,
+      "name": "EscrowUnderfunded",
+      "msg": "The vote escrow does not back the recorded deposit"
+    },
+    {
+      "code": 6011,
+      "name": "DepositSourceIsEscrow",
+      "msg": "The deposit source cannot be its own vote escrow"
+    },
+    {
+      "code": 6012,
+      "name": "WithdrawalDestinationIsEscrow",
+      "msg": "The withdrawal destination cannot be its own vote escrow"
+    }
+  ],
+  "types": [
+    {
+      "name": "CreateEmitterArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "emission_rate_q64f64",
+            "type": "u128"
+          },
+          {
+            "name": "annual_decay_rate_q64f64",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Emitter",
+      "docs": [
+        "Canonical schedule and aggregate allocation state for one independent emitter."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "emission_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_authority_bump",
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          },
+          {
+            "name": "emission_rate_q64f64",
+            "type": "u128"
+          },
+          {
+            "name": "annual_decay_rate_q64f64",
+            "type": "u128"
+          },
+          {
+            "name": "last_updated_at_unix_seconds",
+            "type": "u64"
+          },
+          {
+            "name": "total_deposited",
+            "docs": [
+              "Recorded deposits across gauges, independent of unsolicited escrow transfers."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_emitted",
+            "docs": [
+              "Whole emission allocated to gauges, including amounts not yet minted."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_minted",
+            "type": "u64"
+          },
+          {
+            "name": "emission_index_q192f64",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Gauge",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "emitter",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_emitted",
+            "docs": [
+              "Accrued whole emission, including allocations checkpointed by vote changes."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_minted",
+            "docs": [
+              "The authority may mint the difference between total_emitted and total_minted."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_updated_at_unix_seconds",
+            "type": "u64"
+          },
+          {
+            "name": "emission_index_seen_q192f64",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetEmitterDecayRateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "annual_decay_rate_q64f64",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VotePosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "gauge",
+            "type": "pubkey"
+          },
+          {
+            "name": "vote_escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposited",
+            "docs": [
+              "Recorded principal; external token donations do not add voting weight."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "self_bump",
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "MINT_AUTHORITY_SEED",
+      "type": "bytes",
+      "value": "[109, 105, 110, 116, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121]"
+    },
+    {
+      "name": "VOTE_ESCROW_SEED",
+      "type": "bytes",
+      "value": "[118, 111, 116, 101, 95, 101, 115, 99, 114, 111, 119]"
+    },
+    {
+      "name": "VOTE_POSITION_SEED",
+      "type": "bytes",
+      "value": "[118, 111, 116, 101, 95, 112, 111, 115, 105, 116, 105, 111, 110]"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[package]
+name = "mayf-weighted-emitter-test-caller"
+version = "0.1.0"
+description = "Test-only CPI authority for weighted emitter runtime tests"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_weighted_emitter_test_caller"
+crate-type = ["cdylib", "lib"]
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+anchor-lang.workspace = true

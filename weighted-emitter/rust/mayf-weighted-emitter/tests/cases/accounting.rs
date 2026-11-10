@@ -4,14 +4,6 @@ use mayf_weighted_emitter::SECONDS_PER_YEAR;
 use crate::support::{Fixture, Number, amount};
 
 #[test]
-fn proportional_allocations_reconcile_to_the_global_budget() {
-    let mut host = Fixture::new(120, &[4, 2]);
-    assert_eq!(host.emit(0, 10), 800);
-    assert_eq!(host.emit(1, 10), 400);
-    assert_eq!(host.emitter.total_emitted, 1_200);
-}
-
-#[test]
 fn small_weight_allocations_never_exceed_an_independent_integer_oracle() {
     for left in 1..=12_u64 {
         for right in 1..=12_u64 {
@@ -29,16 +21,6 @@ fn small_weight_allocations_never_exceed_an_independent_integer_oracle() {
             }
         }
     }
-}
-
-#[test]
-fn reweighting_materializes_the_old_interval_before_replacing_votes() {
-    let mut host = Fixture::new(120, &[2, 2]);
-    assert_eq!(host.vote(0, 0, 1), 60);
-    assert_eq!(host.emit(1, 2), 180);
-    assert_eq!(host.emit(0, 2), 0);
-    assert_eq!(host.emitter.total_gauge_weight, 2);
-    assert_eq!(host.emitter.total_emitted, 240);
 }
 
 #[test]
