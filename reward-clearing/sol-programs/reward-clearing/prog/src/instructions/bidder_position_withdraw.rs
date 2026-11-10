@@ -33,8 +33,12 @@ pub struct BidderPositionWithdrawAccounts<'info> {
     #[account(mut)]
     pub clearing_credits_escrow_token_account: UncheckedAccount<'info>,
 
-    /// CHECK: Chosen by the bidder; SPL Token validates the refund transfer.
-    #[account(mut)]
+    /// CHECK: Must differ from the escrow; SPL Token validates the refund transfer.
+    #[account(
+        mut,
+        constraint = clearing_credits_destination.key() != clearing_credits_escrow_token_account.key()
+            @ RewardClearingProgramError::WithdrawalDestinationIsEscrow
+    )]
     pub clearing_credits_destination: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,

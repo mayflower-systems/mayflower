@@ -48,6 +48,10 @@ pub struct CreateChannelGroupAccounts<'info> {
     )]
     pub initial_epoch: Account<'info, Epoch>,
 
+    #[account(
+        constraint = clearing_credits_mint.key() != anchor_spl::token::spl_token::native_mint::ID
+            @ RewardClearingProgramError::NativeClearingMint
+    )]
     pub clearing_credits_mint: Account<'info, Mint>,
 
     #[account(

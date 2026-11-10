@@ -20,8 +20,12 @@ pub struct BidderPositionClaimAccounts<'info> {
     #[account(mut)]
     pub reward_pot_escrow_token_account: UncheckedAccount<'info>,
 
-    /// CHECK: Chosen by the bidder; SPL Token validates the payout transfer.
-    #[account(mut)]
+    /// CHECK: Must differ from the escrow; SPL Token validates the payout transfer.
+    #[account(
+        mut,
+        constraint = reward_destination.key() != reward_pot_escrow_token_account.key()
+            @ RewardClearingProgramError::ClaimDestinationIsEscrow
+    )]
     pub reward_destination: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,

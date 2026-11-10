@@ -1,5 +1,8 @@
 # Reward clearing program
 
+Account-constraint fixes and open settlement policy decisions are tracked in
+[TODO.md](TODO.md).
+
 Run `./build.sh` to build all artifacts. The script resolves paths from its own
 location, so it also works when invoked from the repository root or elsewhere.
 It requires `cargo-build-sbf` and uses Solana platform tools `v1.58` plus the
@@ -12,6 +15,7 @@ the pnpm workspace, so run `pnpm install` at the repository root first.
 | `bin/`    | Built `mayf_reward_clearing_sol.so`                                      |
 | `idl/`    | Generated `mayf_reward_clearing_sol.json`                                |
 | `cpi/`    | Generated Rust library `mayf-reward-clearing-sol-cpi`                    |
+| `litesvm/` | [Runtime boundary tests and shared harness](litesvm/README.md)        |
 | `ts/`     | Generated TypeScript package `@mayflower-sys/reward-clearing-sol-client` |
 
 The script builds the program with its default features, extracts its IDL,
@@ -44,9 +48,12 @@ relationships.
 `create_channel_group` delegates to the library action, which enforces the
 one-hour minimum (`MIN_EPOCH_DURATION_SECONDS = 3_600`) and checks that the initial
 epoch's end fits in `u64` seconds. The start may be in the past, present, or
-future. Anchor creates the returned group and initial epoch with their custody
-accounts and preserves
-the organization, mint, and PDA metadata.
+future. An Anchor account constraint rejects the native mint (wrapped SOL) for
+clearing credits with `NativeClearingMint`, because credit settlement requires
+burns that native token accounts do not support. Native reward tokens remain
+permitted: reward settlement uses transfers. Anchor creates the returned group
+and initial epoch with their custody accounts and preserves the organization,
+mint, and PDA metadata.
 
 All live actions use the library's `Epoch::validate_active(group, now)`: the
 epoch must belong to the supplied group, match its current counter, and contain
@@ -115,7 +122,9 @@ and calls `withdraw_credits`. The library consumes lots newest first, calculates
 the exit penalty, and returns both updated states and the exact credits to return
 and forfeit. Anchor burns the forfeited credits from the channel epoch's escrow
 and transfers the remainder to the destination chosen by the bidder's authority.
-The destination can have any owner. SPL Token validates mint compatibility and
+The destination can have any owner, but an account constraint rejects the source
+escrow as destination with `WithdrawalDestinationIsEscrow`, even when no penalty
+would be burned. SPL Token validates mint compatibility and
 authorization for transfers and burns. Both token operations are signed by the
 channel epoch PDA. The handler then persists both states; a failed token operation
 rolls back the entire withdrawal, including any burn. Authority and custody checks
@@ -129,6 +138,8 @@ balances. The frozen totals never change, so claim order does not affect payouts
 Anchor checks the position authority, transfers the reward to the chosen token
 account, persists the returned channel epoch, and closes the position account,
 returning its lamports to the authority. The destination can have any owner.
+A constraint rejects the reward escrow as destination with
+`ClaimDestinationIsEscrow` before payout or closure, including for a zero payout.
 A zero payout still retires the shares and closes the position; it skips the
 token transfer. A failed transfer rolls back the state update and closure.
 Claiming requires surviving shares; an empty position cannot close this way.
@@ -153,7 +164,8 @@ for reuse by later deposits.
 
 Business rules and domain relationships belong to the library actions. Anchor
 constraints cover account ownership, authorization, PDA creation, and token
-custody. Existing token accounts used only for CPI are passed as `UncheckedAccount`;
+custody, including supported clearing mints and distinct payout destinations.
+Existing token accounts used only for CPI are passed as `UncheckedAccount`;
 SPL Token validates them. `token::mint` and `token::authority` configure newly
 created escrows. Domain relationships already validated by library actions are not
 checked again in Anchor constraints. The exhaustive

@@ -100,6 +100,12 @@ pub enum MayfRewardClearingError {
     EpochDurationTooShort = 6044,
     /// The organization's next channel group index overflows
     ChannelGroupIndexOverflow = 6045,
+    /// The native mint cannot be used for clearing credits
+    NativeClearingMint = 6046,
+    /// The withdrawal destination cannot be the clearing credits escrow
+    WithdrawalDestinationIsEscrow = 6047,
+    /// The claim destination cannot be the reward pot escrow
+    ClaimDestinationIsEscrow = 6048,
 }
 
 impl MayfRewardClearingError {
@@ -151,6 +157,9 @@ impl MayfRewardClearingError {
         Self::LotLimitReached,
         Self::EpochDurationTooShort,
         Self::ChannelGroupIndexOverflow,
+        Self::NativeClearingMint,
+        Self::WithdrawalDestinationIsEscrow,
+        Self::ClaimDestinationIsEscrow,
     ];
 
     /// Recover the variant a custom error code refers to.
@@ -210,6 +219,9 @@ impl MayfRewardClearingError {
             Self::LotLimitReached => "LotLimitReached",
             Self::EpochDurationTooShort => "EpochDurationTooShort",
             Self::ChannelGroupIndexOverflow => "ChannelGroupIndexOverflow",
+            Self::NativeClearingMint => "NativeClearingMint",
+            Self::WithdrawalDestinationIsEscrow => "WithdrawalDestinationIsEscrow",
+            Self::ClaimDestinationIsEscrow => "ClaimDestinationIsEscrow",
         }
     }
 
@@ -291,6 +303,13 @@ impl MayfRewardClearingError {
             }
             Self::ChannelGroupIndexOverflow => {
                 "The organization's next channel group index overflows"
+            }
+            Self::NativeClearingMint => "The native mint cannot be used for clearing credits",
+            Self::WithdrawalDestinationIsEscrow => {
+                "The withdrawal destination cannot be the clearing credits escrow"
+            }
+            Self::ClaimDestinationIsEscrow => {
+                "The claim destination cannot be the reward pot escrow"
             }
         }
     }

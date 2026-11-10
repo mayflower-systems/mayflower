@@ -1513,6 +1513,21 @@
       "code": 6045,
       "name": "ChannelGroupIndexOverflow",
       "msg": "The organization's next channel group index overflows"
+    },
+    {
+      "code": 6046,
+      "name": "NativeClearingMint",
+      "msg": "The native mint cannot be used for clearing credits"
+    },
+    {
+      "code": 6047,
+      "name": "WithdrawalDestinationIsEscrow",
+      "msg": "The withdrawal destination cannot be the clearing credits escrow"
+    },
+    {
+      "code": 6048,
+      "name": "ClaimDestinationIsEscrow",
+      "msg": "The claim destination cannot be the reward pot escrow"
     }
   ],
   "types": [
