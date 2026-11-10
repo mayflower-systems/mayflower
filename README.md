@@ -10,7 +10,11 @@ The [Reward Distributor](./reward-clearing/rust/mayf-reward-clearing/README.md) 
 
 Explore the [wiki](https://github.com/mayflower-system/mayflower/wiki) for a specification and overview of the modules.
 
-Engage in [discussions](https://github.com/mayflower-system/mayflower/discussions). Periodic announcements will be posted here.
+Engage in [discussions](https://github.com/mayflower-system/mayflower/discussions). Announcements will be posted here.
+
+## Talk to maintainers
+
+Inquiries can be sent to contact@mayflower.systems
 
 ## Testing
 
