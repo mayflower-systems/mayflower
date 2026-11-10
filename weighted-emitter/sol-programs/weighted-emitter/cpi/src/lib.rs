@@ -1,0 +1,178 @@
+//! Generated anchor-free client for MayfWeightedEmitter. Do not edit.
+//!
+//! Create one [`MayfWeightedEmitterApi`] for the deployment to target, then use the
+//! generated PDA and instruction traits through that value. Errors and events
+//! remain deployment-independent data interfaces.
+
+// Generated modules share imports whose use depends on the program's IDL.
+#![allow(unused_imports)]
+
+use core::fmt;
+
+use borsh::{BorshDeserialize, BorshSerialize};
+use solana_address::Address;
+
+pub mod accounts;
+pub mod errors;
+pub mod events;
+pub mod instructions;
+pub mod models;
+pub mod pda;
+
+pub use accounts::*;
+pub use errors::*;
+
+pub use instructions::MayfWeightedEmitterInstructions;
+pub use models::*;
+pub use pda::*;
+
+/// Client context for one MayfWeightedEmitter program deployment.
+///
+/// Create this once and use it for PDA derivation, instruction-account
+/// construction, and instruction packing. Generated clients do not contain a
+/// default program address; deployment identity always comes from this value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MayfWeightedEmitterApi {
+    /// Address of the deployment this API targets.
+    pub program_id: Address,
+}
+
+impl MayfWeightedEmitterApi {
+    pub const fn new(program_id: Address) -> Self {
+        Self { program_id }
+    }
+}
+
+/// Supplies the program address used by deployment-scoped client helpers.
+pub trait ProgramAddress {
+    fn program(&self) -> Address;
+}
+
+impl ProgramAddress for MayfWeightedEmitterApi {
+    fn program(&self) -> Address {
+        self.program_id
+    }
+}
+
+impl<T: ProgramAddress + ?Sized> ProgramAddress for &T {
+    fn program(&self) -> Address {
+        (*self).program()
+    }
+}
+
+/// Length of the discriminator that prefixes every account and instruction.
+pub const DISCRIMINATOR_LEN: usize = 8;
+
+/// A program-owned account: an 8-byte discriminator followed by Borsh fields.
+pub trait AccountData: BorshSerialize + BorshDeserialize + Sized {
+    /// The first 8 bytes of this account's data.
+    const DISCRIMINATOR: [u8; DISCRIMINATOR_LEN];
+
+    /// Decode raw account data, rejecting data that belongs to another account
+    /// type or is too short to carry a discriminator.
+    fn try_from_account_data(data: &[u8]) -> Result<Self, DecodeError> {
+        let (found, mut body) = data
+            .split_at_checked(DISCRIMINATOR_LEN)
+            .ok_or(DecodeError::TooShort { len: data.len() })?;
+
+        let found: [u8; DISCRIMINATOR_LEN] = found.try_into().expect("split at DISCRIMINATOR_LEN");
+        if found != Self::DISCRIMINATOR {
+            return Err(DecodeError::WrongDiscriminator {
+                expected: Self::DISCRIMINATOR,
+                found,
+            });
+        }
+
+        Self::deserialize(&mut body).map_err(DecodeError::Borsh)
+    }
+
+    /// Encode as raw account data, discriminator first.
+    fn to_account_data(&self) -> Vec<u8> {
+        let mut data = Self::DISCRIMINATOR.to_vec();
+        self.serialize(&mut data)
+            .expect("serializing into a Vec cannot fail");
+        data
+    }
+}
+
+/// A program event: an 8-byte discriminator followed by Borsh fields.
+pub trait EventData: BorshSerialize + BorshDeserialize + Sized {
+    /// The first 8 bytes of this event's logged data.
+    const DISCRIMINATOR: [u8; DISCRIMINATOR_LEN];
+
+    /// Decode event data from a `Program data:` log entry.
+    fn try_from_event_data(data: &[u8]) -> Result<Self, DecodeError> {
+        let (found, mut body) = data
+            .split_at_checked(DISCRIMINATOR_LEN)
+            .ok_or(DecodeError::TooShort { len: data.len() })?;
+
+        let found: [u8; DISCRIMINATOR_LEN] = found.try_into().expect("split at DISCRIMINATOR_LEN");
+        if found != Self::DISCRIMINATOR {
+            return Err(DecodeError::WrongDiscriminator {
+                expected: Self::DISCRIMINATOR,
+                found,
+            });
+        }
+
+        Self::deserialize(&mut body).map_err(DecodeError::Borsh)
+    }
+
+    /// Encode the discriminator and event fields exactly as the program logs them.
+    fn to_event_data(&self) -> Vec<u8> {
+        let mut data = Self::DISCRIMINATOR.to_vec();
+        self.serialize(&mut data)
+            .expect("serializing into a Vec cannot fail");
+        data
+    }
+}
+
+/// An instruction payload: an 8-byte discriminator followed by Borsh args.
+pub trait InstructionArgs: BorshSerialize {
+    /// The first 8 bytes of this instruction's data.
+    const DISCRIMINATOR: [u8; DISCRIMINATOR_LEN];
+
+    /// Encode as instruction data, discriminator first.
+    fn to_instruction_data(&self) -> Vec<u8> {
+        let mut data = Self::DISCRIMINATOR.to_vec();
+        self.serialize(&mut data)
+            .expect("serializing into a Vec cannot fail");
+        data
+    }
+}
+
+/// Why account or event decoding rejected some bytes.
+#[derive(Debug)]
+pub enum DecodeError {
+    /// Fewer than [`DISCRIMINATOR_LEN`] bytes, so there is no discriminator.
+    TooShort { len: usize },
+    /// The data belongs to a different account or event type.
+    WrongDiscriminator {
+        expected: [u8; DISCRIMINATOR_LEN],
+        found: [u8; DISCRIMINATOR_LEN],
+    },
+    /// The discriminator matched but the fields did not decode.
+    Borsh(borsh::io::Error),
+}
+
+impl fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooShort { len } => {
+                write!(f, "data is {len} bytes, too short for a discriminator")
+            }
+            Self::WrongDiscriminator { expected, found } => {
+                write!(f, "discriminator {found:?} does not match {expected:?}")
+            }
+            Self::Borsh(err) => write!(f, "failed to decode fields: {err}"),
+        }
+    }
+}
+
+impl std::error::Error for DecodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Borsh(err) => Some(err),
+            _ => None,
+        }
+    }
+}

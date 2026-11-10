@@ -2289,6 +2289,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-weighted-emitter-sol"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+ "mayf-weighted-emitter",
+]
+
+[[package]]
+name = "mayf-weighted-emitter-sol-cpi"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "solana-address 2.7.0",
+ "solana-instruction 3.5.1",
+]
+
+[[package]]
+name = "mayf-weighted-emitter-sol-litesvm"
+version = "0.1.0"
+dependencies = [
+ "litesvm",
+ "mayf-weighted-emitter-sol-cpi",
+ "mayf-weighted-emitter-test-caller",
+ "solana-account",
+ "solana-address 2.7.0",
+ "solana-clock 3.2.1",
+ "solana-instruction 3.5.1",
+ "solana-instruction-error",
+ "solana-keypair",
+ "solana-program-pack",
+ "solana-signer",
+ "solana-transaction",
+ "solana-transaction-error",
+ "spl-token-interface 3.0.0",
+]
+
+[[package]]
+name = "mayf-weighted-emitter-test-caller"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
