@@ -116,6 +116,14 @@ pub enum RewardClearingProgramError {
     EpochDurationTooShort,
     #[msg("The organization's next channel group index overflows")]
     ChannelGroupIndexOverflow,
+
+    // Token custody constraints
+    #[msg("The native mint cannot be used for clearing credits")]
+    NativeClearingMint,
+    #[msg("The withdrawal destination cannot be the clearing credits escrow")]
+    WithdrawalDestinationIsEscrow,
+    #[msg("The claim destination cannot be the reward pot escrow")]
+    ClaimDestinationIsEscrow,
 }
 
 impl From<RewardClearingError> for RewardClearingProgramError {

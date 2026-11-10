@@ -6,6 +6,7 @@ members = [
     "reward-clearing/rust/*",
     "reward-clearing/sol-programs/*/prog",
     "reward-clearing/sol-programs/*/cpi",
+    "reward-clearing/sol-programs/*/litesvm",
     "referral/rust/*",
     "avm/rust/*",
     "avm/sol-programs/*/prog",
@@ -43,7 +44,9 @@ mayf-reward-clearing-sol = { path = "reward-clearing/sol-programs/reward-clearin
 mayf-reward-clearing-sol-cpi = { path = "reward-clearing/sol-programs/reward-clearing/cpi", version = "0.1.0" }
 
 # Third-party crates.
-# Declare every third-party crate here, once, with an exact `=` pin.
+# Declare every third-party crate here, once, with an exact `=` pin by default.
+# Public SDK types may use a documented compatible range so library consumers
+# can unify their SDK versions; Cargo.lock still pins this workspace's build.
 # Member crates reference these with `workspace = true` and never set a version.
 # Members may add features; they may not change the version.
 # Cargo.lock pins the transitive graph by version and checksum; build with `--locked`.
@@ -59,11 +62,24 @@ clap = "=4.6.7"
 crypto-bigint = { version = "=0.5.5", default-features = false }
 dashu = { version = "=0.4.4", default-features = false }
 fixed = { version = "=1.28.0", default-features = false }
+# LiteSVM 0.18 matches the workspace serialization crates and supports Solana address 2.7.
+litesvm = "=0.18.2"
 serde_json = "=1.0.154"
+solana-account = "=4.7.0"
 solana-account-view = { version = "=2.1.0", default-features = false }
-solana-address = { version = "=2.9.0", default-features = false }
+# Public in generated clients and log-sink helpers. Accept compatible 2.x SDKs;
+# LiteSVM currently selects 2.7.x, while independent clients can select 2.9.x.
+solana-address = { version = "2.7.0", default-features = false }
+solana-clock = "=3.2.1"
 solana-instruction = "=3.5.1"
+solana-instruction-error = "=2.5.0"
+solana-keypair = "=3.1.2"
 # The fixed-size CPI helper borrows data; the allocating `slice-cpi` API is disabled.
 solana-instruction-view = { version = "=2.1.0", default-features = false, features = ["cpi"] }
 solana-message = "=4.6.0"
 solana-program-error = "=3.0.1"
+solana-program-pack = "=3.1.0"
+solana-signer = "=3.0.1"
+solana-transaction = "=4.3.0"
+solana-transaction-error = "=3.4.0"
+spl-token-interface = "=3.0.0"

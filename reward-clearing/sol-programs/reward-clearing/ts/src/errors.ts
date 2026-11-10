@@ -178,6 +178,18 @@ export const MAYF_REWARD_CLEARING_ERRORS = {
     code: 6045,
     message: "The organization's next channel group index overflows",
   },
+  NativeClearingMint: {
+    code: 6046,
+    message: "The native mint cannot be used for clearing credits",
+  },
+  WithdrawalDestinationIsEscrow: {
+    code: 6047,
+    message: "The withdrawal destination cannot be the clearing credits escrow",
+  },
+  ClaimDestinationIsEscrow: {
+    code: 6048,
+    message: "The claim destination cannot be the reward pot escrow",
+  },
 } as const
 
 export type MayfRewardClearingErrorName =
@@ -419,6 +431,21 @@ export const getMayfRewardClearingError = (
       return {
         name: "ChannelGroupIndexOverflow",
         ...MAYF_REWARD_CLEARING_ERRORS.ChannelGroupIndexOverflow,
+      }
+    case 6046:
+      return {
+        name: "NativeClearingMint",
+        ...MAYF_REWARD_CLEARING_ERRORS.NativeClearingMint,
+      }
+    case 6047:
+      return {
+        name: "WithdrawalDestinationIsEscrow",
+        ...MAYF_REWARD_CLEARING_ERRORS.WithdrawalDestinationIsEscrow,
+      }
+    case 6048:
+      return {
+        name: "ClaimDestinationIsEscrow",
+        ...MAYF_REWARD_CLEARING_ERRORS.ClaimDestinationIsEscrow,
       }
     default:
       return null
