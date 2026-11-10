@@ -17,6 +17,7 @@
 !/sol-tools/ts/**
 !/reward-clearing/sol-programs/reward-clearing/ts/**
 !/avm/sol-programs/linear-engine/ts/**
+!/browser/**
 
 # Markdown that another source owns. Formatting these files makes them differ
 # from that source.
