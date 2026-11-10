@@ -1,0 +1,17 @@
+[package]
+name = "mayf-weighted-emitter"
+version = "0.1.0"
+description = "Pure weighted emitter accounting"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "mayf_weighted_emitter"
+
+[dependencies]
+mayf-fixed-number.workspace = true
+
+[dev-dependencies]
+mayf-fixed-drivers.workspace = true

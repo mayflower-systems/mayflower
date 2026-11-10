@@ -12,6 +12,7 @@ members = [
     "avm/sol-programs/*/prog",
     "avm/sol-programs/*/cpi",
     "sol-tools/rust/*",
+    "weighted-emitter/rust/*",
 ]
 
 [workspace.package]
@@ -32,6 +33,7 @@ mayf-micro-basis-points = { path = "fixed-number/mayf-micro-basis-points", versi
 mayf-sol-log-sink-id = { path = "sol-log-sink/mayf-sol-log-sink-id", version = "1.0.0" }
 mayf-sol-log-sink-cpi = { path = "sol-log-sink/mayf-sol-log-sink-cpi", version = "1.0.0" }
 mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
+mayf-weighted-emitter = { path = "weighted-emitter/rust/mayf-weighted-emitter", version = "0.1.0" }
 mayf-characteristic = { path = "avm/rust/mayf-characteristic", version = "0.1.0" }
 mayf-characteristic-linear = { path = "avm/rust/mayf-characteristic-linear", version = "0.1.0" }
 mayf-characteristic-linear-driver = { path = "avm/rust/mayf-characteristic-linear-driver", version = "0.1.0" }
