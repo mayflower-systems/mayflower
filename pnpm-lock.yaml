@@ -255,6 +255,9 @@ catalogs:
     buffer:
       specifier: 6.0.3
       version: 6.0.3
+    decimal.js:
+      specifier: 10.6.0
+      version: 10.6.0
     effect:
       specifier: 4.0.7
       version: 4.0.7
@@ -313,6 +316,18 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.3.1
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
+  fixed-number/ts/fixed-number-ts:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      decimal.js:
+        specifier: 'catalog:'
+        version: 10.6.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -703,6 +718,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  decimal.js@10.6.0:
+    resolution: {integrity: sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg==}
 
   delay@5.0.0:
     resolution: {integrity: sha512-ReEBKkIfe4ya47wlPYf/gu5ib6yUG0/Aez0JQZQz94kiWtRQvZIQbTiehsnwHvLSWJnQdhVeqYue7Id1dKr0qw==}
@@ -1170,6 +1188,8 @@ snapshots:
   commander@2.20.3: {}
 
   csstype@3.2.3: {}
+
+  decimal.js@10.6.0: {}
 
   delay@5.0.0: {}
 

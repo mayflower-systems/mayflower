@@ -14,6 +14,7 @@
 !*.md
 
 # The TypeScript packages.
+!/fixed-number/ts/**
 !/sol-tools/ts/**
 !/reward-clearing/sol-programs/reward-clearing/ts/**
 !/weighted-emitter/sol-programs/weighted-emitter/ts/**
@@ -26,6 +27,10 @@
 # The GitHub wiki. This folder must match the wiki exactly, and the Wiki check
 # in CI fails when it does not. See docs/github-wiki/README.md.
 /docs/github-wiki/content/
+
+# Oracle fixtures that the Rust crate mayf-fixed-drivers-fixture-gen writes.
+# `cargo test` fails when the file differs from the generator's output.
+/fixed-number/ts/fixed-number-ts/test/fixtures/
 
 # Agent skills installed from other repos and tracked in skills-lock.json.
 # .claude/skills/ holds symlinks into .agents/skills/.

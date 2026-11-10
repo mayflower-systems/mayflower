@@ -1,0 +1,29 @@
+{
+  "name": "@mayflower-sys/fixed-number-ts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "tsc -p test && node --test \"test/*.test.ts\"",
+    "fixtures": "cargo run --locked -p mayf-fixed-drivers-fixture-gen"
+  },
+  "peerDependencies": {
+    "decimal.js": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "decimal.js": "catalog:",
+    "typescript": "catalog:"
+  }
+}
