@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    "fixed-number/*",
+    "fixed-number/rust/*",
     "sol-log-sink/*",
     "reward-clearing/rust/*",
     "reward-clearing/sol-programs/*/prog",
@@ -26,10 +26,10 @@ repository = "https://github.com/mayflower-systems/mayflower"
 # `cargo package` drops the path and keeps only the version. The version is a
 # caret range; the local build fails if the crate's own version leaves it.
 # Release tooling (release-plz) rewrites these versions on each release.
-mayf-fixed-number = { path = "fixed-number/mayf-fixed-number", version = "0.1.0" }
-mayf-fixed-dashu = { path = "fixed-number/mayf-fixed-dashu", version = "0.1.0" }
-mayf-fixed-drivers = { path = "fixed-number/mayf-fixed-drivers", version = "0.1.0" }
-mayf-micro-basis-points = { path = "fixed-number/mayf-micro-basis-points", version = "0.1.0" }
+mayf-fixed-number = { path = "fixed-number/rust/mayf-fixed-number", version = "0.1.0" }
+mayf-fixed-dashu = { path = "fixed-number/rust/mayf-fixed-dashu", version = "0.1.0" }
+mayf-fixed-drivers = { path = "fixed-number/rust/mayf-fixed-drivers", version = "0.1.0" }
+mayf-micro-basis-points = { path = "fixed-number/rust/mayf-micro-basis-points", version = "0.1.0" }
 mayf-sol-log-sink-id = { path = "sol-log-sink/mayf-sol-log-sink-id", version = "1.0.0" }
 mayf-sol-log-sink-cpi = { path = "sol-log-sink/mayf-sol-log-sink-cpi", version = "1.0.0" }
 mayf-referral = { path = "referral/rust/mayf-referral", version = "0.1.0" }
