@@ -2,6 +2,7 @@ packages:
   - "sol-tools/ts/**"
   - "reward-clearing/sol-programs/reward-clearing/ts"
   - "avm/sol-programs/linear-engine/ts"
+  - "browser/*"
 
 strictPeerDependencies: false
 autoInstallPeers: false
@@ -30,6 +31,15 @@ catalog:
 
   # Effect.
   effect: 4.0.7
+
+  # React. A library lists react as a peer dependency and as a dev dependency.
+  # autoInstallPeers is off, so the peer entry installs nothing, and a
+  # workspace package resolves react from its own node_modules.
+  react: 19.3.1
+  "@types/react": 19.3.0
+  # Writes nested state without mutation, for the `update` functions of the
+  # browser apps. It has no dependencies and no install script.
+  optics-ts: 2.4.1
 
   # Solana.
   "@solana/spl-token": 0.4.15

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+
+    /* Node runs the tests from source, so this project only type-checks. */
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "composite": false,
+    "declarationMap": false
+  },
+  "include": ["."]
+}
