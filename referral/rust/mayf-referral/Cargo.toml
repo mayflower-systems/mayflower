@@ -1,6 +1,6 @@
 [package]
 name = "mayf-referral"
-description = "The Mayflower referral and emissions kernel: membership, gauge-weighted emission, and per-lane rewards"
+description = "Pure referral accounting: membership, per-lane rewards, and family sharing"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

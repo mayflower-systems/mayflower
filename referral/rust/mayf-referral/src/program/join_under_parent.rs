@@ -3,7 +3,7 @@ use mayf_fixed_number::FixedNumber;
 use crate::{Amount, Error, Identifiable, Node, Offer, Protocol, Result};
 
 pub struct JoinUnderParentArgs<I, N> {
-    pub protocol: Protocol<N>,
+    pub protocol: Protocol,
     pub parent: Node<I, N>,
     pub new_node_id: I,
     pub new_node_offer: Offer,

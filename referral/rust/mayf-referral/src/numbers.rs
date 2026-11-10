@@ -1,13 +1,10 @@
-//! The kernel's whole numbers: token amounts and seconds.
+//! The kernel's whole balances and checked balance changes.
 //!
 //! Fractional values, such as indexes and kept rewards, use the host's fixed-point type `N`
 //! through [`FixedNumber`](mayf_fixed_number::FixedNumber).
 
-/// Whole token base units: credits, asset balances, gauge votes, and join fees
+/// Whole units: credits, eligible asset balances, and join fees.
 pub type Amount = u64;
-
-/// A Unix time or a duration, in whole seconds
-pub type Seconds = u64;
 
 /// A change to one balance, and so to every total that includes it
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
