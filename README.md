@@ -27,6 +27,10 @@ cargo test
 pnpm test
 ```
 
+## Status
+
+Currently incomplete and unstable.  Release date TBD.
+
 ## License
 
 Apache 2.0
