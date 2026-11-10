@@ -15,7 +15,6 @@ mod join_under_parent;
 mod register_lane;
 mod set_balance;
 mod set_credit_stake;
-mod set_gauge_vote;
 mod set_offer;
 mod set_sharing;
 mod settle_family;
@@ -28,8 +27,10 @@ pub use join_under_parent::{JoinUnderParentArgs, JoinUnderParentReceipt, join_un
 pub use register_lane::{RegisterLaneArgs, RegisterLaneReceipt, register_lane};
 pub use set_balance::{SetBalanceArgs, SetBalanceReceipt, set_balance};
 pub use set_credit_stake::{SetCreditStakeArgs, SetCreditStakeReceipt, set_credit_stake};
-pub use set_gauge_vote::{SetGaugeVoteArgs, SetGaugeVoteReceipt, set_gauge_vote};
 pub use set_offer::{SetOfferArgs, SetOfferReceipt, set_offer};
 pub use set_sharing::{SetSharingArgs, SetSharingReceipt, set_sharing};
 pub use settle_family::{SettleFamilyArgs, SettleFamilyReceipt, settle_family};
 pub use settle_node_in_lane::{SettleNodeInLaneArgs, SettleNodeInLaneReceipt, settle_node_in_lane};
+
+#[cfg(test)]
+mod tests;

@@ -2,15 +2,16 @@ use alloc::vec::Vec;
 use mayf_fixed_number::FixedNumber;
 
 use crate::tree::LaneChain;
-use crate::{Emission, Identifiable, Lane, LaneNode, Node, Protocol, Result};
+use crate::{Identifiable, Lane, LaneNode, Node, Protocol, Result};
 
 pub struct SettleNodeInLaneArgs<I, N> {
-    pub protocol: Protocol<N>,
+    pub protocol: Protocol,
     pub lane: Lane<N>,
     pub node: Node<I, N>,
     pub lineage: Vec<Node<I, N>>,
     pub lane_nodes: Vec<(I, LaneNode<N>)>,
-    pub emission: Emission<N>,
+    /// This lane's authenticated cumulative earnings through the settlement.
+    pub total_earned: N,
 }
 
 pub struct SettleNodeInLaneReceipt<I, N> {
@@ -33,8 +34,7 @@ pub fn settle_node_in_lane<I: Identifiable, N: FixedNumber>(
         args.lineage,
         args.lane_nodes,
     )?;
-    let gauge = args.protocol.gauge_at(args.emission)?;
-    let index = args.lane.reward_index(&gauge)?;
+    let index = args.lane.reward_index(args.total_earned)?;
     let (node_next, lineage_next, lane_nodes_next) =
         chain.settled(args.protocol.terms, index)?.into_parts();
     Ok(SettleNodeInLaneReceipt {

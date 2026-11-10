@@ -9,6 +9,11 @@ It supersedes the deleted `mutualization_idea.md` proposal. It is not a statemen
 of deployment readiness or a security audit. Section 13 maps the rules to the
 migrated kernel; source documentation describes its numerical accounting.
 
+The reusable referral kernel starts at a lane's cumulative earned amount. It
+does not implement the global schedule, gauge voting, or allocation between
+lanes. Those external policies appear below to describe the wider deployment;
+the kernel receives their per-lane output as precise fixed-point data.
+
 The system allocates a scheduled global stream of credits to deposited assets and
 their referral ancestors. Parents compete for children using credit-denominated
 admission prices and discretionary marketing budgets. Children compete for those
@@ -166,7 +171,24 @@ disappear. Actual issued supply also reflects collection and burns.
 The allocator supplies authenticated, chronological lane allocations. A new
 weight takes effect prospectively after the previous allocation interval is
 settled. A current lane weight multiplied by an entire past interval is not an
-acceptable substitute for that history.
+acceptable substitute for that history. Maintaining this allocation history is
+the allocator's responsibility; changing its weights does not require a referral
+action if cumulative lane allocations preserve that history.
+
+The referral interface receives each lane's cumulative `total_earned: N`, where
+`N` is the selected precise fixed-point accounting type. Each lane stores
+`total_earned_seen`; settlement distributes only the nonnegative difference.
+Amounts may be fractional and are not limited to `u64`. A lane starts at an
+explicit cumulative baseline, excluding earlier earnings. The kernel neither
+reads token balances nor accepts clocks, rates, votes, or emitter records.
+
+Before changing eligible asset balances or family terms, the host must supply
+earnings through that boundary. A family change requires a current total for
+every affected source lane at the same boundary. Monotonic totals are checked
+by the kernel, but freshness and authenticity belong to the host. Bind each
+source budget to its lane without duplication; multiple lanes cannot each
+consume the same entire budget. The kernel cannot establish these facts from
+numbers alone.
 
 In ordinary active operation, the allocator must route the full scheduled budget:
 `sum_l e_l(t) = E(t)`. With one active lane and no gauge competition, that lane gets
@@ -341,7 +363,7 @@ These are required logical quantities, not a prescribed account layout.
 
 | Record      | Required state                                                                                                                                                                                                         |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Protocol    | Fixed `H`, `q`, emission clock/budget, lane registry, root-auction authorization and consumed-seat records, unallocated accounting                                                                                     |
+| Protocol    | Fixed `H`, `q`, and lane registry; the host separately owns root-auction authorization and consumed-seat records                                                                                                       |
 | Lane        | Asset identity and eligibility interface, `P_l`, allocation checkpoint, cumulative reward-per-asset index `I_l`, rounding accounting                                                                                   |
 | Member      | Identity and authority, immutable parent/depth, join fee/increment, `mu_i`, own escrow `s_i`, total child escrow `S_i`, family gift index `F_i`, parent gift checkpoint `f_i_seen`, uncollected net credit entitlement |
 | Member/lane | Own balance `p_i,l`, strict descendant balance `D_i,l`, lane index checkpoint `I_i,l_seen`, required fractional accounting                                                                                             |
@@ -380,12 +402,14 @@ The cumulative reward-per-asset index for lane `l` is:
 I_l(t) = integral(e_l(t) / P_l(t) dt), over intervals with P_l(t) > 0
 ```
 
-Before changing a lane's total balance or allocation terms, advance its
-accounting by integrating the actual scheduled lane rate using the old balance
-and allocation terms. Continuous decay is part of that history; multiplying the
-current rate by the entire elapsed duration is not equivalent. A member's
-balances are constant between its own relevant checkpoints because every
-affected asset mutation settles that member's ancestry first.
+Before changing a lane's total balance, consume its cumulative earnings through
+the change using the old balance. The allocator independently records changes
+to its allocation terms in that cumulative history; those changes need not
+trigger a referral action while referral eligibility is unchanged. Supplied
+totals already represent the allocated history, so referral performs no time
+integration. A member's balances are constant between its own relevant
+checkpoints because every affected asset mutation settles that member's
+ancestry first.
 
 For a member/lane settlement with `delta_I = I_l - I_i,l_seen`:
 
@@ -486,10 +510,12 @@ equivalent optimized barrier is an implementation-readiness requirement.
 
 ## 8. Action contracts
 
-The host authenticates authority, canonical records, eligible balances, and the
-emission snapshot. Kernel actions validate the supplied relationships, amounts,
-arithmetic, and chronological checkpoints. The host commits the returned state
-and custody effects atomically; an error returns no receipt.
+The host authenticates authority, canonical records, eligible balances, and each
+lane's cumulative earnings. It provides current totals before eligibility changes.
+Kernel actions validate the supplied relationships, amounts, arithmetic, and
+monotonic earnings and index checkpoints. The host commits the returned state
+and custody effects atomically; an error returns no receipt. Eligible balances
+may be internal positions; changing them does not require a token transfer.
 
 | Action                          | Required behavior                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -502,7 +528,7 @@ and custody effects atomically; an error returns no receipt.
 | Unstake credits                 | Check available escrow; checkpoint old sources and entitlement; decrease `s`/`S`; return the same principal, without confiscating earned rewards |
 | Settle lane/member              | Materialize only valid historical entitlement; permissionless settlement must not change economic ownership through cadence                      |
 | Collect credits                 | Debit already accrued net entitlement and mint the same whole credit amount once; preserve the member's fractional remainder                     |
-| External lane allocation change | Allocator settles old routing history before installing new allocations; no retroactive reweighting                                              |
+| External lane allocation change | Allocator preserves old routing history in cumulative lane allocations before installing new weights; outside the referral kernel                |
 
 Collection need not materialize every lazy source automatically. An operation
 advertised as collecting everything through time `t` must settle the member's
@@ -537,8 +563,9 @@ that independently flooring every operation is sufficient.
   A marketing-rate change or complete withdrawal does not confiscate it.
 - Track marketed-but-not-yet-claimed liabilities separately from the parent's
   spendable entitlement. Never issue both claims against the same credits.
-- Record routing/empty-lane losses and rounding residuals explicitly. They must
-  reconcile against scheduled emission rather than disappear from accounting.
+- Record empty-lane allocations and local rounding residuals explicitly. They
+  reconcile against cumulative lane earnings. Accounting for upstream routing
+  losses and reconciliation with the global schedule belong to the allocator.
 
 The integer implementation must demonstrate non-overissuance and a documented
 error bound under adversarial settlement and stake-change schedules. Rounding
@@ -663,7 +690,10 @@ are economic outcomes to evaluate, not consequences of conservation alone.
 ## 12. Acceptance tests
 
 Use an exact rational event-driven reference model before validating the chosen
-fixed-point implementation. Cover at least:
+fixed-point implementation. The list covers the overall deployment: schedule,
+custody, and authorization checks belong to their respective modules and hosts;
+referral arithmetic should be tested directly with plain Rust tests. Cover at
+least:
 
 1. **Core conservation:** generated trees and multiple nonempty lanes sum to the
    assigned emission for arbitrary valid depths and balances.
@@ -701,13 +731,20 @@ fixed-point implementation. Cover at least:
     maximum balances, long lifetimes, and overflow rejection. Compare against
     exact arithmetic and document residual ownership/error bounds.
 16. **Empty lanes:** no allocation is divided by zero or awarded retroactively;
-    unallocated routing and lane amounts reconcile to the global budget.
+    lane rewards and unallocated amounts reconcile to supplied lane earnings.
+    Upstream routing reconciliation belongs to the allocator's tests.
 17. **Partial settlement order:** legitimate different lane settlement orders
     reproduce the reference ownership; omitting a lane at a family-state barrier
     is rejected rather than accepted with altered payouts.
 18. **Declining emission:** allocations reconcile to integrated scheduled emission
     under a continuously decreasing rate. Changing checkpoint frequency does not
-    change the interval budget or apply today's rate retroactively.
+    apply today's rate retroactively; approximation and truncation obey the
+    allocator's documented error policy. This tests the external allocator, not
+    the referral kernel.
+19. **Earnings inputs:** preserve fractional lane allocations, reject decreasing
+    cumulative totals, make repeated totals idempotent, and exclude earnings
+    before registration's starting baseline. Different lanes may have independent
+    totals; source completeness remains required at a family-state barrier.
 
 ## 13. Kernel implementation
 
@@ -718,7 +755,7 @@ Tree height and commission are supplied as network terms. The current `u16`
 lane mask has capacity for 16 permanent asset lanes; this storage choice does
 not fix tree height. An `H = 7` deployment has eight earning members per path,
 but is only one configuration. Hosts must validate the execution costs of their
-chosen height and authenticate the independently configured emission schedule.
+chosen height and authenticate each lane's current cumulative earnings.
 
 | Surface                                                            | Implemented behavior                                                                |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
@@ -729,19 +766,28 @@ chosen height and authenticate the independently configured emission schedule.
 | [`program/set_credit_stake.rs`](src/program/set_credit_stake.rs)   | Complete parent barrier, old gift settlement, and explicit escrow custody change    |
 | [`program/settle_family.rs`](src/program/settle_family.rs)         | Current incoming gifts, including for zero-asset children                           |
 | [`program/collect_credits.rs`](src/program/collect_credits.rs)     | Mint accrued net entitlement and retain fractions                                   |
-| [`emission.rs`](src/emission.rs)                                   | Authenticated cumulative emission input, separate from token supply                 |
+| [`lane.rs`](src/lane.rs)                                           | Consume cumulative fixed-point lane earnings independently of their source          |
 | [`lib.rs`](src/lib.rs)                                             | Numeric representation, residual ownership, bounded working sets, and host contract |
 
-Actual asset changes close upstream gauge residuals. Actual family changes also
-commit and close every parent source lane's residuals, then close shared family
-carries. These amounts become explicitly unallocated. This prevents old upstream
-dust arriving under new eligibility, at the cost of shared writes and bounded
-rounding loss. Private own-income and retained-override carries survive changes.
-The code documents the bounds in credit base units.
+Actual asset changes settle the supplied lane earnings and close that lane's
+shared residuals. Actual family changes also commit and close every parent source
+lane's residuals, then close shared family carries. These amounts become
+explicitly unallocated. This prevents old lane dust arriving under new
+eligibility, at the cost of shared writes and bounded rounding loss. Private
+own-income and retained-override carries survive changes. There is no upstream
+gauge state or gauge remainder in this kernel.
 
-The external host still supplies authenticated accounts, the emission schedule,
-auction allocation, asset eligibility, exclusive custody, and atomic transfers,
-burns, and minting.
+For accounting quantum `Q`, an asset change closes less than
+`Q * lane_balance` credit base units. A family change closes less than
+`Q * (sum(source_lane_balances) + child_escrow + 1)`. With sixteen lanes,
+`u64` balances, and `Q <= 2^-64`, these are below one and seventeen base units,
+respectively. A no-op does not close residuals.
+
+The external host supplies authenticated accounts, current per-lane earnings,
+auction allocations, asset eligibility, exclusive custody, and atomic transfers,
+burns, and minting. It will orchestrate allocation and referral through their
+public interfaces; the referral crate has no allocator dependency or composition
+layer.
 
 ## 14. Deployment and implementation readiness
 

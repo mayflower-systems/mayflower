@@ -2,15 +2,16 @@ use alloc::vec::Vec;
 use mayf_fixed_number::FixedNumber;
 
 use crate::tree::settle_sources;
-use crate::{Emission, Error, Identifiable, Lane, LaneId, LaneNode, Node, Protocol, Result};
+use crate::{Error, Identifiable, Lane, LaneId, LaneNode, Node, Protocol, Result};
 
 pub struct SettleFamilyArgs<'a, I, N> {
-    pub protocol: &'a Protocol<N>,
+    pub protocol: &'a Protocol,
     pub parent: Node<I, N>,
     pub child: Node<I, N>,
-    pub lanes: &'a [Lane<N>],
+    /// Canonical parent source lanes paired with cumulative earnings through
+    /// one host-selected settlement boundary, including withdrawn positions.
+    pub lanes: &'a [(Lane<N>, N)],
     pub parent_lane_nodes: Vec<(LaneId, LaneNode<N>)>,
-    pub emission: Emission<N>,
 }
 
 pub struct SettleFamilyReceipt<I, N> {
@@ -33,7 +34,6 @@ pub fn settle_family<I: Identifiable, N: FixedNumber>(
         &mut args.parent,
         args.lanes,
         &mut args.parent_lane_nodes,
-        args.emission,
     )?;
     args.child.receive_gift(args.parent.gift_index)?;
     Ok(SettleFamilyReceipt {

@@ -31,7 +31,7 @@ impl<N: FixedNumber> LanePool<N> {
     /// unallocated.
     pub(crate) fn absorb(mut self, allocation: N) -> Result<Self> {
         if allocation < N::ZERO {
-            return Err(Error::InvalidEmission);
+            return Err(Error::InvalidEarnings);
         }
         let available = self.remainder.checked_add(allocation)?;
         if self.balance == 0 {

@@ -15,9 +15,9 @@ pub enum Error {
     WrongParent,
     JoinFeeExceeded,
     SeatAlreadyActivated,
-    TimeWentBack,
     IndexWentBack,
-    InvalidEmission,
+    /// Cumulative lane earnings must be nonnegative and cannot decrease.
+    InvalidEarnings,
     /// An amount or arithmetic result cannot be represented.
     NumberOutOfRange,
     /// Invalid numeric state, such as a negative earning amount or zero divisor.
