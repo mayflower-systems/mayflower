@@ -26,7 +26,7 @@ I’m not exempt. My original goal was to host a simple mathematical algorithm o
 
 So, enough of that. Back to basics, with a more principled approach.
 
-The “Nirvana” protocol (and its “Samsara” spin-off) were fine first prototypes of what I like to call an “Amplifying Value Machine.” The AVM is a specification for a system of equations that produces a non-decreasing exchange rate along two axes (see https\://github.com/mayflower-systems/mayflower/wiki/Amplifying-Value-Machine). And I am always happy to see that despite all this churn in the cryptocurrency markets, the protocol keeps on doing what it is supposed to do: algorithmically offering redemptions and issuance according to a deterministic rate schedule, and permitting anyone to raise the minimum redemption rate according to algorithmic invariants.
+The “Nirvana” protocol (and its “Samsara” spin-off) were fine first prototypes of what I like to call an “Amplifying Value Machine.” The AVM is a specification for a system of equations that produces a non-decreasing exchange rate along two axes (see https\://github.com/mayflower-systems/mayflower/wiki/Amplifying-Value-Machine). I am always happy to see that -- despite all the churn in the world of cryptocurrencies -- the AVM protocol keeps on doing what it is supposed to do: algorithmically offering redemptions and issuance according to a deterministic rate schedule, and permitting anyone to raise the minimum redemption rate according to algorithmic invariants.
 
 But its economic machinery is incomplete. I see three missing elements:
 
