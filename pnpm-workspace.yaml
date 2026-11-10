@@ -1,4 +1,5 @@
 packages:
+  - "fixed-number/ts/*"
   - "sol-tools/ts/**"
   - "reward-clearing/sol-programs/reward-clearing/ts"
   - "avm/sol-programs/linear-engine/ts"

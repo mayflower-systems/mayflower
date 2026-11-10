@@ -2173,6 +2173,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-fixed-drivers-fixture-gen"
+version = "0.1.0"
+dependencies = [
+ "dashu",
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+]
+
+[[package]]
 name = "mayf-fixed-number"
 version = "0.1.0"
 

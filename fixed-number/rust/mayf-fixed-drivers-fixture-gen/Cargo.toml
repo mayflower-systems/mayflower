@@ -1,0 +1,13 @@
+[package]
+name = "mayf-fixed-drivers-fixture-gen"
+version = "0.1.0"
+description = "Write oracle fixtures of serialized mayf-fixed-drivers values for the TypeScript package"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+mayf-fixed-drivers.workspace = true
+mayf-fixed-number.workspace = true
+dashu.workspace = true
