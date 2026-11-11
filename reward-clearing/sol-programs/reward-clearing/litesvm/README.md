@@ -37,12 +37,12 @@ updates, allocation, rent, token custody, closure and transaction atomicity.
 
 The suite exercises all thirteen instructions through four modules:
 
-| Module | Responsibility |
-| --- | --- |
-| `authorization.rs` | Signers, ownership links, wire corruption, account layout, PDA and vault substitution, SPL authority and mint checks |
+| Module                   | Responsibility                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `authorization.rs`       | Signers, ownership links, wire corruption, account layout, PDA and vault substitution, SPL authority and mint checks   |
 | `account_constraints.rs` | Native clearing-mint rejection, permitted native rewards, and atomic rejection of self-directed withdrawals and claims |
-| `lifecycle.rs` | Creation, counters, administration, permissionless epoch creation and packed-transaction rollback |
-| `settlement.rs` | Token movements and burns, stored balances, rent-funded growth, retained capacity, finalization and claim closure |
+| `lifecycle.rs`           | Creation, counters, administration, permissionless epoch creation and packed-transaction rollback                      |
+| `settlement.rs`          | Token movements and burns, stored balances, rent-funded growth, retained capacity, finalization and claim closure      |
 
 Simple exact amounts make the expected custody changes readable. The tests do
 not compute expectations by calling the domain action being exercised. After

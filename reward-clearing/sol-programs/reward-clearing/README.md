@@ -9,14 +9,14 @@ It requires `cargo-build-sbf` and uses Solana platform tools `v1.58` plus the
 repository's pinned Rust toolchain and dependencies. The TypeScript steps use
 the pnpm workspace, so run `pnpm install` at the repository root first.
 
-| Directory | Contents                                                                 |
-| --------- | ------------------------------------------------------------------------ |
-| `prog/`   | Anchor program source                                                    |
-| `bin/`    | Built `mayf_reward_clearing_sol.so`                                      |
-| `idl/`    | Generated `mayf_reward_clearing_sol.json`                                |
-| `cpi/`    | Generated Rust library `mayf-reward-clearing-sol-cpi`                    |
-| `litesvm/` | [Runtime boundary tests and shared harness](litesvm/README.md)        |
-| `ts/`     | Generated TypeScript package `@mayflower-sys/reward-clearing-sol-client` |
+| Directory  | Contents                                                                 |
+| ---------- | ------------------------------------------------------------------------ |
+| `prog/`    | Anchor program source                                                    |
+| `bin/`     | Built `mayf_reward_clearing_sol.so`                                      |
+| `idl/`     | Generated `mayf_reward_clearing_sol.json`                                |
+| `cpi/`     | Generated Rust library `mayf-reward-clearing-sol-cpi`                    |
+| `litesvm/` | [Runtime boundary tests and shared harness](litesvm/README.md)           |
+| `ts/`      | Generated TypeScript package `@mayflower-sys/reward-clearing-sol-client` |
 
 The script builds the program with its default features, extracts its IDL,
 generates the CPI bindings using `mayf-anchor-idl-to-gen`, formats them, and

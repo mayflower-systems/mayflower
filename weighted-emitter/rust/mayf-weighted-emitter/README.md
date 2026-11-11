@@ -60,13 +60,13 @@ to the current rate; it cannot reset the rate or rewrite earlier allocations.
 
 ## Actions and host responsibilities
 
-| Action | Result |
-| --- | --- |
-| `create_emitter` | Empty emitter with a starting rate, decay and timestamp |
-| `create_gauge` | Zero-weight gauge checkpointed at the current index |
-| `set_gauge_votes` | Old-weight settlement followed by an aggregate weight change |
-| `emit_to_gauge` | Whole-unit allocation and updated cumulative totals |
-| `set_emitter_decay_rate` | Prospective decay change after old-schedule accrual |
+| Action                   | Result                                                       |
+| ------------------------ | ------------------------------------------------------------ |
+| `create_emitter`         | Empty emitter with a starting rate, decay and timestamp      |
+| `create_gauge`           | Zero-weight gauge checkpointed at the current index          |
+| `set_gauge_votes`        | Old-weight settlement followed by an aggregate weight change |
+| `emit_to_gauge`          | Whole-unit allocation and updated cumulative totals          |
+| `set_emitter_decay_rate` | Prospective decay change after old-schedule accrual          |
 
 Apply every returned record and allocation effect atomically, or none of them.
 Authenticate canonical records, unique IDs, the clock, administrative changes,
