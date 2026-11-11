@@ -8,9 +8,9 @@ The [Reward Distributor](./reward-clearing/rust/mayf-reward-clearing/README.md) 
 
 ## Status
 
-Currently incomplete and unstable.  Code is actively being migrated from private repositories to here.
+Currently incomplete and unstable. Code is actively being migrated from private repositories to here.
 
-Alpha release date TBD.  You'll be one of the first to know.
+Alpha release date TBD. You'll be one of the first to know.
 
 ## Getting acquainted
 
