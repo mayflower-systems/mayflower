@@ -10,14 +10,14 @@ It requires `cargo-build-sbf` and uses Solana platform tools `v1.58` plus the
 repository's pinned Rust toolchain and dependencies. The TypeScript steps use
 the pnpm workspace, so run `pnpm install` at the repository root first.
 
-| Directory | Contents |
-| --- | --- |
-| `prog/` | Anchor program source |
-| `bin/` | Built `mayf_weighted_emitter_sol.so` |
-| `idl/` | Generated `mayf_weighted_emitter_sol.json` |
-| `cpi/` | Generated Rust library `mayf-weighted-emitter-sol-cpi` |
-| `litesvm/` | Runtime authorization, custody, minting, and rollback tests |
-| `ts/` | Generated TypeScript package `@mayflower-sys/weighted-emitter-sol-client` |
+| Directory  | Contents                                                                  |
+| ---------- | ------------------------------------------------------------------------- |
+| `prog/`    | Anchor program source                                                     |
+| `bin/`     | Built `mayf_weighted_emitter_sol.so`                                      |
+| `idl/`     | Generated `mayf_weighted_emitter_sol.json`                                |
+| `cpi/`     | Generated Rust library `mayf-weighted-emitter-sol-cpi`                    |
+| `litesvm/` | Runtime authorization, custody, minting, and rollback tests               |
+| `ts/`      | Generated TypeScript package `@mayflower-sys/weighted-emitter-sol-client` |
 
 The script builds SBF, extracts the IDL, generates both clients with
 `mayf-anchor-idl-to-gen`, formats the clients, and checks their builds. It installs
@@ -77,11 +77,11 @@ fractional raw token units, as specified by the pure library.
 5. The authority creates gauges; users create a position for each gauge they
    want to vote on, then deposit or withdraw voting tokens.
 
-| PDA | Seeds, in order |
-| --- | --- |
-| Mint authority | `"mint_authority"`, emitter address |
-| Vote position | `"vote_position"`, gauge address, user authority address |
-| Vote escrow | `"vote_escrow"`, vote-position address |
+| PDA            | Seeds, in order                                          |
+| -------------- | -------------------------------------------------------- |
+| Mint authority | `"mint_authority"`, emitter address                      |
+| Vote position  | `"vote_position"`, gauge address, user authority address |
+| Vote escrow    | `"vote_escrow"`, vote-position address                   |
 
 All PDAs are derived under the emitter program's address. Emitter and gauge
 accounts are supplied as new signer accounts, so a composing program may also
