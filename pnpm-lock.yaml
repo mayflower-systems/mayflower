@@ -345,6 +345,22 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  reward-clearing/ts/reward-clearing-sdk-ts:
+    dependencies:
+      '@mayflower-sys/fixed-number-ts':
+        specifier: workspace:*
+        version: link:../../../fixed-number/ts/fixed-number-ts
+      '@mayflower-sys/reward-clearing-sol-client':
+        specifier: workspace:*
+        version: link:../../sol-programs/reward-clearing/ts
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
   sol-tools/ts/sol-client-effect:
     dependencies:
       '@solana/spl-token':

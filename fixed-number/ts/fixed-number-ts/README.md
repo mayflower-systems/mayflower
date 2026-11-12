@@ -91,6 +91,24 @@ Pico.toDecimalJs(1_500_000_000_000n).toFixed() // "1.5"
 
 The scale must divide a power of ten. A grid of thirds has no exact decimal values, so `I64Scaled(3n)` throws a `RangeError`.
 
+## Other formats
+
+`makeDriver` builds the driver of any other fixed-point integer. This one is a `u32` count of micro-basis points, where 1,000,000 make one whole unit:
+
+```ts
+import { makeDriver } from "@mayflower-sys/fixed-number-ts"
+
+const MicroBasisPoints = makeDriver({
+  name: "MicroBasisPoints",
+  signed: false,
+  byteLength: 4,
+  one: 1_000_000n,
+})
+MicroBasisPoints.toDecimalJs(1_500_000n).toFixed() // "1.5"
+```
+
+`one` must divide a power of ten, as a scale must.
+
 ## decimal.js
 
 decimal.js is a peer dependency. The package uses the consumer's copy, so a `Decimal` from this package and a `Decimal` from the consumer share one configuration.

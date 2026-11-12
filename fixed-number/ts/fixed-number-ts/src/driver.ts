@@ -80,7 +80,9 @@ export interface FixedDriver {
   ) => Result<bigint, FixedNumberError>
 }
 
+/** How a format stores a number: an integer of `byteLength` bytes. */
 export interface Layout {
+  /** A label for error messages. */
   readonly name: string
   readonly signed: boolean
   readonly byteLength: number
@@ -132,6 +134,14 @@ const floorDivPow10 = (
   }
 }
 
+/**
+ * The driver of a stored format. The drivers of this package come from this
+ * function, and so can the driver of any other fixed-point integer: a `u32`
+ * count of millionths is `{ signed: false, byteLength: 4, one: 1_000_000n }`.
+ *
+ * `one` must divide a power of ten, because only such a grid has exact
+ * decimal values. This function throws a `RangeError` for any other `one`.
+ */
 export const makeDriver = ({
   name,
   signed,

@@ -29,7 +29,7 @@ pnpm test
 
 ## Status
 
-Currently incomplete and unstable.  Release date TBD.
+Currently incomplete and unstable. Release date TBD.
 
 ## License
 

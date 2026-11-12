@@ -2,6 +2,7 @@ packages:
   - "fixed-number/ts/*"
   - "sol-tools/ts/**"
   - "reward-clearing/sol-programs/reward-clearing/ts"
+  - "reward-clearing/ts/*"
   - "avm/sol-programs/linear-engine/ts"
   - "weighted-emitter/sol-programs/weighted-emitter/ts"
   - "browser/*"

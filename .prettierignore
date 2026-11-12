@@ -17,6 +17,7 @@
 !/fixed-number/ts/**
 !/sol-tools/ts/**
 !/reward-clearing/sol-programs/reward-clearing/ts/**
+!/reward-clearing/ts/**
 !/weighted-emitter/sol-programs/weighted-emitter/ts/**
 !/avm/sol-programs/linear-engine/ts/**
 !/browser/**
