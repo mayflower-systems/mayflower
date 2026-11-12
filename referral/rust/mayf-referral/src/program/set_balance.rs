@@ -2,10 +2,10 @@ use alloc::vec::Vec;
 use mayf_fixed_number::FixedNumber;
 
 use crate::tree::LaneChain;
-use crate::{Amount, Change, Emission, Identifiable, Lane, LaneNode, Node, Protocol, Result};
+use crate::{Amount, Change, Identifiable, Lane, LaneNode, Node, Protocol, Result};
 
 pub struct SetBalanceArgs<I, N> {
-    pub protocol: Protocol<N>,
+    pub protocol: Protocol,
     pub lane: Lane<N>,
     pub member: Node<I, N>,
     /// Parent first, ending at the top-level seat, bounded by the configured depth.
@@ -14,11 +14,11 @@ pub struct SetBalanceArgs<I, N> {
     /// whenever the corresponding node's permanent lane mask has the bit set.
     pub lane_nodes: Vec<(I, LaneNode<N>)>,
     pub balance: Amount,
-    pub emission: Emission<N>,
+    /// This lane's cumulative earnings, current before the balance change.
+    pub total_earned: N,
 }
 
 pub struct SetBalanceReceipt<I, N> {
-    pub protocol_next: Protocol<N>,
     pub lane_next: Lane<N>,
     pub member_next: Node<I, N>,
     pub lineage_next: Vec<Node<I, N>>,
@@ -31,7 +31,7 @@ pub struct SetBalanceReceipt<I, N> {
 /// old balances, then adjust the lane total and each ancestor's strict downline.
 /// No siblings, descendants, or other lanes are loaded.
 pub fn set_balance<I: Identifiable, N: FixedNumber>(
-    mut args: SetBalanceArgs<I, N>,
+    args: SetBalanceArgs<I, N>,
 ) -> Result<SetBalanceReceipt<I, N>> {
     args.protocol.check_lane(args.lane.id)?;
     let chain = LaneChain::new(
@@ -42,8 +42,7 @@ pub fn set_balance<I: Identifiable, N: FixedNumber>(
         args.lane_nodes,
     )?;
     let change = Change::between(chain.balance(), args.balance);
-    let mut gauge = args.protocol.gauge_at(args.emission)?;
-    let (mut lane, index) = args.lane.settle(&gauge)?;
+    let (mut lane, index) = args.lane.settle(args.total_earned)?;
     let (member_next, lineage_next, lane_nodes_next) = chain
         .settled(args.protocol.terms, index)?
         .change_balance(change, index)?
@@ -52,12 +51,7 @@ pub fn set_balance<I: Identifiable, N: FixedNumber>(
         Change::Add(amount) => lane.pool.deposit(amount)?,
         Change::Remove(amount) => lane.pool.withdraw(amount)?,
     };
-    if !matches!(change, Change::Add(0) | Change::Remove(0)) {
-        gauge.close_eligibility()?;
-    }
-    args.protocol.gauge = gauge;
     Ok(SetBalanceReceipt {
-        protocol_next: args.protocol,
         lane_next: lane,
         member_next,
         lineage_next,

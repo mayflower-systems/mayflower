@@ -6,6 +6,12 @@ The [Amplifying Value Machine](./avm/rust/mayf-avm-prog/README.md) implements a 
 
 The [Reward Distributor](./reward-clearing/rust/mayf-reward-clearing/README.md) uses a two-way time-conditioned bidding mechanism for hosting fair auctions on public blockchains.
 
+## Status
+
+Currently incomplete and unstable. Code is actively being migrated from private repositories to here.
+
+Alpha release date TBD. You'll be one of the first to know.
+
 ## Getting acquainted
 
 Explore the [wiki](https://github.com/mayflower-system/mayflower/wiki) for explanation & specification of the modules.
@@ -26,10 +32,6 @@ To verify tests, run:
 cargo test
 pnpm test
 ```
-
-## Status
-
-Currently incomplete and unstable. Release date TBD.
 
 ## License
 

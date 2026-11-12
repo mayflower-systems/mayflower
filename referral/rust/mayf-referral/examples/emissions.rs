@@ -1,7 +1,7 @@
 //! A two-asset walkthrough of the target referral rules.
 //!
 //! Alice holds 100 BTC units, Bob holds 100 BTC units, and Carol holds 100 ETH
-//! units. The lanes receive 2:1 gauge weight, so a 300-credit interval gives
+//! units. The host supplies 200 BTC-lane and 100 ETH-lane credits, giving
 //! each member's assets 100 gross credits. With q=10%, Alice shares half of her
 //! gross overrides and Bob shares a quarter: net rewards are 110, 107.5, 82.5.
 //!
@@ -17,13 +17,13 @@ use mayf_fixed_drivers::U192F64;
 use mayf_fixed_number::FixedNumber;
 use mayf_referral::program::{
     CollectCreditsArgs, CreateProtocolArgs, JoinAtTopLevelArgs, JoinUnderParentArgs,
-    RegisterLaneArgs, SetBalanceArgs, SetCreditStakeArgs, SetGaugeVoteArgs, SetSharingArgs,
-    SettleNodeInLaneArgs, collect_credits, create_protocol, join_at_top_level, join_under_parent,
-    register_lane, set_balance, set_credit_stake, set_gauge_vote, set_sharing, settle_node_in_lane,
+    RegisterLaneArgs, SetBalanceArgs, SetCreditStakeArgs, SetSharingArgs, SettleNodeInLaneArgs,
+    collect_credits, create_protocol, join_at_top_level, join_under_parent, register_lane,
+    set_balance, set_credit_stake, set_sharing, settle_node_in_lane,
 };
 use mayf_referral::{
-    Amount, Emission, GaugeVote, Lane, LaneId, LaneNode, MicroBasisPoints, NetworkTerms, Node,
-    Offer, Protocol, Result, RootSeat,
+    Amount, Lane, LaneId, LaneNode, MicroBasisPoints, NetworkTerms, Node, Offer, Protocol, Result,
+    RootSeat,
 };
 
 type Id = &'static str;
@@ -38,11 +38,9 @@ const FREE: Offer = Offer {
 
 fn main() -> Result<()> {
     let percent = |value| MicroBasisPoints::from_percent(value).expect("valid percentage");
-    let mut host = Host::new(NetworkTerms::new(2, percent(10))?)?;
+    let mut host = Host::new(NetworkTerms::new(2, percent(10))?);
     let btc = host.register_lane()?;
     let eth = host.register_lane()?;
-    host.vote(btc, 2)?;
-    host.vote(eth, 1)?;
 
     // The host supplies the winning auction award, stores its consumed state,
     // and burns the returned price. Ordinary child joins can remain free.
@@ -64,13 +62,12 @@ fn main() -> Result<()> {
     host.balance(btc, "bob", 100)?;
     host.balance(eth, "carol", 100)?;
 
-    // The external declining-rate emitter integrates its curve and supplies
-    // one authenticated cumulative budget. No constant-rate assumption is
-    // needed: this interval's integral is 300 credits.
-    host.emission = Emission {
-        at: 10,
-        total: Number::checked_from_u64(300 * UNIT)?,
-    };
+    // These authenticated totals are data. Referral need not know how the host
+    // obtained them; no schedule, votes, or clock enters the library's actions.
+    host.earnings
+        .insert(btc, Number::checked_from_u64(200 * UNIT)?);
+    host.earnings
+        .insert(eth, Number::checked_from_u64(100 * UNIT)?);
     host.settle(btc, "bob")?;
     host.settle(eth, "carol")?;
     let collected = [
@@ -90,55 +87,40 @@ type MemberInLane = (
     Vec<Node<Id, Number>>,
     Vec<(Id, LaneNode<Number>)>,
 );
-type FamilySources = (Vec<Lane<Number>>, Vec<(LaneId, LaneNode<Number>)>);
+type FamilySources = (Vec<(Lane<Number>, Number)>, Vec<(LaneId, LaneNode<Number>)>);
 
 struct Host {
-    emission: Emission<Number>,
-    protocol: Protocol<Number>,
+    protocol: Protocol,
     lanes: BTreeMap<LaneId, Lane<Number>>,
-    votes: BTreeMap<LaneId, GaugeVote>,
+    earnings: BTreeMap<LaneId, Number>,
     seats: BTreeMap<Id, RootSeat<Id>>,
     nodes: BTreeMap<Id, Node<Id, Number>>,
     positions: BTreeMap<(LaneId, Id), LaneNode<Number>>,
 }
 
 impl Host {
-    fn new(terms: NetworkTerms) -> Result<Self> {
-        let emission = Emission::default();
-        let receipt = create_protocol(CreateProtocolArgs { terms, emission })?;
-        Ok(Self {
-            emission,
+    fn new(terms: NetworkTerms) -> Self {
+        let receipt = create_protocol(CreateProtocolArgs { terms });
+        Self {
             protocol: receipt.new_protocol,
             lanes: BTreeMap::new(),
-            votes: BTreeMap::new(),
+            earnings: BTreeMap::new(),
             seats: BTreeMap::new(),
             nodes: BTreeMap::new(),
             positions: BTreeMap::new(),
-        })
+        }
     }
 
     fn register_lane(&mut self) -> Result<LaneId> {
         let receipt = register_lane(RegisterLaneArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
+            total_earned: Number::ZERO,
         })?;
         let id = receipt.new_lane.id;
         self.protocol = receipt.protocol_next;
         self.lanes.insert(id, receipt.new_lane);
+        self.earnings.insert(id, Number::ZERO);
         Ok(id)
-    }
-
-    fn vote(&mut self, id: LaneId, votes: Amount) -> Result<()> {
-        let receipt = set_gauge_vote(SetGaugeVoteArgs {
-            protocol: self.protocol.clone(),
-            lane: self.lanes[&id].clone(),
-            vote: self.votes.get(&id).cloned().unwrap_or_default(),
-            votes,
-            emission: self.emission,
-        })?;
-        self.protocol = receipt.protocol_next;
-        self.lanes.insert(id, receipt.lane_next);
-        self.votes.insert(id, receipt.vote_next);
-        Ok(())
     }
 
     fn activate_award(&mut self, seat: RootSeat<Id>) -> Result<()> {
@@ -159,7 +141,7 @@ impl Host {
 
     fn join(&mut self, parent: Id, child: Id) -> Result<()> {
         let receipt = join_under_parent(JoinUnderParentArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
             parent: self.nodes[parent].clone(),
             new_node_id: child,
             new_node_offer: FREE,
@@ -178,14 +160,12 @@ impl Host {
     fn sharing(&mut self, id: Id, sharing: MicroBasisPoints) -> Result<()> {
         let (lanes, lane_nodes) = self.sources(id);
         let receipt = set_sharing(SetSharingArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
             member: self.nodes[id].clone(),
             lanes,
             lane_nodes,
             sharing,
-            emission: self.emission,
         })?;
-        self.protocol = receipt.protocol_next;
         self.store_lanes(receipt.lanes_next);
         self.nodes.insert(id, receipt.member_next);
         self.store_sources(id, receipt.lane_nodes_next);
@@ -195,16 +175,14 @@ impl Host {
     fn stake(&mut self, parent: Id, child: Id, stake: Amount) -> Result<()> {
         let (lanes, parent_lane_nodes) = self.sources(parent);
         let receipt = set_credit_stake(SetCreditStakeArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
             parent: self.nodes[parent].clone(),
             child: self.nodes[child].clone(),
             lanes,
             parent_lane_nodes,
             stake,
-            emission: self.emission,
         })?;
         // Apply `escrow_change` to issued-credit custody; no minting is allowed.
-        self.protocol = receipt.protocol_next;
         self.store_lanes(receipt.lanes_next);
         self.nodes.insert(parent, receipt.parent_next);
         self.nodes.insert(child, receipt.child_next);
@@ -215,16 +193,15 @@ impl Host {
     fn balance(&mut self, lane: LaneId, id: Id, balance: Amount) -> Result<()> {
         let (member, lineage, lane_nodes) = self.member_in_lane(lane, id);
         let receipt = set_balance(SetBalanceArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
             lane: self.lanes[&lane].clone(),
             member,
             lineage,
             lane_nodes,
             balance,
-            emission: self.emission,
+            total_earned: self.earnings[&lane],
         })?;
-        // The host reconciles `balance_change` with authenticated asset custody.
-        self.protocol = receipt.protocol_next;
+        // Reconcile `balance_change` with the authoritative internal position.
         self.lanes.insert(lane, receipt.lane_next);
         self.store_nodes(receipt.member_next, receipt.lineage_next);
         self.store_positions(lane, receipt.lane_nodes_next);
@@ -234,12 +211,12 @@ impl Host {
     fn settle(&mut self, lane: LaneId, id: Id) -> Result<()> {
         let (node, lineage, lane_nodes) = self.member_in_lane(lane, id);
         let receipt = settle_node_in_lane(SettleNodeInLaneArgs {
-            protocol: self.protocol.clone(),
+            protocol: self.protocol,
             lane: self.lanes[&lane].clone(),
             node,
             lineage,
             lane_nodes,
-            emission: self.emission,
+            total_earned: self.earnings[&lane],
         })?;
         self.store_nodes(receipt.node_next, receipt.lineage_next);
         self.store_positions(lane, receipt.lane_nodes_next);
@@ -282,11 +259,11 @@ impl Host {
             .lanes
             .values()
             .filter(|lane| self.nodes[id].lanes.contains(lane.id))
-            .cloned()
+            .map(|lane| (lane.clone(), self.earnings[&lane.id]))
             .collect();
         let positions = lanes
             .iter()
-            .map(|lane| (lane.id, self.positions[&(lane.id, id)].clone()))
+            .map(|(lane, _)| (lane.id, self.positions[&(lane.id, id)].clone()))
             .collect();
         (lanes, positions)
     }
