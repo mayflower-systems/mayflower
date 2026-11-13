@@ -19,6 +19,9 @@ members = [
     "weighted-emitter/sol-programs/*/litesvm/test-program",
 ]
 
+[profile.dev.package."*"]
+debug = false
+
 [workspace.package]
 edition = "2024"
 license = "Apache-2.0"
