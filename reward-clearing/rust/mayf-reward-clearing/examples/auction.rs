@@ -101,7 +101,7 @@ fn main() -> Result<(), RewardClearingError> {
     assert_eq!(bob_withdrawal.credits_returned, 30);
     assert_eq!(bob_withdrawal.credits_forfeited, 10);
 
-    // A funder adds 90 reward units, after the host takes its funding fee.
+    // A funder adds 90 net reward units to the pot.
     let funded = add_reward(AddRewardArgs {
         channel_group: group,
         epoch: epoch.clone(),
@@ -137,13 +137,13 @@ fn main() -> Result<(), RewardClearingError> {
     assert_eq!(alice_claim.reward_earned, 62);
     assert_eq!(bob_claim.reward_earned, 27);
 
-    // Every share has claimed, so the last reward unit can go to the protocol.
+    // Both claims are complete and one reward unit remains in the pot.
     let channel_epoch = bob_claim.channel_epoch_next;
     let shares = |whole| NonNeg::<U64F64>::from_u64(whole).unwrap();
     assert_eq!(channel_epoch.weighted_shares_balance, shares(0));
     assert_eq!(channel_epoch.reward_pot_balance, 1);
 
     println!("Alice claims 62 and Bob claims 27 of the 90 reward units.");
-    println!("The last reward unit stays in the pot for the protocol.");
+    println!("One reward unit remains in the pot after both claims.");
     Ok(())
 }

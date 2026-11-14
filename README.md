@@ -4,7 +4,8 @@ Mayflower is a systemic library for non-custodial & decentralized incentive game
 
 The [Amplifying Value Machine](./avm/rust/mayf-avm-prog/README.md) implements a deterministic issuance schedule for claims on a reserve, while preserving a never-decreasing minimum redemption value.
 
-The [Reward Distributor](./reward-clearing/rust/mayf-reward-clearing/README.md) uses a two-way time-conditioned bidding mechanism for hosting fair auctions on public blockchains.
+Bidders commit credits in timed auctions for a share of funded rewards. See
+[Reward Clearing](./reward-clearing/README.md).
 
 ## Status
 

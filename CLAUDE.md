@@ -7,13 +7,25 @@ and emissions, the referral network, and revenue clearing. Read the relevant
 pages before you change protocol logic. Start at `Home.md` in that folder.
 `_Sidebar.md` lists every page.
 
-Links between pages use wiki page names, not file paths. The link
-`[x](AVM-Floor-Raising)` points to the file `AVM-Floor-Raising.md`, wherever it
-sits under `content/`. Page names are unique, so a file search finds the page.
+The wiki is a leaf. Its pages are self-contained and link to other wiki pages
+by name. The link `[x](AVM-Floor-Raising)` points to `AVM-Floor-Raising.md`
+wherever it sits under `content/`. Repository docs can link into the wiki
+using relative paths.
 
 The folder is a git subtree of the GitHub wiki. `docs/github-wiki/README.md`
 explains how to sync it. `git subtree push` publishes to the live wiki, so run
 it only when asked.
+
+## Documentation
+
+Keep each module's documentation within its dependency boundary. Explain how
+modules work together where they are composed.
+
+Keep READMEs focused on the current design, the problem it solves, how to use
+it, and where to start reading the code. Omit package inventories and obsolete
+design history. Document API contracts, invariants, and edge cases in the
+owning code's docstrings. Check the current implementation when correcting
+documentation drift.
 
 ## State-machine boundaries
 

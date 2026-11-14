@@ -9,34 +9,33 @@ tags:
   - math
 -->
 
-This note specifies the accounting rules for a
-[clearing auction](Revenue-Clearing). Participants commit clearing tokens for
-shares of a funded reward pot. Entry time determines the shares created;
-withdrawal time determines the forfeiture of principal. Finalization fixes the
-reward pot and surviving shares for proportional claims. The
-[rationale](Revenue-Clearing-Rationale) explains the purpose of the rules, and
-[Time Weight](Revenue-Clearing-Time-Weight) illustrates them.
+Participants commit clearing tokens for shares of a funded reward pot. Entry
+time determines the shares created. Withdrawal time determines the forfeiture
+of principal. Finalization fixes the reward pot and surviving shares for
+proportional claims. [Revenue Clearing Rationale](Revenue-Clearing-Rationale) ·
+[Time Weight](Revenue-Clearing-Time-Weight)
 
 ## Epoch and parameters
 
-An epoch begins at $`start`$ and lasts $`T\ge3{,}600`$ seconds. Its live
-interval is $`[start,start+T)`$: deposits, withdrawals, and funding are accepted
-from the start up to, but not including, the deadline. Write $`t=now-start`$ for
-elapsed time.
+An epoch begins at $`start`$ and lasts $`T\ge3{,}600`$ seconds. Deposits,
+withdrawals, and funding are accepted in the live interval $`[start,start+T)`$.
+Write $`t=now-start`$ for elapsed time.
 
-Each epoch fixes two parameters:
+Each auction fixes two parameters.
 
 - **Entry bonus slope** $`b`$, with $`0\le b\le2`$. The ideal entry weight
   starts at $`1+b`$ and declines linearly toward 1. The reference value is
   $`b=1`$.
 - **Exit penalty exponent** $`k\in\{1,2,3,4\}`$. It determines the shape of the
-  withdrawal penalty. The reference value is $`k=2`$.
+  withdrawal penalty. The reference $`k=2`$ gives a quadratic penalty, and
+  $`k=1`$ gives a linear penalty.
 
-$`T`$, $`b`$, and $`k`$ remain fixed for a given epoch. The duration belongs to
-the channel group's immutable schedule. A channel authority can change $`b`$ and
-$`k`$ for future epochs; existing epochs retain their snapshots. The reference
-values are examples, not implicit defaults. Disabling a channel prevents the
-creation of new channel epochs without disabling existing ones.
+The duration $`T`$ belongs to the channel group's immutable schedule. A
+channel epoch copies the channel's configured $`b`$ and $`k`$ when it opens
+and keeps those terms. In the Solana program, the organization authority can
+update the channel defaults for future auctions. The caller supplies the terms
+explicitly. Disabling a channel prevents new auctions while its existing
+auctions remain usable.
 
 For a repeating schedule with master start $`t_0`$ and duration $`T`$, the epoch
 containing $`now\ge t_0`$ is
@@ -46,20 +45,23 @@ n=\left\lfloor\frac{now-t_0}{T}\right\rfloor,\qquad
 start_n=t_0+nT,\qquad end_n=start_n+T.
 ```
 
-The group's recorded epoch advances one counter at a time. A live action must
-refer to that recorded current epoch and execute inside its live interval; the
-time formula alone does not advance state. A channel opens at most one auction
-per epoch and may skip epochs. Earlier auctions can be finalized and claimed
-independently of later ones. Each has its own pot, positions, and shares.
-Timestamp additions and counter increments must fit their storage ranges.
+The group's recorded epoch advances one counter at a time after the current
+epoch ends. A live action must refer to that recorded current epoch and execute
+in its live interval. Creating a channel also opens its first auction in the
+group's current live epoch. A channel may skip later epochs and opens at most
+one auction per epoch. An auction opened partway through an epoch uses the
+group epoch's start for both curves. Each auction has its own pot, positions,
+and shares. Earlier auctions can be finalized and claimed independently of
+later ones. Timestamp additions and counter increments must fit their storage
+ranges.
 
 ## Quantities and rounding
 
 During a live epoch, let $`A`$ be the committed principal, $`S`$ the surviving
-shares, and $`R`$ the funded net reward. A position holds an ordered list of
-deposit lots, initially empty. Each lot records its remaining principal and
-shares. Its initial shares encode the entry weight; the weight does not decay as
-time passes.
+shares, and $`R`$ the funded net reward. A channel epoch opens with
+$`A=S=R=0`$ and no finalized totals. A new position holds an empty, ordered
+list of deposit lots. Each lot records its remaining principal and shares.
+The shares created at deposit stay with that lot until withdrawn or claimed.
 
 Principal and rewards are accounted in whole base units of their respective
 assets. Shares, weights, and fractions use a fixed-point grid of quantum
@@ -76,9 +78,9 @@ withdrawal penalty and partial-lot share removal round up; returned principal
 and claims round down to whole units. These choices prevent fractional
 accounting from creating additional whole-unit claims. Amounts and timestamps
 are unsigned 64-bit integers; epoch counters are unsigned 32-bit integers.
-Shares and intermediate results must fit the selected fixed-point range. A
-failed range or relationship check rejects the transition; an integration must
-commit accounting and token settlement atomically.
+Shares and intermediate results must fit the selected fixed-point range.
+A failed range or relationship check rejects the transition. An integration
+must commit accounting and token settlement atomically.
 
 ## Funding
 
@@ -113,14 +115,13 @@ s=\lfloor aw\rfloor_\varepsilon.
 ```
 
 Add $`a`$ and $`s`$ to the position and epoch totals. Each lot retains its
-shares until a withdrawal removes them or a claim retires them. Weight is
-non-increasing through the epoch; rounding can make different entry times tie.
-The current Solana position holds at most eight surviving lots. A deposit at
-that limit is rejected; removing a whole lot frees capacity. This is a limit per
-position, not per beneficial owner.
+shares until a withdrawal removes them or a claim retires them. Entry weight
+is non-increasing through the epoch, and rounding can make different times tie.
+The host specifies a lot limit per position. The Solana program allows eight
+surviving lots per position. Removing a whole lot frees capacity for a deposit.
 
-The deposit action has no minimum-share argument. A delayed transaction uses the
-entry weight at execution time, not the weight when it was prepared.
+The deposit action evaluates entry weight at execution time. It has no
+minimum-share argument.
 
 ## Withdrawals and exit penalty
 
@@ -166,19 +167,19 @@ positions can change the amount returned and shares sacrificed.
 
 ## Finalization and claims
 
-At or after the deadline, permissionless finalization burns all remaining
-committed principal and freezes the surviving shares and tracked net reward:
+At or after the deadline, finalization burns the recorded committed principal
+and freezes the surviving shares and tracked net reward. Anyone may submit
+the Solana finalization instruction.
 
 ```math
 S^*=S,\qquad R^*=R,\qquad U=S^*,\qquad V=R^*.
 ```
 
 $`U`$ tracks unclaimed shares and $`V`$ tracks the remaining net reward.
-Reaching the deadline closes the live interval; finalization is the separate
-action that fixes the totals and burns principal. It is accepted only once.
-Merely reaching the deadline does not execute the burn. Finalization is valid
-even if $`R^*=0`$: remaining principal still burns and all claims pay zero.
-Funding after the deadline is rejected.
+Reaching the deadline closes the live interval. The separate finalization
+action succeeds once and leaves the principal balance as a historical record
+of what was burned. When $`R^*=0`$, remaining principal still burns and all
+eligible claims pay zero.
 
 If $`S^*=0`$, no position can claim and the entire reward pot remains in escrow.
 Otherwise, a position with surviving shares $`S_i\gt 0`$ can claim once, with no

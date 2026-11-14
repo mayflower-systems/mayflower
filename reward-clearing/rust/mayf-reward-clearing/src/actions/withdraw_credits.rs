@@ -28,13 +28,16 @@ pub struct WithdrawCreditsReceipt<I: Identifiable, N: FixedNumber> {
     /// Credits the host returns to the bidder
     pub credits_returned: Amount,
 
-    /// Credits lost to the exit penalty.
-    /// They leave the channel epoch's balance, so the host must burn them.
+    /// Credits the host burns from escrow.
     pub credits_forfeited: Amount,
 }
 
-/// Withdraw credits from the bidder's position, newest lots first.
-/// The withdrawn credits' shares are destroyed, and the exit penalty grows through the epoch.
+/// Withdraw credits in the live epoch, consuming the newest lots first.
+///
+/// The action removes the associated shares and computes one refund for the
+/// full requested amount at the current exit penalty, even across several
+/// lots. The host refunds `credits_returned`, burns `credits_forfeited`, and
+/// persists both updated models together.
 pub fn withdraw_credits<N, I>(
     args: WithdrawCreditsArgs<I, N>,
 ) -> Result<WithdrawCreditsReceipt<I, N>>
@@ -111,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn exit_penalty_rises_with_the_exponent() {
+    fn exit_penalty_rises_with_time_and_falls_with_higher_exponents() {
         // (exit penalty exponent, seconds elapsed, credits returned from 100)
         let cases = [
             (1, 50, 50),

@@ -1,33 +1,49 @@
 #![forbid(unsafe_code)]
 
-//! The reward-clearing auction as pure functions.
+//! A state machine for distributing a funded reward pot through a timed auction.
 //!
-//! Bidders deposit credits into a channel epoch and receive weighted shares of its
-//! reward pot. Earlier deposits earn more shares per credit. A withdrawal forfeits
-//! a penalty that grows through the epoch. After the epoch ends, the host burns the
-//! remaining credits, and each position claims its part of the pot. The wiki's
-//! Revenue Clearing pages specify the algorithm.
+//! Bidders commit credits for weighted shares of the pot. The [entry weight]
+//! sets the shares created by a deposit. The [exit penalty] sets how much
+//! withdrawn principal is forfeited. After the deadline, finalization commits
+//! the remaining credits to be burned, and surviving shares determine payouts.
 //!
-//! # Actions and the host
+//! [entry weight]: models::channel_epoch::ChannelEpoch::entry_weight
+//! [exit penalty]: models::channel_epoch::ChannelEpoch::exit_penalty
 //!
-//! Each action takes an `Args` struct of models and inputs. It returns either an
-//! error or a `Receipt` with the models it changed or created, and any amounts the
-//! host must move. The host writes every model in the receipt and nothing else.
+//! # Lifecycle
 //!
-//! The models are normalized, like rows in database tables linked by ID. Each
-//! action validates everything except authorization: that its models belong
-//! together, the timing, and the amounts.
+//! - [`create_channel_group`] sets the shared schedule and creates epoch zero.
+//!   [`create_channel`] opens a channel and its first auction in the group's
+//!   current live epoch.
+//! - During that epoch, fund the pot with [`add_reward`] and open positions with
+//!   [`create_bidder_position`]. Use [`deposit_credits`] and [`withdraw_credits`]
+//!   to change commitments.
+//! - After the deadline, [`finalize_channel_epoch`] freezes the pot and shares.
+//!   Each position with surviving shares can then [`claim`] once.
+//! - [`advance_epoch`] moves the group forward one epoch at a time.
+//!   [`create_channel_epoch`] opens later auctions for an existing channel.
+//!   Earlier auctions can finalize and pay claims independently.
 //!
-//! The host loads the models, applies each receipt atomically, and moves the tokens.
-//! It owns authorization, storage, custody, and funding fees.
+//! # Host integration
+//!
+//! Use the action functions for state transitions. Each takes an `Args` struct
+//! and checks the supplied models, lifecycle, and arithmetic. A successful
+//! action returns a `Receipt` with the new or updated models and any computed
+//! settlement amounts.
+//!
+//! The host chooses the identifier and number types, loads the authoritative
+//! state, authenticates callers, and supplies trusted execution time. It
+//! enforces unique identities on creation and applies the receipt against the
+//! same state used to compute it. The state update and associated escrow
+//! transfers, refunds, burns, and payouts must succeed atomically.
 //!
 //! # Numbers
 //!
 //! Credits and rewards are whole `u64` units ([`Amount`]). [`Shares`], weights,
 //! and fractions are [`NonNeg<N>`](mayf_fixed_number::NonNeg) for the host's
-//! fixed-number type `N`. Every rounding step favors the protocol. Entry weights,
-//! shares, returned credits, and rewards round down. Exit penalties and the shares
-//! a withdrawal removes round up.
+//! fixed-point type `N`. Choose a range that fits the expected balances and
+//! weighted shares. Entry weights, newly issued shares, refunds, and payouts
+//! round down. Exit penalties and partial-lot share removals round up.
 
 mod actions;
 mod error;

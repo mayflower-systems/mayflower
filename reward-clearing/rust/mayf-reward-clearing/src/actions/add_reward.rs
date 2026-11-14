@@ -20,7 +20,10 @@ pub struct AddRewardReceipt<I: Identifiable, N: FixedNumber> {
 }
 
 /// Add net reward to the channel epoch's pot while its epoch is live.
-/// The host takes any funding fee before calling this.
+///
+/// The supplied amount is what the host transfers into reward escrow. The
+/// action accounts for accepted funding in whole units. Any funding fee is a
+/// host decision applied before supplying the net amount.
 pub fn add_reward<N, I>(args: AddRewardArgs<I, N>) -> Result<AddRewardReceipt<I, N>>
 where
     I: Identifiable,

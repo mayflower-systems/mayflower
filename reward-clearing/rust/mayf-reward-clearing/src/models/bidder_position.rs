@@ -11,7 +11,7 @@ pub struct BidderPosition<I: Identifiable, N: FixedNumber> {
     pub channel_epoch_id: ChannelEpochId<I>,
 
     /// A stack of lots, one per deposit. Withdrawals take from the newest lot first.
-    /// Entry weight falls through the epoch, so the newest lot has the fewest shares per credit.
+    /// Each lot retains the shares created at its own entry weight until they are removed.
     pub lots: Vec<BidderLot<I, N>>,
 
     /// Set by a claim. A claimed position is frozen: it cannot deposit, withdraw, or claim again.
@@ -65,6 +65,7 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
     }
 
     /// Take credits from the newest lots first, popping each lot that empties.
+    /// A partial lot loses its proportional shares rounded up to the grid.
     /// Returns the next position and the shares removed.
     pub fn withdraw_credits(mut self, credits: Amount) -> Result<(Self, Shares<N>)> {
         self.validate()?;

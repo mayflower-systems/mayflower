@@ -1,3 +1,6 @@
+[profile.dev.package."*"]
+debug = false
+
 [workspace]
 resolver = "3"
 members = [
@@ -18,9 +21,6 @@ members = [
     "weighted-emitter/sol-programs/*/litesvm",
     "weighted-emitter/sol-programs/*/litesvm/test-program",
 ]
-
-[profile.dev.package."*"]
-debug = false
 
 [workspace.package]
 edition = "2024"
