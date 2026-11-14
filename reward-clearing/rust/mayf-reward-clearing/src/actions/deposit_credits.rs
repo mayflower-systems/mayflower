@@ -28,8 +28,11 @@ pub struct DepositCreditsReceipt<I: Identifiable, N: FixedNumber> {
     pub channel_epoch_next: ChannelEpoch<I, N>,
 }
 
-/// Deposit credits as a new lot on the bidder's position.
-/// Earlier deposits get a higher entry weight, so they earn more weighted shares per credit.
+/// Deposit a positive amount of credits into a new lot in the live epoch.
+///
+/// The epoch's entry weight is evaluated at execution time. The action rejects
+/// a position at its host-supplied lot limit. The host escrows the deposit
+/// amount and persists the two updated models together.
 pub fn deposit_credits<N, I>(args: DepositCreditsArgs<I, N>) -> Result<DepositCreditsReceipt<I, N>>
 where
     I: Identifiable,

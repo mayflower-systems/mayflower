@@ -19,10 +19,12 @@ pub struct FinalizeChannelEpochReceipt<I: Identifiable, N: FixedNumber> {
     pub channel_epoch_next: ChannelEpoch<I, N>,
 }
 
-/// Finalize a channel epoch once its epoch has ended.
-/// This freezes the reward pot and total shares that every claim uses.
-/// A channel epoch can be finalized only once.
-/// The host burns the remaining clearing credits.
+/// Finalize a channel epoch once its deadline has arrived.
+///
+/// This one-time action freezes the reward pot and total shares for claims,
+/// regardless of whether the group has advanced. The host burns the recorded
+/// clearing principal in the same operation. The recorded amount remains as
+/// historical accounting.
 pub fn finalize_channel_epoch<N, I>(
     args: FinalizeChannelEpochArgs<I, N>,
 ) -> Result<FinalizeChannelEpochReceipt<I, N>>

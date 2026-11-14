@@ -19,9 +19,11 @@ pub struct ClaimReceipt<I: Identifiable, N: FixedNumber> {
     pub reward_earned: Amount,
 }
 
-/// Claim a bidder's part of a finalized channel epoch's reward pot.
-/// The claim freezes the position, so it can never deposit, withdraw, or claim again.
-/// A claim that rounds down to zero reward still retires its shares.
+/// Claim a position's surviving shares against a finalized channel epoch.
+///
+/// A position can claim once, with no deadline. The action freezes the position
+/// and retires its shares even when the whole-unit payout is zero. The host
+/// pays `reward_earned` and commits the updated state together.
 pub fn claim<N, I>(args: ClaimArgs<I, N>) -> Result<ClaimReceipt<I, N>>
 where
     I: Identifiable,
@@ -102,7 +104,7 @@ mod tests {
         assert_eq!(bob_claim.reward_earned, 27);
         assert!(alice_claim.bidder_position_next.claimed);
 
-        // One reward unit stays in the pot for the protocol, and every share has claimed.
+        // Both claims retire all shares and leave one reward unit in the pot.
         let channel_epoch = &bob_claim.channel_epoch_next;
         assert_eq!(channel_epoch.reward_pot_balance, 1);
         assert_eq!(channel_epoch.weighted_shares_balance, shares(0));

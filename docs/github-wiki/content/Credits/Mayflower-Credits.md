@@ -38,8 +38,7 @@ The intended AVM integration connects the components as follows:
 
 This connects participation rewards to actual AVM fees without making the
 protocol determine the dollar value of either the fees or the eligible assets.
-The [clearing rationale](Revenue-Clearing-Rationale) explains why a common
-credit unit is useful and which valuation decisions remain with participants.
+[Credits and Revenue Clearing](Credits-and-Revenue-Clearing)
 
 The [referral specification](Referral-Network-Formal-Specification) defines
 admission and reward allocation. [Emission Accounting](Emission-Accounting)

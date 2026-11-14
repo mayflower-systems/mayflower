@@ -24,19 +24,12 @@ w(t)=1+b\left(1-\frac{t}{T}\right),\qquad 0\le b\le2.
 ```
 
 A deposit of $`a`$ clearing-token units earns $`a\,w(t)`$ shares in ideal
-arithmetic. Shares are fixed when the deposit is made; they do not decay with
-time. With the reference $`b=1`$:
-
-- At the start, a token earns **2 shares**.
-- Halfway through, it earns **1.5 shares**.
-- Near the deadline, it earns **nearly 1 share**; the deadline itself is closed
-  to deposits.
+arithmetic. The entry weight applies once, at deposit. The resulting shares stay
+with that lot until withdrawn or claimed.
 
 At $`b=0`$, weight is always 1. Increasing $`b`$ increases the early-entry
-advantage, up to a starting weight of 3 at $`b=2`$. The slope sets the tradeoff
-between committing early and waiting to observe more of the auction. Fixed-point
-rounding can make nearby entry times tie; see the
-[formal specification](Revenue-Clearing-Formal-Specification).
+advantage, up to a starting weight of 3 at $`b=2`$. Fixed-point rounding can
+make nearby entry times tie. [Formal Specification](Revenue-Clearing-Formal-Specification)
 
 ## Withdrawal penalty
 
@@ -46,22 +39,30 @@ For a withdrawal at elapsed time $`t`$, the ideal penalty fraction is
 p(t)=\left(\frac{t}{T}\right)^k,\qquad k\in\{1,2,3,4\}.
 ```
 
-Withdrawing $`x`$ units returns $`x(1-p(t))`$ in ideal arithmetic and forfeits
-$`xp(t)`$, burned during the withdrawal. The penalty uses time since the **epoch
-start**, not the age of the deposit. With the reference $`k=2`$ and a seven-day
-epoch:
+Withdrawing $`x`$ units returns $`x(1-p(t))`$ in ideal arithmetic. The
+withdrawal burns the forfeited $`xp(t)`$ and destroys the shares backed by
+the withdrawn principal. Both curves use time since the **epoch start**.
+Two lots withdrawn at the same time pay the same penalty rate.
 
-- After one day, the ideal penalty is about **2%**.
-- Halfway through, it is **25%**.
-- After five days, it is about **51%**.
-- After six days, it is about **73%**.
-- At the deadline, its curve reaches **100%**; withdrawals have already stopped.
+## Comparing the curves
 
-A larger exponent reduces the ideal penalty earlier in the epoch and
-concentrates it closer to the deadline. The penalty makes late reversal of a
-commitment costly. A withdrawal also destroys the corresponding shares. The
-forfeited principal does not enter the reward pot, while destroying shares
-increases the remaining positions' fraction of a fixed pot.
+The table shows ideal values before rounding. With $`b=1`$, the entry weight
+falls by 0.25 shares per token every quarter of the epoch. The quadratic
+penalty rises by more each quarter. The deadline row shows the curves'
+endpoints after bidding has closed.
+
+| Epoch elapsed | Shares per token ($`b=1`$) | Linear penalty ($`k=1`$) | Quadratic penalty ($`k=2`$) |
+| ------------: | -----------------------: | ---------------------: | ------------------------: |
+|            0% |                     2.00 |                     0% |                        0% |
+|           25% |                     1.75 |                    25% |                     6.25% |
+|           50% |                     1.50 |                    50% |                       25% |
+|           75% |                     1.25 |                    75% |                    56.25% |
+|           90% |                     1.10 |                    90% |                       81% |
+|          100% |                     1.00 |                   100% |                      100% |
+
+The entry weight answers how many shares a new deposit will buy. The penalty
+answers how much of an existing commitment a bidder can recover. The example
+below uses $`b=1`$ and $`k=2`$. [Revenue Clearing Rationale](Revenue-Clearing-Rationale)
 
 ## Lots and withdrawal order
 
@@ -88,9 +89,8 @@ request returns $`\lfloor150\times0.75\rfloor=112`$ principal and burns 38.
 
 ## Worked example: withdrawal through settlement
 
-Suppose an epoch uses $`b=1`$ and $`k=2`$. The quantities below are whole token
-base units, and the selected times and amounts make the intermediate
-calculations exact.
+The quantities below are whole token base units. The times and amounts give
+exact entry weights and refund arithmetic.
 
 1. At the start, Alice deposits 100 clearing units at weight 2 and receives 200
    shares.
@@ -98,8 +98,8 @@ calculations exact.
    150 shares. He then withdraws 40 units from that lot at the same halfway
    point. The 25% penalty forfeits 10 units and returns 30. His withdrawal
    removes 60 shares, leaving 60 units of principal and 90 shares.
-3. A funder supplies 90 reward units, all of which enter the pot. Clearing
-   charges no funding fee. Assume no further activity.
+3. A funder adds 90 reward units to the pot. Assume no further activity during
+   the live window.
 4. Finalization burns Alice's 100 and Bob's remaining 60 clearing units. The
    frozen pot is 90 reward units and total surviving shares are $`200+90=290`$.
 5. Alice claims $`\lfloor90\times200/290\rfloor=62`$ reward units; Bob claims
@@ -113,28 +113,5 @@ fraction of the pot increased when Bob removed shares, but his 10-unit
 clearing-token penalty did not add reward to the pot. Clearing and reward units
 may be different assets, so their amounts are not added together.
 
-If Bob had another, older lot, withdrawing from his newest lot would leave the
-older lot unchanged. His 90 surviving shares receive their fraction at
-settlement; the 60 shares removed by withdrawal cannot claim. If he had fully
-withdrawn every lot, he would have no surviving shares.
-
-## Settlement
-
-At the deadline, deposits, withdrawals, and funding stop. Finalization burns
-remaining principal and freezes the reward $`R`$ and surviving shares $`S`$. For
-$`S\gt 0`$, a position with $`S_i\gt 0`$ shares claims
-
-```math
-P_i=\left\lfloor\frac{R S_i}{S}\right\rfloor_{\text{reward unit}}.
-```
-
-Each position claims once, without a claim deadline. Claims use the same frozen
-numerator and denominator, so their order does not change the payouts. After all
-shares have claimed, the remainder stays in escrow. If no shares survive, no
-position can claim and the entire pot stays in escrow. The current mechanism has
-no epoch-closure or remainder-sweep action.
-
-The ratio $`R/S`$ is reward per weighted share. To understand a particular
-participant's reward per clearing token, account for that participant's entry
-weights and withdrawals. The [rationale](Revenue-Clearing-Rationale) explains
-why the model makes these time-dependent choices.
+The example uses the same frozen pot and share total for both claims.
+[Formal Specification](Revenue-Clearing-Formal-Specification#finalization-and-claims)

@@ -15,9 +15,9 @@ reward asset can differ from credits.
 
 In the intended AVM integration, market actions synchronously fund these pots
 with their protocol-fee allocations in the base reserve asset. Each pot keeps
-that asset denomination. Credits provide a common bidding unit across the pots;
-the clearing formula does not need dollar prices or asset conversion. The
-[rationale](Revenue-Clearing-Rationale) explains this choice.
+that asset denomination. Credits provide a common bidding unit across pots
+with different reward assets. Bidders decide what those assets are worth to
+them. Settlement uses the token amounts in each pot and their weighted shares.
 
 The [referral specification](Referral-Network-Formal-Specification) defines
 separate family-escrow and admission uses for issued credits. The

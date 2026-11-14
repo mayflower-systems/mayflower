@@ -1,144 +1,60 @@
 <!--
 title: Revenue Clearing
 summary:
-  A public, epoch-based auction that distributes a reward pot among participants
-  who commit clearing tokens, using time-weighted entry and a time-dependent
-  exit penalty.
+  How a public auction turns committed clearing tokens into weighted shares of
+  a funded reward pot.
 tags:
   - revenue-clearing
   - tokenomics
 -->
 
-Revenue clearing is an auction for distributing a pot of rewards in exchange for
-a **clearing token**. During a fixed period called an **epoch**, participants
-commit clearing tokens and receive weighted shares of the pot. Earlier
-commitments can earn more shares per token. Before the deadline, a participant
-can withdraw, surrendering the corresponding shares and forfeiting a portion of
-the withdrawn tokens. The withdrawal penalty is burned immediately. At
-finalization, all remaining committed tokens are burned, and the reward pot is
-divided among the surviving shares.
+Revenue clearing distributes a reward pot among bidders willing to spend a
+**clearing token** for a portion of it. The pot can hold a different asset
+from the clearing token. Bidders decide how much that reward is worth to them.
+Settlement uses the funded amount and the shares bidders have earned.
 
-In the described composition, [Mayflower credits](Mayflower-Credits) are the
-clearing asset. The intended AVM integration transfers each market action's
-protocol-fee allocation into the matching reserve-asset pot in the same
-transaction. Those fees are distributed in their original asset, without a
-liquidation desk or a dollar-price input. Clearing also accepts other supplied
-funding and accounts for it independently of its source. The auction itself is a
-general mechanism: the reward asset, the source of funding, and the clearing
-token can be chosen for a particular use.
+## Why require a commitment?
 
-Everyone uses the same epoch deadline, entry-weight formula, withdrawal-penalty
-formula, and settlement rule. The [rationale](Revenue-Clearing-Rationale)
-explains how these rules price timing choices and what their fairness guarantees
-do and do not establish.
+Everyone can see the accepted bids and funding on a public chain. A bidder
+who waits until the last moment gets to see more of the auction while giving
+competitors little time to respond. With free cancellation, a large temporary
+bid can make the reward per share look too small to compete for, even though
+the bidder is unwilling to pay for those shares.
 
-## The pieces
+Revenue clearing puts tokens at stake in both decisions. Bidders who enter
+early can earn more shares per token while the final pot and competition are
+still uncertain. A bidder can revise a commitment by withdrawing, but doing
+so forfeits part of the withdrawn tokens. As the deadline approaches, that
+forfeiture grows. This makes a visible bid costly to abandon after others
+have acted on it. [Revenue Clearing Rationale](Revenue-Clearing-Rationale)
 
-- **Clearing token:** the asset participants commit. A participant's committed
-  amount is called its principal.
-- **Reward asset and pot:** the asset supplied for distribution. It can be
-  different from the clearing token. Recognized funding adds to the pot during
-  the epoch. Clearing itself charges no funding fee.
-- **Epoch:** a window of duration $`T`$. Deposits, withdrawals, and funding are
-  accepted before its deadline; settlement follows the deadline.
-- **Share:** a unit of entitlement to the pot. A deposit earns shares according
-  to its entry time. Shares are accounting units: their value depends on the
-  final pot and the total surviving shares. They apply to this epoch's funded
-  assets, not to an application's future revenue.
-- **Deposit lot:** a record of one deposit and its shares. Each deposit keeps
-  its own entry weight. A position is a participant's collection of lots for one
-  auction epoch.
-- **Funder and participant:** a funder supplies rewards; a participant commits
-  clearing tokens. The same actor can play both roles.
+## From funding to claim
 
-## The auction in five steps
+A **channel** runs auctions for a particular reward asset. Each auction uses
+a fixed window called an **epoch**. Auctions in the same channel group share a
+schedule, and each channel epoch has its own funded pot and positions.
 
-1. Funders add rewards to the epoch pot. The accepted amount is transferred to
-   its escrow and recorded for distribution.
-2. Participants deposit clearing tokens. A deposit at elapsed time $`t`$ earns
-   shares using the epoch's entry weight $`w(t)`$.
-3. Before the deadline, participants can withdraw from their newest surviving
-   lots. One request can span several lots. It removes shares, returns principal
-   after the penalty $`p(t)`$, and burns that penalty.
-4. At the deadline, deposits, withdrawals, and funding stop. Finalization burns
-   remaining principal and fixes the reward pot and surviving shares.
-5. Each position claims its proportion of the fixed pot. Payouts round down to
-   whole reward units. Unclaimed rewards and rounding remainder stay in escrow.
-   If no shares survive, no position can claim and the entire pot stays there.
+1. During the live window, funders add rewards and bidders deposit clearing
+   tokens as **principal**. Each deposit creates a **lot** whose shares encode
+   the entry bonus at the time of deposit.
+2. A withdrawal removes principal and its associated shares from the newest
+   lots first. The bidder receives the refund after the exit penalty, and
+   the forfeited clearing tokens are burned.
+3. Deposits, withdrawals, and funding close at the deadline. Anyone can then
+   finalize the auction. Finalization burns the remaining principal and
+   freezes the funded reward and surviving shares.
+4. A position with surviving shares can claim once, with no claim deadline.
+   Its payout is the same fraction of the final pot as its fraction of the
+   surviving shares, rounded down to a whole reward unit.
 
-Deposits increase the number of shares competing for a fixed pot. Withdrawals
-destroy shares, increasing the remaining positions' fractions of that pot. A
-forfeited withdrawal penalty is clearing principal; it does not add to the
-reward pot.
+Accepted funding can arrive throughout the auction. At any given pot size,
+a deposit dilutes the share of existing positions and a withdrawal increases
+it. Withdrawal forfeiture takes clearing tokens out of circulation and adds
+nothing to the reward pot. If the pot is empty at finalization, the committed
+tokens still burn. If no shares survive, the whole reward pot remains in
+escrow.
 
-## The basic equations
-
-Let $`t`$ be elapsed time in an epoch of duration $`T`$. The epoch fixes an
-**entry bonus slope** $`b`$ and an **exit penalty exponent** $`k`$:
-
-```math
-w(t)=1+b\left(1-\frac{t}{T}\right),\qquad 0\le b\le2,
-```
-
-```math
-p(t)=\left(\frac{t}{T}\right)^k,\qquad k\in\{1,2,3,4\}.
-```
-
-In ideal arithmetic, a deposit of $`a`$ clearing tokens earns $`a\,w(t)`$
-shares. A withdrawal of $`x`$ tokens returns $`x(1-p(t))`$ and forfeits
-$`xp(t)`$, while removing the corresponding shares from the consumed lots. The
-entry weight is fixed at deposit; the exit penalty is calculated from time since
-the epoch began. Actual accounting uses directed rounding described in the
-[formal specification](Revenue-Clearing-Formal-Specification).
-
-If the finalized pot is $`R`$, the surviving total is $`S\gt 0`$, and a position
-has $`S_i`$ shares, its payout is
-
-```math
-P_i=\left\lfloor\frac{R S_i}{S}\right\rfloor_{\text{reward unit}}.
-```
-
-$`R/S`$ is reward per weighted share. A participant's reward per clearing token
-also depends on entry weight, withdrawals, and rounding. The pot and surviving
-shares arise from the actions taken during the epoch; there is no preset
-clearing-token price.
-
-## Settlement boundaries
-
-Each epoch lasts at least one hour. Entry, withdrawal, and funding close at its
-deadline. Finalization is a separate permissionless action, and claims have no
-deadline. A funded pot cannot be withdrawn through the clearing actions, but
-future funding is not guaranteed: finalization burns remaining credits even if
-the pot is zero.
-
-The current clearing interface has no deposit minimum-share or withdrawal
-minimum-return argument. Time-sensitive terms are evaluated when the action
-executes. It also has no epoch-closure or remainder-sweep action; a zero-share
-pot or final rounding remainder remains held. These boundaries are part of the
-[formal specification](Revenue-Clearing-Formal-Specification).
-
-## Notes
-
-- [Rationale](Revenue-Clearing-Rationale) — Why this mechanism is useful on a
-  public blockchain and how its rules shape participation and fairness.
-- [Time Weight](Revenue-Clearing-Time-Weight) — Entry, exit, deposit lots, and a
-  worked example from deposit through settlement.
-- [Formal Specification](Revenue-Clearing-Formal-Specification) — Parameters,
-  accounting transitions, rounding, and conservation.
-
-## How it connects
-
-- [Credit emission](Credit-Emissions) allocates credits to participants through
-  channel weights and the [referral network](Referral-Network). Revenue clearing
-  uses committed credits to claim a portion of a funded reward pot.
-- Clearing and emission are separate processes: clearing forfeitures do not
-  change the [emission schedule](Emission-Schedule). Their combined effects
-  contribute to the
-  [long-term economics of credits](Long-Term-Economics-of-Credits).
-- Under the referral integration, credits committed here cannot also back
-  [family marketing escrow](Mutualization), a channel pledge, or a root-seat
-  bid. A member must release other commitments under their own rules before
-  committing the same principal to clearing.
-- The protocol's [root-seat auction](Referral-Network) allocates scarce referral
-  positions and burns the winning admission payment. It is a separate auction
-  from revenue clearing; neither auction replenishes scheduled credit emission.
+- [Time Weight](Revenue-Clearing-Time-Weight) shows the linear entry bonus,
+  quadratic exit example, and two bidders' balances through settlement.
+- [Formal Specification](Revenue-Clearing-Formal-Specification) gives the
+  exact lifecycle, equations, and rounding rules.

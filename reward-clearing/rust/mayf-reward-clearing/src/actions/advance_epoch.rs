@@ -14,6 +14,10 @@ pub struct AdvanceEpochReceipt<I: Identifiable> {
     pub channel_group_next: ChannelGroup<I>,
 }
 
+/// Advance a group by one epoch once its current epoch has ended.
+///
+/// The successor starts at the predecessor's deadline, even if advancement
+/// was delayed. Channel auctions are finalized independently.
 pub fn advance_epoch<I>(args: AdvanceEpochArgs<I>) -> Result<AdvanceEpochReceipt<I>>
 where
     I: Identifiable,

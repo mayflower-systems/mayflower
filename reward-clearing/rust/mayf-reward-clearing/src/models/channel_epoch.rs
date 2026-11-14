@@ -7,19 +7,21 @@ use crate::models::epoch::Epoch;
 use crate::{Amount, EpochTerms, models::Identifiable};
 use crate::{EpochCounter, Result, RewardClearingError, Seconds, Shares};
 
-/// A channel's epoch
-/// There is at most one ChannelEpoch for each channel and epoch
-/// This tracks a cumulative pot of rewards to be distributed out to the bidders when it is finalized
+/// One auction for a channel in a group epoch.
 ///
-/// After finalization, each claim pays from `reward_pot_balance` and retires its shares
-/// from `weighted_shares_balance`. Once no shares remain, the rest of the pot goes to the protocol.
+/// After finalization, claims retire shares and draw from the reward balance.
+/// Any reward left after the last claim remains recorded in the pot.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChannelEpoch<I: Identifiable, N: FixedNumber> {
     pub channel_id: I,
     pub epoch_counter: EpochCounter,
+    /// Accepted funding minus payouts already claimed.
     pub reward_pot_balance: Amount,
+    /// Committed principal before finalization, historical burn amount afterward.
     pub clearing_credits_balance: Amount,
+    /// Surviving shares before finalization, unclaimed shares afterward.
     pub weighted_shares_balance: Shares<N>,
+    /// The channel terms copied when this auction opened.
     pub terms: EpochTerms<N>,
 
     /// Totals fixed once by finalization and used by every claim. `None` until then.
@@ -96,12 +98,12 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
         Ok(self)
     }
 
-    /// The entry weight for credits deposited at `now`:
+    /// The entry weight for credits deposited at `now`.
     ///
-    ///   w = 1 + floor(slope * floor((duration - elapsed) / duration))
-    ///
-    /// It starts at `1 + slope` when the epoch opens and falls linearly toward 1.
-    /// Both steps round down, so rounding never issues extra shares.
+    /// The ideal weight is `1 + slope * (1 - elapsed / duration)`, where
+    /// elapsed time starts at the group epoch's start. This rounds the
+    /// remaining time fraction and its product with the slope down to the
+    /// fixed-point grid. The deadline is outside the live interval.
     pub fn entry_weight(&self, epoch: &Epoch<I>, now: Seconds) -> Result<NonNeg<N>> {
         let elapsed = epoch.elapsed_seconds(now)?;
         let duration = NonZeroU64::new(epoch.duration_seconds)
@@ -123,12 +125,12 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
             .map_err(|_| RewardClearingError::EntryWeightOverflow)
     }
 
-    /// The fraction of withdrawn credits forfeited at `now`:
+    /// The fraction of withdrawn credits forfeited at `now`.
     ///
-    ///   p = min(1, ceil(elapsed / duration) ^ exponent)
-    ///
-    /// It starts at 0 when the epoch opens and rises toward 1.
-    /// Every step rounds up, so rounding never returns extra credits.
+    /// The ideal fraction is `(elapsed / duration)^exponent`. Elapsed time is
+    /// measured from the group epoch's start for every lot. The elapsed
+    /// fraction and each multiplication in the power round up to the grid.
+    /// The result is capped at one.
     pub fn exit_penalty(&self, epoch: &Epoch<I>, now: Seconds) -> Result<NonNeg<N>> {
         let elapsed = epoch.elapsed_seconds(now)?;
         let duration = NonZeroU64::new(epoch.duration_seconds)
@@ -144,7 +146,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
     }
 
     /// Freeze the reward pot and total shares for all subsequent claims.
-    /// An epoch with no shares still finalizes; its whole reward pot is protocol remainder.
+    /// An epoch with no shares still finalizes and retains its entire reward pot.
     pub fn finalize(mut self) -> Result<Self> {
         self.validate_unfinalized()?;
 
@@ -186,9 +188,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
 }
 
 impl<I: Identifiable, N: IntegralRounding> ChannelEpoch<I, N> {
-    /// Pay a claim against the frozen totals, rounded down to whole units:
-    ///
-    ///   reward = floor(final_reward_pot * shares / final_weighted_shares)
+    /// Pay `floor(final_reward_pot * shares / final_weighted_shares)`.
     ///
     /// Multiply and divide together without rounding a per-share rate first.
     /// Every claim uses the same totals, so claim order does not change payouts.
