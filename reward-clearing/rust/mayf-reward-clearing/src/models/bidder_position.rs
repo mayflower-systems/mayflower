@@ -1,6 +1,6 @@
+use mayf_auction_calculator::EntryWeight;
 use mayf_fixed_number::{FixedNumber, NonNeg, Pos};
 
-use crate::auction::EntryWeight;
 use crate::models::Identifiable;
 use crate::models::channel_epoch::{ChannelEpoch, ChannelEpochId};
 use crate::{Amount, Result, RewardClearingError, Shares};

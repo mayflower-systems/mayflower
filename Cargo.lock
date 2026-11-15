@@ -2084,6 +2084,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-auction-calculator"
+version = "0.1.0"
+dependencies = [
+ "mayf-fixed-drivers",
+ "mayf-fixed-number",
+]
+
+[[package]]
 name = "mayf-avm-calculator"
 version = "0.1.0"
 dependencies = [
@@ -2206,6 +2214,7 @@ dependencies = [
 name = "mayf-reward-clearing"
 version = "0.1.0"
 dependencies = [
+ "mayf-auction-calculator",
  "mayf-fixed-drivers",
  "mayf-fixed-number",
 ]

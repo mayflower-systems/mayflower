@@ -1,6 +1,6 @@
+use mayf_auction_calculator::AuctionWindow;
 use mayf_fixed_number::{FixedNumber, IntegralRounding, NonNeg, Pos};
 
-use crate::auction::AuctionWindow;
 use crate::models::channel::Channel;
 use crate::models::epoch::Epoch;
 use crate::{Amount, EpochTerms, models::Identifiable};

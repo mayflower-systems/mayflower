@@ -1,4 +1,5 @@
-use crate::auction::TimeWindow;
+use mayf_auction_calculator::TimeWindow;
+
 use crate::models::channel_group::ChannelGroup;
 use crate::models::{EpochCounter, Identifiable, Seconds};
 use crate::{Result, RewardClearingError};
