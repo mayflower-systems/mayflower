@@ -1,3 +1,4 @@
+use crate::auction::TimeWindow;
 use crate::models::channel_group::ChannelGroup;
 use crate::models::{EpochCounter, Identifiable, Seconds};
 use crate::{Result, RewardClearingError};
@@ -45,9 +46,7 @@ impl<I: Identifiable> Epoch<I> {
     }
 
     pub fn end_time_unix_seconds(&self) -> Result<Seconds> {
-        self.start_time_unix_seconds
-            .checked_add(self.duration_seconds)
-            .ok_or(RewardClearingError::EpochEndTimeOverflow)
+        Ok(self.window().end()?)
     }
 
     pub fn is_finished(&self, now: Seconds) -> Result<bool> {
@@ -57,24 +56,16 @@ impl<I: Identifiable> Epoch<I> {
     /// Fails unless this is the group's current epoch and `now` is in [start, end).
     pub fn validate_active(&self, channel_group: &ChannelGroup<I>, now: Seconds) -> Result<()> {
         self.validate_current(channel_group)?;
-        self.validate_live_interval(now)
-    }
-
-    fn validate_live_interval(&self, now: Seconds) -> Result<()> {
-        if now < self.start_time_unix_seconds {
-            return Err(RewardClearingError::EpochNotStarted);
-        }
-
-        if self.is_finished(now)? {
-            return Err(RewardClearingError::EpochEnded);
-        }
-
+        self.window().time_remaining(now)?;
         Ok(())
     }
 
     /// Seconds since the epoch started. Fails outside the live interval [start, end).
     pub fn elapsed_seconds(&self, now: Seconds) -> Result<Seconds> {
-        self.validate_live_interval(now)?;
-        Ok(now - self.start_time_unix_seconds)
+        Ok(self.window().elapsed(now)?)
+    }
+
+    pub(crate) fn window(&self) -> TimeWindow {
+        TimeWindow::new(self.start_time_unix_seconds, self.duration_seconds)
     }
 }

@@ -46,6 +46,7 @@
 //! round down. Exit penalties and partial-lot share removals round up.
 
 mod actions;
+mod auction;
 mod error;
 pub mod models;
 #[cfg(test)]

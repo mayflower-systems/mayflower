@@ -49,11 +49,14 @@ where
         return Err(RewardClearingError::LotLimitReached);
     }
 
-    let entry_weight = args.channel_epoch.entry_weight(&args.epoch, args.now)?;
+    let entry_weight = args
+        .channel_epoch
+        .auction_window(&args.epoch)
+        .entry(args.now)?;
 
     let (bidder_position_next, shares_issued) = args
         .bidder_position
-        .deposit_credits(args.credits_to_deposit, entry_weight)?;
+        .deposit_at_weight(args.credits_to_deposit, entry_weight)?;
 
     let channel_epoch_next = args
         .channel_epoch

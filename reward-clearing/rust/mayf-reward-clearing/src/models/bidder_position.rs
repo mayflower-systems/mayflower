@@ -1,5 +1,6 @@
 use mayf_fixed_number::{FixedNumber, NonNeg, Pos};
 
+use crate::auction::EntryWeight;
 use crate::models::Identifiable;
 use crate::models::channel_epoch::{ChannelEpoch, ChannelEpochId};
 use crate::{Amount, Result, RewardClearingError, Shares};
@@ -51,16 +52,26 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
     /// Push a new lot of credits at an entry weight.
     /// Returns the next position and the shares issued.
     pub fn deposit_credits(
-        mut self,
+        self,
         credits: Amount,
         entry_weight: NonNeg<N>,
     ) -> Result<(Self, Shares<N>)> {
+        self.deposit_at_weight(credits, EntryWeight::new(entry_weight))
+    }
+
+    pub(crate) fn deposit_at_weight(
+        mut self,
+        credits: Amount,
+        entry_weight: EntryWeight<N>,
+    ) -> Result<(Self, Shares<N>)> {
         self.validate()?;
 
-        let lot = BidderLot::new(self.id, credits, entry_weight)?;
-        let shares_issued = lot.shares;
-
-        self.lots.push(lot);
+        let shares_issued = entry_weight.shares(credits)?;
+        self.lots.push(BidderLot {
+            bidder_position_id: self.id,
+            credits,
+            shares: shares_issued,
+        });
         Ok((self, shares_issued))
     }
 
@@ -139,23 +150,6 @@ impl<I: Identifiable, N: FixedNumber> BidderPosition<I, N> {
 }
 
 impl<I: Identifiable, N: FixedNumber> BidderLot<I, N> {
-    /// shares = floor(credits * entry_weight)
-    fn new(bidder_position_id: I, credits: Amount, entry_weight: NonNeg<N>) -> Result<Self> {
-        let shares = NonNeg::<N>::from_u64(credits)
-            .and_then(|credits| credits.checked_mul_floor(entry_weight))
-            .map_err(|_| RewardClearingError::LotSharesOverflow)?;
-
-        if shares == NonNeg::zero() {
-            return Err(RewardClearingError::DepositTooSmall);
-        }
-
-        Ok(Self {
-            bidder_position_id,
-            credits,
-            shares,
-        })
-    }
-
     /// Remove credits and their share of the lot's shares.
     /// A partial withdrawal rounds the shares removed up:
     ///

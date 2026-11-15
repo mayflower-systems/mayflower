@@ -1,8 +1,7 @@
-use mayf_fixed_number::{FixedNumber, IntegralRounding, NonNeg};
+use mayf_fixed_number::{FixedNumber, IntegralRounding};
 
 use crate::Amount;
 use crate::Result;
-use crate::RewardClearingError;
 use crate::Seconds;
 use crate::models::Identifiable;
 use crate::models::bidder_position::BidderPosition;
@@ -56,12 +55,10 @@ where
         .bidder_position
         .withdraw_credits(args.credits_to_withdraw)?;
 
-    let exit_penalty = args.channel_epoch.exit_penalty(&args.epoch, args.now)?;
-    let credits_returned = credits_after_penalty(args.credits_to_withdraw, exit_penalty)?;
-    let credits_forfeited = args
-        .credits_to_withdraw
-        .checked_sub(credits_returned)
-        .ok_or(RewardClearingError::CreditsForfeitedUnderflow)?;
+    let withdrawal = args
+        .channel_epoch
+        .auction_window(&args.epoch)
+        .split_withdrawal(args.now, args.credits_to_withdraw)?;
 
     let channel_epoch_next = args
         .channel_epoch
@@ -70,23 +67,9 @@ where
     Ok(WithdrawCreditsReceipt {
         bidder_position_next,
         channel_epoch_next,
-        credits_returned,
-        credits_forfeited,
+        credits_returned: withdrawal.returned,
+        credits_forfeited: withdrawal.forfeited,
     })
-}
-
-/// Credits left after the penalty, rounded down to whole credits:
-///
-///   returned = floor(credits * (1 - penalty))
-fn credits_after_penalty<N: IntegralRounding>(
-    credits: Amount,
-    penalty: NonNeg<N>,
-) -> Result<Amount> {
-    NonNeg::<N>::one()
-        .checked_sub(penalty)
-        .and_then(|kept_fraction| NonNeg::<N>::from_u64(credits)?.checked_mul_floor(kept_fraction))
-        .and_then(|kept| kept.get().checked_floor_to_u64())
-        .map_err(|_| RewardClearingError::CreditsReturnedOverflow)
 }
 
 #[cfg(test)]
@@ -179,16 +162,17 @@ mod tests {
             first.bidder_position_next,
             first.channel_epoch_next,
             HALFWAY,
-            100,
+            102,
         )
         .unwrap();
 
-        // Pops the newest lot (100 credits, 150 shares), then takes 50 credits
+        // Pops the newest lot (102 credits, 153 shares), then takes 50 credits
         // and 100 shares from the oldest lot (100 credits, 200 shares).
-        let withdrawn = withdraw(second, HALFWAY, 150).unwrap();
+        let withdrawn = withdraw(second, HALFWAY, 152).unwrap();
 
-        // floor(150 * 0.75) = 112
-        assert_eq!(withdrawn.credits_returned, 112);
+        // Round the combined refund of 114 once. Rounding the lots'
+        // refunds of 76.5 and 37.5 separately would return only 113.
+        assert_eq!(withdrawn.credits_returned, 114);
         assert_eq!(withdrawn.credits_forfeited, 38);
 
         let lots = &withdrawn.bidder_position_next.lots;
