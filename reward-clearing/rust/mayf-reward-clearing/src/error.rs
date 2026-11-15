@@ -1,3 +1,5 @@
+use crate::auction::AuctionError;
+
 /// Every way a reward-clearing action can fail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RewardClearingError {
@@ -109,3 +111,22 @@ pub enum RewardClearingError {
 }
 
 pub type Result<T> = core::result::Result<T, RewardClearingError>;
+
+impl From<AuctionError> for RewardClearingError {
+    fn from(error: AuctionError) -> Self {
+        match error {
+            AuctionError::InvalidDuration => Self::InvalidEpochDuration,
+            AuctionError::InvalidRampBonusSlope => Self::InvalidRampBonusSlope,
+            AuctionError::InvalidExitPenaltyExponent => Self::InvalidExitPenaltyExponent,
+            AuctionError::WindowNotStarted => Self::EpochNotStarted,
+            AuctionError::WindowEnded => Self::EpochEnded,
+            AuctionError::WindowEndOverflow => Self::EpochEndTimeOverflow,
+            AuctionError::EntryWeightOverflow => Self::EntryWeightOverflow,
+            AuctionError::ExitPenaltyOverflow => Self::ExitPenaltyOverflow,
+            AuctionError::SharesOverflow => Self::LotSharesOverflow,
+            AuctionError::DepositTooSmall => Self::DepositTooSmall,
+            AuctionError::RefundOverflow => Self::CreditsReturnedOverflow,
+            AuctionError::ForfeitureUnderflow => Self::CreditsForfeitedUnderflow,
+        }
+    }
+}

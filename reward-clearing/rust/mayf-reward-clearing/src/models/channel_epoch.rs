@@ -1,7 +1,6 @@
-use core::num::NonZeroU64;
+use mayf_fixed_number::{FixedNumber, IntegralRounding, NonNeg, Pos};
 
-use mayf_fixed_number::{DirectedRounding, FixedNumber, IntegralRounding, NonNeg, Pos};
-
+use crate::auction::AuctionWindow;
 use crate::models::channel::Channel;
 use crate::models::epoch::Epoch;
 use crate::{Amount, EpochTerms, models::Identifiable};
@@ -105,24 +104,7 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
     /// remaining time fraction and its product with the slope down to the
     /// fixed-point grid. The deadline is outside the live interval.
     pub fn entry_weight(&self, epoch: &Epoch<I>, now: Seconds) -> Result<NonNeg<N>> {
-        let elapsed = epoch.elapsed_seconds(now)?;
-        let duration = NonZeroU64::new(epoch.duration_seconds)
-            .ok_or(RewardClearingError::InvalidEpochDuration)?;
-        let remaining = duration.get() - elapsed;
-
-        let remaining_fraction =
-            N::checked_from_ratio_round(remaining.into(), duration.into(), DirectedRounding::Floor)
-                .and_then(NonNeg::new)
-                .map_err(|_| RewardClearingError::EntryWeightOverflow)?;
-        let bonus = self
-            .terms
-            .ramp_bonus_slope()
-            .checked_mul_floor(remaining_fraction)
-            .map_err(|_| RewardClearingError::EntryWeightOverflow)?;
-
-        NonNeg::one()
-            .checked_add(bonus)
-            .map_err(|_| RewardClearingError::EntryWeightOverflow)
+        Ok(self.auction_window(epoch).entry(now)?.get())
     }
 
     /// The fraction of withdrawn credits forfeited at `now`.
@@ -132,17 +114,11 @@ impl<I: Identifiable, N: FixedNumber> ChannelEpoch<I, N> {
     /// fraction and each multiplication in the power round up to the grid.
     /// The result is capped at one.
     pub fn exit_penalty(&self, epoch: &Epoch<I>, now: Seconds) -> Result<NonNeg<N>> {
-        let elapsed = epoch.elapsed_seconds(now)?;
-        let duration = NonZeroU64::new(epoch.duration_seconds)
-            .ok_or(RewardClearingError::InvalidEpochDuration)?;
+        Ok(self.auction_window(epoch).exit_penalty(now)?)
+    }
 
-        let penalty =
-            N::checked_from_ratio_round(elapsed.into(), duration.into(), DirectedRounding::Ceil)
-                .and_then(|progress| progress.checked_pow_ceil(self.terms.exit_penalty_exponent()))
-                .and_then(NonNeg::new)
-                .map_err(|_| RewardClearingError::ExitPenaltyOverflow)?;
-
-        Ok(penalty.min(NonNeg::one()))
+    pub(crate) fn auction_window(&self, epoch: &Epoch<I>) -> AuctionWindow<N> {
+        AuctionWindow::new(epoch.window(), self.terms.0)
     }
 
     /// Freeze the reward pot and total shares for all subsequent claims.
