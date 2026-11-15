@@ -27,6 +27,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
+    /* Workspace packages resolve `.ts` imports in dependency source. */
+    "rewriteRelativeImportExtensions": true,
 
     /* Interop and tooling */
     "skipLibCheck": true

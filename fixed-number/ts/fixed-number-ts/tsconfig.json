@@ -3,11 +3,7 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist",
-
-    /* Sources import each other as `.ts`, so Node can run the tests from
-       source. The compiler rewrites the extension to `.js` in `dist`. */
-    "rewriteRelativeImportExtensions": true
+    "outDir": "dist"
   },
   "include": ["src"]
 }
