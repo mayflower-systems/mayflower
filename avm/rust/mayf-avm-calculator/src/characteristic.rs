@@ -48,12 +48,14 @@ impl From<CharacteristicError> for CharacteristicEngineError {
 
 pub type CharacteristicEngineResult<T> = core::result::Result<T, CharacteristicEngineError>;
 
-/// Evaluate an immutable, increasing characteristic passing through `(0, 0)`.
+/// Evaluate an immutable, smooth, strictly increasing characteristic on its
+/// supported nonnegative domain. The characteristic passes through `(0, 0)`.
 ///
 /// Implementations write every response in request order and enclose the true
 /// endpoint values and integral. Input and output lengths must match.
-/// No segmentation, accounting, or policy crosses this
-/// boundary. A transport adapter may encode the whole batch into one invocation.
+/// The batch carries only numerical queries and bounds. The caller applies
+/// segmentation, accounting, and policy. A transport adapter can encode the
+/// whole batch into one invocation.
 pub trait CharacteristicEngine<N: FixedNumber> {
     fn spans(
         &self,

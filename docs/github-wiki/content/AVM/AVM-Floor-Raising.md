@@ -16,8 +16,9 @@ acceptance conditions. A surplus-funded variant is described in
 ## Proposal and fixed quantities
 
 Let the old floor, ramp start, ramp end, progress, and circulation be
-$`F,A,E,P,T`$. A proposal supplies $`F'\gt F`$, a new ramp end $`E'`$, and a new
-width $`W'`$, giving $`A'=E'-W'`$. It must satisfy
+$`F,A,E,P,T`$. A proposal supplies a positive floor increment $`\Delta F`$, a
+new ramp end $`E'`$, and a new width $`W'`$. The resulting floor and ramp start
+are $`F'=F+\Delta F`$ and $`A'=E'-W'`$. The proposal must satisfy
 
 ```math
 0\le A'\le E'\le P,\qquad A'\ge A,\qquad E'\ge E.
@@ -112,5 +113,6 @@ calculation. A candidate that cannot be certified within the allowances is
 rejected.
 
 [Linear AVM Floor Raising](Linear-AVM-Floor-Raising) gives closed-form equations
-and a complete example for the linear characteristic. Other characteristics
-require their own numerical search, while retaining these same acceptance rules.
+and a complete example for the linear characteristic. A shared numerical search
+can also find candidates using characteristic values and integrals. The grid and
+the precision of the engine's bounds affect which candidates it can certify.

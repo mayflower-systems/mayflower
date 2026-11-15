@@ -1,20 +1,16 @@
 # mayf-characteristic
 
-A characteristic describes how redemption price grows with issuance progress.
+A characteristic is the base curve the AVM uses to price issuance and redemption.
 Implement `Characteristic<N>` for the immutable parameters of a smooth,
-increasing function with `f(0) = 0`. The trait has two methods:
+strictly increasing function with `f(0) = 0` on its supported nonnegative
+domain.
 
-- `y(x)` encloses the value at a nonnegative progress coordinate.
+- `y(x)` encloses the value at a nonnegative progress coordinate. It returns
+  exact zero at the origin.
 - `integrate(lo, width)` encloses the area from `lo` to `lo + width`. A zero
   width has exactly zero area.
 
 Both return `Bounds<NonNeg<N>>` on success. Round outward so the exact value
-lies between the bounds; return an error when it cannot be certified.
-The trait works with any `FixedNumber`; each driver chooses how to evaluate its
-own function. For example, `mayf-characteristic-linear-driver` implements both
-methods for `f(x) = slope * x`.
-
-The AVM calculator uses these neutral values and integrals to place the floor,
-scale the ramp, and quote trades. A local driver can be passed to its
-`LocalCharacteristic` adapter; a remote engine can answer the same span batches
-in one invocation. Neither needs market state to evaluate the characteristic.
+lies between the bounds. Return an error for an unsupported input or a result
+that cannot be certified. A driver evaluates the base function using only its
+parameters and the requested point or interval.

@@ -1,8 +1,8 @@
 # `mayf-avm-engine-linear-sol`
 
-Anchor program for the neutral characteristic `f(x) = slope * x`. A mothership
-program owns AVM state and policy and calls this program for characteristic
-values and integrals.
+Standalone Anchor program for the neutral characteristic `f(x) = slope * x`.
+An AVM host can call it for characteristic values and integrals while managing
+market state and policy itself.
 
 ## Instructions
 
@@ -22,21 +22,21 @@ The program uses `LocalCharacteristic<LinearCharacteristic<U64F64>>`, sharing
 the existing driver's checked arithmetic and outward rounding.
 
 A response is six `u128`s (96 bytes). Solana allows 1,024 bytes of return data,
-so a Borsh vector fits `(1024 - 4) / 96 = 10` responses. `MAX_BATCH_SPANS` is
-derived from that transport limit. Larger batches fail before evaluation;
-arithmetic overflow fails the whole instruction. No partial result is returned.
+so a Borsh vector fits up to 10 responses after its four-byte length prefix.
+`MAX_BATCH_SPANS` is derived from that transport limit. A batch larger than
+this or an arithmetic overflow fails the whole instruction.
 
-## Calling from the mothership
+## Calling the engine
 
 The sibling `cpi` crate provides generated instruction builders and Borsh
 models without depending on this Anchor program crate. See the
 [build instructions](../README.md) to regenerate it.
 
-Alternatively, enable this crate's `cpi` feature to use Anchor's generated
+This crate's `cpi` feature also exposes Anchor's generated
 `cpi::calculate_spans` instruction. It returns Anchor's
 `Return<Vec<wire::SpanResponse>>`. The public wire types convert to and from
-the calculator's `SpanRequest<U64F64>` and `SpanResponse<U64F64>`; decoding
-responses into calculator bounds checks endpoint ordering.
+the calculator's `SpanRequest<U64F64>` and `SpanResponse<U64F64>`. Decoding
+checks that each lower bound is at most its upper bound.
 
 A `CharacteristicEngine` adapter should check input/output lengths, invoke the
 batch once, check the response count, and populate the caller's response slice.
@@ -45,15 +45,16 @@ verify its producer program ID, and deserialize the whole payload. Anchor's
 generated `Return::get()` also checks the producer but panics on invalid data.
 
 Bind the engine program and parameter account addresses in the market's stored
-configuration. Anchor checks the parameter account's owner and discriminator;
-the mothership checks that it is the account selected for that market. The
-calculation needs no signer or writable account.
+configuration. Anchor checks the parameter account's owner and discriminator.
+The host authenticates both addresses against the market configuration and
+relies on the bound engine to enclose the true values and integrals. The
+calculation uses only a read-only parameter account.
 
 The calculator's signed `I64F64` grid has the same fractional precision.
 Adapters can use the fixed drivers' checked `TryFrom` conversions between
-`I64F64` and `U64F64`. Values outside the caller's signed range must fail rather
-than wrap. Normalization, token rounding, segmentation, fees, and storage stay
-with the mothership.
+`I64F64` and `U64F64`. These conversions reject values outside the target
+range. The host handles normalization, token rounding, fees, and storage. The
+calculator uses the returned bounds to construct the schedule.
 
 ## Verification
 

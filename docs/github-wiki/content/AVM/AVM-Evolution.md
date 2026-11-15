@@ -74,9 +74,11 @@ zero circulation need not mean zero progress.
 ### Numerical contraction
 
 A fixed-point calculation uses an upper bound for the new offset to keep the
-retained schedule from falling below its required floor. Any additional retained
-backing is conservatively deducted from the sale's proceeds. This is separate
-from the redemption fee. The exact equations above need no such deduction.
+retained schedule at or above the floor. If the sale ends inside the ramp,
+the old offset also bounds the new offset from above. The lower proceeds bound
+deducts an upper bound on the extra backing retained by the rounded ramp. A
+ramp collapse leaves only floor-backed supply. The redemption fee is calculated
+after the backing deduction.
 
 ## Floor raise
 

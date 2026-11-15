@@ -46,10 +46,10 @@ state in one atomic settlement.
 
 If the live price exceeds the floor, an exercise right can have value. Immediate
 ordinary redemption of the new AVA pays the integral over the sale interval,
-less redemption fees and any conservative numerical adjustment. For a small
-quantity its gross per-unit proceeds approach the live price; a large quantity
-has price impact. Profit cannot be computed as spot price times quantity without
-accounting for that impact.
+less redemption fees and any conservative numerical adjustment. With exact
+continuous joins, the gross per-unit proceeds approach the live price as the
+quantity approaches zero. Estimating profit from a sale requires accounting for
+price impact at the quantity sold.
 
 An exercise fee reduces the value of the right but does not by itself control
 how many rights exist. Granting unrestricted floor issuance would make those

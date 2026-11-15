@@ -2,8 +2,9 @@
 
 Centralized arithmetic for segmented schedules, supply accounting, trade quotes,
 and floor-raise verification. A separate characteristic engine supplies only
-bounded numerical evaluations of an immutable, increasing function through the
-origin. The caller owns storage and commits the returned state after settlement.
+bounded numerical evaluations of an immutable, smooth, strictly increasing
+function through the origin. The caller owns storage and commits the returned
+state after settlement.
 
 The crate is `no_std`, uses no allocation, and keeps arithmetic generic over the
 shared fixed-number traits.
@@ -13,31 +14,32 @@ shared fixed-number traits.
 `CharacteristicEngine::spans` evaluates a batch of neutral characteristic
 intervals. Each `SpanRequest` specifies `lo` and `width`; its `SpanResponse`
 contains bounds for `f(lo)`, `f(lo + width)`, and the integral between them.
-A zero-width span returns the point value at both endpoints and exact zero area.
-Engines return calculation errors when they cannot produce valid bounds.
+A zero-width span returns the same point bounds at both endpoints and exact
+zero area. Engines return calculation errors when they cannot produce valid
+bounds.
 
-`LocalCharacteristic::new(characteristic)` evaluates each span using the neutral
-`Characteristic::y` and `Characteristic::integrate` methods. A remote adapter
-can encode the complete batch in one invocation. The central calculator applies
-the floor, ramp scalar, and offsets to the returned bounds.
+For a local curve, implement `Characteristic::y` and `Characteristic::integrate`
+and wrap the implementation with `LocalCharacteristic::new`. A remote adapter
+can implement `CharacteristicEngine::spans` by sending the whole batch to a
+separate engine. The calculator applies the floor, ramp scalar, and offsets to
+the returned bounds.
 
 `AvmCalculator::new(ramp_scalar)` owns the shared calculation rules:
 
-| Method                  | Result                                                 |
-| ----------------------- | ------------------------------------------------------ |
-| `price`                 | Current price bounds at net-issued progress            |
-| `backing`               | Required backing bounds for all circulating supply     |
-| `quote_issue`           | Reserve cost bounds and next state                     |
-| `quote_redeem`          | Reserve proceeds bounds and contracted next state      |
-| `quote_issue_at_floor`  | Floor cost bounds and increased circulation            |
-| `quote_redeem_at_floor` | Floor proceeds bounds and decreased circulation        |
-| `verify_floor_raise`    | Accepted next state and bounded verification residuals |
+| Method                  | Result                                                     |
+| ----------------------- | ---------------------------------------------------------- |
+| `price`                 | Current price bounds at pricing progress                   |
+| `backing`               | Required backing bounds for all circulating supply         |
+| `quote_issue`           | Reserve cost bounds and next state                         |
+| `quote_redeem`          | Reserve proceeds bounds and contracted next state          |
+| `quote_issue_at_floor`  | Floor cost bounds and increased circulation                |
+| `quote_redeem_at_floor` | Floor proceeds bounds and decreased circulation            |
+| `verify_floor_raise`    | Accepted next state, proposed backing, and backing change  |
 
-`AvmCalculator` operations prepare all required characteristic spans before
-calling `spans` once. The same batch supplies the values needed for contraction
-or floor-raise validation. Floor issuance and special floor redemption require
-no engine call. There is no global batch-capacity setting or heap allocation;
-the cost of each characteristic evaluation depends on the engine.
+`AvmCalculator` sends the required spans for an operation in at most one batch,
+including any evaluations needed for contraction or floor-raise verification.
+Floor issuance and special floor redemption use only the floor price. A
+transport can impose its own batch capacity.
 
 `ScheduleCalculator` also exposes `y` and `integrate` directly for a supplied
 segmentation, independently of market accounting.
@@ -107,10 +109,9 @@ main:  M(x) = f(x) + b
 ramp:  R(x) = M(E) + k * (f(x) - f(E))
 ```
 
-Floor applies before `A`, ramp from `A` to `E`, and main from `E` onward.
-The ramp joins main at `E` by construction. Main evaluation depends only on
-`f` and `b`, so floor and ramp changes cannot alter it. Launch sets `b = F`
-and `E = W = 0`.
+Main applies at and after `E`. Below `E`, the floor applies through `A` and the
+ramp applies for `A < x < E`. The ramp joins main at `E` by construction.
+Main evaluation depends only on `f` and `b`. Launch sets `b = F` and `E = W = 0`.
 
 The central calculator composes each segment from neutral characteristic
 integrals and rectangle adjustments:
@@ -137,8 +138,7 @@ floor_tail = T - (P-A) >= 0
 
 Current price is the schedule evaluated at `P`. Ordinary issuance advances both
 `P` and `T`. Floor issuance changes only `T`. Special floor redemption also
-changes only `T`, limited by `floor_tail`. These optional operations do not
-evaluate or mutate characteristic parameters.
+changes only `T`, limited by `floor_tail`.
 
 Ordinary redemption of `n <= T` quotes the old schedule down to
 `Q = max(P-n, 0)`, with any quantity beyond `P` paid at the floor. It then updates
@@ -150,20 +150,19 @@ new_start = min(A, Q)
 new_width = new_end - new_start
 ```
 
-If `Q` reaches the ramp, main placement is updated to attach the gentler main
-at that point. For exact arithmetic:
+If `Q < E`, main reattaches at the remaining progress with the corresponding
+exact offset.
 
 ```text
-inside ramp: new_b = b + (k-1) * (f(Q) - f(E))
-inside floor: new_b = F - f(Q)
+A < Q < E:        new_b = b + (k-1) * (f(Q) - f(E))
+Q < E and Q <= A: new_b = F - f(Q)
 ```
 
 The next ordinary issuance begins on main. Contraction uses characteristic
-values from the redemption batch; it never solves for an inverse. The stored
-offset rounds upward to keep the retained ramp above the floor. Any resulting
-increase in retained backing is conservatively deducted from redemption
-proceeds. Exact calculations need no deduction. The characteristic input remains
-actual progress for nonlinear engines too.
+values from the redemption batch. The stored offset uses an upper bound to
+keep the retained schedule at or above the floor. Inside the ramp, the old
+offset also bounds the new offset from above. The lower proceeds bound deducts
+an upper bound on any extra retained ramp backing.
 
 ## Floor-raise verification
 
@@ -204,16 +203,16 @@ backing_change = integral(new_schedule - old_schedule, 0, new_E)
 ```
 
 The second term accounts for circulation differing from progress after floor
-issuance or redemption. The verifier returns the bounded backing change and
-total proposed backing in the same engine batch. The higher-level program
-chooses the directional allowance and checks that reserves cover the proposed
-backing. This crate does not inspect reserve accounts or authorize surplus
-spending. The verifier checks supplied geometry without searching for a solution.
+issuance or redemption. The verifier checks the supplied geometry and calculates
+the backing change and total proposed backing using the same engine batch.
+The caller chooses the directional allowance and checks that reserves cover the
+proposed backing.
 
 ## Client-side floor solvers
 
-The optional `solver` module finds proposals using bisection over characteristic
-values and integrals. It needs no derivative or characteristic-specific inverse.
+Clients can use the `solver` module to find proposals by bisection over
+characteristic values and integrals. The same search works with different
+characteristic implementations.
 
 - `solve_floor_increase` takes a positive floor increment and a maximum ramp end,
   then searches for a ramp that preserves backing within the supplied allowance.
@@ -273,26 +272,15 @@ assert_eq!(maximum.proposal.floor_increase_by, p(15));
 assert_eq!(maximum.quote.next_state, solved.quote.next_state);
 ```
 
-## Storage and settlement boundary
+## Using quotes and verified state
 
-Quotes use normalized quantities and return bounds for gross reserve cost or
-proceeds. The host chooses the upper bound for a charge and the lower bound for
-a payout, applies its normalization and integer rounding, and settles fees,
-transfers, and state persistence atomically. Conservative bounds need not give
-the nearest possible whole-unit result.
+Quotes return bounds for gross reserve cost or proceeds in normalized units.
+Use the upper bound for an issuance charge and the lower bound for a redemption
+payout. The caller applies fees and token-unit rounding and commits the next
+state together with settlement.
 
-`mayf-avm-prog` wraps this calculator with pure program actions, reserve and
-position accounting, and fees. It remains generic over the number type so the
-same actions can run in a desktop simulator. `raise_floor_preserving_area` and
-`raise_floor_from_surplus` select the area policy and check funding in that layer.
-
-A future `mayf-avm-prog-sol` will select concrete numeric types, normalize token
-units, encode CPI requests, check authorization, map program errors, and perform
-transfers and persistence. Only the numerical span batch crosses the
-characteristic program boundary; quoting, validation, and next-state
-construction stay central.
-
-Restored state must remain bound to the same characteristic parameters and ramp
-scalar. Checked constructors establish geometry and supply relationships; they
-do not establish account authorization, actual reserve balances, collateral
-health, or the truth of bounds supplied by an untrusted engine.
+Bind each market to its characteristic and ramp scalar for its lifetime.
+Checked constructors establish structural geometry and supply relationships.
+The caller supplies authenticated state consistent with that characteristic,
+establishes reserve coverage and custody, and relies on its selected engine to
+enclose the true values and integrals.

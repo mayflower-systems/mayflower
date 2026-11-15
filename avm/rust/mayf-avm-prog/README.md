@@ -7,12 +7,29 @@ external accounts. The crate is `no_std` and performs no storage or token I/O.
 
 ## Layers
 
-| Layer                      | Responsibility                                                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Characteristic engine      | Bounded values and integrals of the immutable neutral function.                                                        |
-| `mayf-avm-calculator`      | Segmentation, progress and circulation, quotes, contraction, and mathematical floor-raise verification.                |
-| `mayf-avm-prog`            | Program actions, position collateral, reserve accounting, and fees, using generic normalized quantities.               |
-| Future `mayf-avm-prog-sol` | Concrete numeric types, token normalization, authentication, Solana errors, CPI transport, transfers, and persistence. |
+| Layer                 | Responsibility                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| Characteristic engine | Bounded values and integrals of the immutable base curve.                                  |
+| `mayf-avm-calculator` | Pricing schedule, supply accounting, quotes, contraction, and floor-raise verification.    |
+| `mayf-avm-prog`       | Program actions, position collateral, reserve accounting, and fees in normalized units.    |
+| Host                  | Numeric type, token normalization, authentication, engine binding, transfers, and storage. |
+
+## Characteristic engines and settlement
+
+Actions that query the schedule take a `CharacteristicEngine` from
+[`mayf-avm-calculator`](../mayf-avm-calculator/README.md). A local caller can use
+`LocalCharacteristic` with the linear driver or another `Characteristic`
+implementation. A Solana host can implement the same interface with a
+cross-program call to a characteristic engine. The
+[standalone linear Solana engine](../../sol-programs/linear-engine/prog/README.md)
+provides `calculate_spans` and client bindings. A Solana host for the core AVM
+actions is planned.
+
+The host authenticates market and position state and binds each market to its
+characteristic and ramp scalar for the market's lifetime. It settles reserve
+transfers, fee distributions, token minting or burning, and the next state
+atomically. Actual token movements must reconcile with the receipt amounts,
+including rounding and any retained remainders.
 
 ## State and arithmetic
 
@@ -36,11 +53,6 @@ numeric type must represent the integer fee divisor `1_000_000`. A position's
 advance capacity is its AVA multiplied by the floor, rounded down on the same
 grid.
 
-The caller binds a market to its characteristic parameters and ramp scalar.
-For a Solana host, settlement must reconcile receipt amounts with actual token
-rounding and retained remainders before persisting balances. Account validation,
-engine authorization, and atomic settlement belong to that host.
-
 ## Actions
 
 `reconcile_position` handles ordinary buying, selling, borrowing, and repayment
@@ -52,10 +64,11 @@ purchase to supply its own collateral or a sale to repay the advance securing it
 
 Buying uses the upper cost bound and the issue fee. Selling uses the lower
 proceeds bound and the redemption fee. A sale is priced on the pre-sale
-schedule. When it enters the ramp or floor, contraction attaches main at the
-remaining progress. The next buy starts on main. Newly drawn reserve incurs the reserve access fee.
-Repayment carries no fee. Trade and borrowing fees are split separately to
-preserve each operation's protocol rounding.
+schedule. When the remaining progress is below the ramp end, contraction
+reattaches main at that progress. The next buy starts on main. Newly drawn
+reserve incurs the reserve access fee. Repayment carries no fee. Trade and
+borrowing fees are split separately to preserve each operation's protocol
+rounding.
 
 The signed `reserve_to_subject` is the final transfer after fees. Positive means
 the subject receives reserve, negative means they pay. `SlippageProtection`
@@ -64,17 +77,15 @@ which limits either spending or the expected payout. The host supplies the
 actual initial balance and enforces that minimum after token-unit rounding.
 
 Reconciliation takes at most one synchronous characteristic batch. Borrowing
-and repayment with constant AVA holdings require zero engine calls. A simulator
-can use `LocalCharacteristic` with the linear driver. An Anchor host can supply
-a `CharacteristicEngine::spans` implementation that performs CPI.
+and repayment with constant AVA holdings require zero engine calls.
 
-The floor issuance and redemption actions change circulation while preserving progress, ramp
-geometry, and spot price. Both require zero characteristic engine calls.
+The floor issuance and redemption actions change circulation while preserving
+progress, ramp geometry, and spot price. Both use only the floor price.
 
-- `issue_ava_at_floor` settles an option exercise. The holder receives the exact
-  AVA amount and deposits `floor * amount_ava` into held reserves, rounded up.
-  The exercise fee is charged separately and counts toward `max_reserve_in`.
-  The host authorizes and consumes the option when settling the receipt.
+- `issue_ava_at_floor` computes the accounting for an authorized option exercise.
+  The holder receives the exact AVA amount and deposits `floor * amount_ava`
+  into held reserves, rounded up. The exercise fee counts toward
+  `max_reserve_in`. The host authorizes and consumes the option at settlement.
 - `redeem_at_floor` sells from the available floor tail. It checks holdings,
   remaining collateral, and held liquidity. The gross reserve debit uses the
   lower quote bound. The payout after the redemption fee must meet
@@ -102,8 +113,7 @@ next market and bounded backing change. The host handles authorization and
 persists the accepted state. Verification and backing calculation share one
 characteristic batch.
 
-`donate_reserve` increases held reserves. The host settles each action's
-reserve transfers, fee distributions, token mint or burn, and next state atomically.
+`donate_reserve` increases held reserves.
 
 ```rust
 use mayf_avm_calculator::{Accounting, MarketState, Segmentation};
@@ -118,6 +128,7 @@ use mayf_micro_basis_points::MicroBasisPoints;
 type N = I64F64;
 let n = |value| NonNeg::<N>::from_u64(value).unwrap();
 let quarter = MicroBasisPoints::from_percent(25).unwrap();
+// Restored geometry for f(x) = 8x with a continuous floor join at x = 3.
 let calculator_state = MarketState::new(
     Segmentation::new(n(16), n(5), n(2), n(8).get()).unwrap(),
     Accounting::new(n(6), n(6)),
