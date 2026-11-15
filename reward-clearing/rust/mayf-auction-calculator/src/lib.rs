@@ -1,14 +1,34 @@
-//! Calculate the weight and exit cost of commitments in one fixed window.
+#![no_std]
+#![forbid(unsafe_code)]
+
+//! Calculate the weight and exit cost of commitments in a fixed time window.
 //!
-//! The caller supplies the execution time and amount. A withdrawal split
-//! applies to the entire amount in one request, even when it spans lots.
+//! Callers supply execution time in seconds and principal in whole units.
+//! Opening time is inclusive and the deadline is exclusive. Use one
+//! withdrawal calculation for the entire requested amount.
+//!
+//! ```
+//! use mayf_auction_calculator::{AuctionTerms, AuctionWindow, TimeWindow};
+//! use mayf_fixed_drivers::U64F64;
+//!
+//! let terms = AuctionTerms::new(U64F64::ONE, 2)?;
+//! let window = AuctionWindow::new(TimeWindow::new(0, 3_600), terms);
+//!
+//! let opening_shares = window.entry(0)?.shares(100)?;
+//! assert_eq!(opening_shares.get(), U64F64::from_u64(200));
+//!
+//! let withdrawal = window.split_withdrawal(1_800, 40)?;
+//! assert_eq!((withdrawal.returned, withdrawal.forfeited), (30, 10));
+//! # Ok::<(), mayf_auction_calculator::AuctionError>(())
+//! ```
 
 use core::num::NonZeroU64;
 
 use mayf_fixed_number::{DirectedRounding, FixedNumber, IntegralRounding, NonNeg};
 
+/// Failures in term validation, window checks, or amount calculation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum AuctionError {
+pub enum AuctionError {
     InvalidDuration,
     InvalidRampBonusSlope,
     InvalidExitPenaltyExponent,
@@ -23,20 +43,22 @@ pub(crate) enum AuctionError {
     ForfeitureUnderflow,
 }
 
-type Result<T> = core::result::Result<T, AuctionError>;
+pub type Result<T> = core::result::Result<T, AuctionError>;
 
+/// Validated entry bonus and exit penalty parameters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct AuctionTerms<N: FixedNumber> {
+pub struct AuctionTerms<N: FixedNumber> {
     ramp_bonus_slope: NonNeg<N>,
     exit_penalty_exponent: u32,
 }
 
 impl<N: FixedNumber> AuctionTerms<N> {
-    pub(crate) const MAX_RAMP_BONUS_SLOPE: i32 = 2;
-    pub(crate) const MIN_EXIT_PENALTY_EXPONENT: u32 = 1;
-    pub(crate) const MAX_EXIT_PENALTY_EXPONENT: u32 = 4;
+    pub const MAX_RAMP_BONUS_SLOPE: i32 = 2;
+    pub const MIN_EXIT_PENALTY_EXPONENT: u32 = 1;
+    pub const MAX_EXIT_PENALTY_EXPONENT: u32 = 4;
 
-    pub(crate) fn new(ramp_bonus_slope: N, exit_penalty_exponent: u32) -> Result<Self> {
+    /// Accepts a slope in `[0, 2]` and an integer exponent in `[1, 4]`.
+    pub fn new(ramp_bonus_slope: N, exit_penalty_exponent: u32) -> Result<Self> {
         let max_slope = N::from_i32(Self::MAX_RAMP_BONUS_SLOPE)
             .map_err(|_| AuctionError::InvalidRampBonusSlope)?;
         if ramp_bonus_slope > max_slope {
@@ -56,34 +78,38 @@ impl<N: FixedNumber> AuctionTerms<N> {
         })
     }
 
-    pub(crate) fn ramp_bonus_slope(&self) -> NonNeg<N> {
+    pub fn ramp_bonus_slope(&self) -> NonNeg<N> {
         self.ramp_bonus_slope
     }
 
-    pub(crate) fn exit_penalty_exponent(&self) -> u32 {
+    pub fn exit_penalty_exponent(&self) -> u32 {
         self.exit_penalty_exponent
     }
 }
 
+/// A start time and duration in seconds.
 #[derive(Clone, Copy)]
-pub(crate) struct TimeWindow {
+pub struct TimeWindow {
     start: u64,
     duration: u64,
 }
 
 impl TimeWindow {
-    pub(crate) fn new(start: u64, duration: u64) -> Self {
+    /// Stores the schedule. Time queries check the deadline for overflow.
+    /// A zero-duration window has no live instants.
+    pub fn new(start: u64, duration: u64) -> Self {
         Self { start, duration }
     }
 
-    pub(crate) fn end(&self) -> Result<u64> {
+    /// The exclusive deadline, with checked addition.
+    pub fn end(&self) -> Result<u64> {
         self.start
             .checked_add(self.duration)
             .ok_or(AuctionError::WindowEndOverflow)
     }
 
     /// Time left in the live interval. The opening instant is inclusive.
-    pub(crate) fn time_remaining(&self, now: u64) -> Result<NonZeroU64> {
+    pub fn time_remaining(&self, now: u64) -> Result<NonZeroU64> {
         if now < self.start {
             return Err(AuctionError::WindowNotStarted);
         }
@@ -94,7 +120,8 @@ impl TimeWindow {
             .ok_or(AuctionError::WindowEnded)
     }
 
-    pub(crate) fn elapsed(&self, now: u64) -> Result<u64> {
+    /// Seconds since the start, while the window is live.
+    pub fn elapsed(&self, now: u64) -> Result<u64> {
         Ok(self.duration - self.time_remaining(now)?.get())
     }
 
@@ -103,25 +130,29 @@ impl TimeWindow {
     }
 }
 
-pub(crate) struct AuctionWindow<N: FixedNumber> {
+/// A single time window with fixed curve terms.
+pub struct AuctionWindow<N: FixedNumber> {
     time: TimeWindow,
     terms: AuctionTerms<N>,
 }
 
 /// The fixed-point weight quoted at entry, which can issue shares for an amount.
-pub(crate) struct EntryWeight<N: FixedNumber>(NonNeg<N>);
+pub struct EntryWeight<N: FixedNumber>(NonNeg<N>);
 
-pub(crate) struct Withdrawal {
-    pub(crate) returned: u64,
-    pub(crate) forfeited: u64,
+/// The whole units returned and forfeited from one withdrawal.
+pub struct Withdrawal {
+    pub returned: u64,
+    pub forfeited: u64,
 }
 
 impl<N: FixedNumber> AuctionWindow<N> {
-    pub(crate) fn new(time: TimeWindow, terms: AuctionTerms<N>) -> Self {
+    pub fn new(time: TimeWindow, terms: AuctionTerms<N>) -> Self {
         Self { time, terms }
     }
 
-    pub(crate) fn entry(&self, now: u64) -> Result<EntryWeight<N>> {
+    /// Quote `1 + slope * remaining / duration` during the live window.
+    /// The remaining fraction and bonus round down to the fixed-point grid.
+    pub fn entry(&self, now: u64) -> Result<EntryWeight<N>> {
         let remaining = self.time.time_remaining(now)?;
         let duration = self.time.duration()?;
 
@@ -144,7 +175,9 @@ impl<N: FixedNumber> AuctionWindow<N> {
             .map_err(|_| AuctionError::EntryWeightOverflow)
     }
 
-    pub(crate) fn exit_penalty(&self, now: u64) -> Result<NonNeg<N>> {
+    /// Quote `(elapsed / duration)^exponent` during the live window.
+    /// The ratio and each power multiplication round up. The result is capped at one.
+    pub fn exit_penalty(&self, now: u64) -> Result<NonNeg<N>> {
         let elapsed = self.time.elapsed(now)?;
         let duration = self.time.duration()?;
         let penalty =
@@ -158,7 +191,8 @@ impl<N: FixedNumber> AuctionWindow<N> {
 }
 
 impl<N: IntegralRounding> AuctionWindow<N> {
-    pub(crate) fn split_withdrawal(&self, now: u64, principal: u64) -> Result<Withdrawal> {
+    /// Round the refund down to whole units and forfeit the difference.
+    pub fn split_withdrawal(&self, now: u64, principal: u64) -> Result<Withdrawal> {
         let penalty = self.exit_penalty(now)?;
         let returned = NonNeg::<N>::one()
             .checked_sub(penalty)
@@ -177,15 +211,18 @@ impl<N: IntegralRounding> AuctionWindow<N> {
 }
 
 impl<N: FixedNumber> EntryWeight<N> {
-    pub(crate) fn new(weight: NonNeg<N>) -> Self {
+    /// Wrap an already computed entry weight.
+    pub fn new(weight: NonNeg<N>) -> Self {
         Self(weight)
     }
 
-    pub(crate) fn get(self) -> NonNeg<N> {
+    pub fn get(self) -> NonNeg<N> {
         self.0
     }
 
-    pub(crate) fn shares(self, principal: u64) -> Result<NonNeg<N>> {
+    /// Multiply principal by the quoted weight and round down to the grid.
+    /// Returns an error when the result would issue zero shares.
+    pub fn shares(self, principal: u64) -> Result<NonNeg<N>> {
         let shares = NonNeg::<N>::from_u64(principal)
             .and_then(|principal| principal.checked_mul_floor(self.0))
             .map_err(|_| AuctionError::SharesOverflow)?;

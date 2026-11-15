@@ -11,6 +11,7 @@ publish = false
 name = "mayf_reward_clearing"
 
 [dependencies]
+mayf-auction-calculator.workspace = true
 mayf-fixed-number.workspace = true
 
 [dev-dependencies]

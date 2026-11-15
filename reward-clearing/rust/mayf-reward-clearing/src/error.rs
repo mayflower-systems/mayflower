@@ -1,4 +1,4 @@
-use crate::auction::AuctionError;
+use mayf_auction_calculator::AuctionError;
 
 /// Every way a reward-clearing action can fail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

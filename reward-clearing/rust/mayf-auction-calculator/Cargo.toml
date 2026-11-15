@@ -1,0 +1,14 @@
+[package]
+name = "mayf-auction-calculator"
+version = "0.1.0"
+description = "Pure calculations for time-weighted commitments and withdrawal penalties"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+mayf-fixed-number.workspace = true
+
+[dev-dependencies]
+mayf-fixed-drivers.workspace = true

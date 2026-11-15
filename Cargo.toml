@@ -50,6 +50,7 @@ mayf-avm-calculator = { path = "avm/rust/mayf-avm-calculator", version = "0.1.0"
 mayf-avm-engine-linear-sol = { path = "avm/sol-programs/linear-engine/prog", version = "0.1.0" }
 mayf-avm-engine-linear-sol-cpi = { path = "avm/sol-programs/linear-engine/cpi", version = "0.1.0" }
 mayf-spl-token = { path = "sol-tools/rust/mayf-spl-token", version = "0.1.0" }
+mayf-auction-calculator = { path = "reward-clearing/rust/mayf-auction-calculator", version = "0.1.0" }
 mayf-reward-clearing = { path = "reward-clearing/rust/mayf-reward-clearing", version = "0.1.0" }
 mayf-reward-clearing-sol = { path = "reward-clearing/sol-programs/reward-clearing/prog", version = "0.1.0" }
 mayf-reward-clearing-sol-cpi = { path = "reward-clearing/sol-programs/reward-clearing/cpi", version = "0.1.0" }

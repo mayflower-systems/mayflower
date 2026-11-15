@@ -1,6 +1,7 @@
+use mayf_auction_calculator::AuctionTerms;
 use mayf_fixed_number::{FixedNumber, NonNeg};
 
-use crate::{Result, auction::AuctionTerms};
+use crate::Result;
 
 /// The entry and exit curve terms snapshotted when a channel epoch opens.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
