@@ -28,7 +28,7 @@ Exact continuity requires
 F'=aA'+b-(a-m)E'.
 ```
 
-The resulting backing increase is
+With exact floor joins in both schedules, the resulting backing increase is
 
 ```math
 \Delta B=h(F'-F)
@@ -37,7 +37,7 @@ The resulting backing increase is
 
 It must be nonnegative, no larger than the permitted reserve budget, and covered
 by available surplus $`H+D-B`$. Numerical bounds and the allowed upward join gap
-follow the [general floor-raise rules](AVM-Floor-Raising).
+follow the [surplus-funded acceptance rules](Floor-Investment#accepted-proposal).
 
 ## Fixed-end special case
 

@@ -1,7 +1,7 @@
 <!--
 title: AVM Rationale
 summary:
-  Why the AVM combines buyer-funded reserves, price discovery, and an evolving floor.
+  Why the AVM combines a choice of pricing curve, buyer-funded reserves, and an evolving floor.
 tags:
   - avm
   - pricing
@@ -24,10 +24,10 @@ backing, liquid reserve, and advances separately.
 
 ## A floor separates backing from price discovery
 
-The floor assigns a minimum gross reserve claim to unencumbered AVA. The
-schedule above the floor supplies the price-discovery component. A purchase
-above the floor retains exposure to that premium falling, even though the floor
-itself cannot decrease under the permitted transitions.
+In exact arithmetic, the floor sets the minimum gross redemption price per AVA.
+The schedule above it supplies the price-discovery component. A purchase above
+the floor retains exposure to that premium falling, even though the floor itself
+cannot decrease under the permitted transitions.
 
 An area-preserving floor raise reallocates existing backing: it increases the
 floor component while reducing the value assigned above the floor. It creates
@@ -49,6 +49,24 @@ then follows main from that point. Ordinary purchases do not climb an old ramp:
 the ramp describes retained backing and redemption behavior. Contraction may
 allow later raises at lower progress, but no trading pattern guarantees future
 floor growth.
+
+## Why the AVM supports different curves
+
+Markets can choose how sensitive their price is to issuance by selecting a
+characteristic at launch. The [linear characteristic](Linear-AVM) gives main a
+constant slope. A nonlinear characteristic can vary that slope with progress.
+
+The [characteristic engine](AVM-Specification#characteristic-engine) supplies
+values and integrals. Keeping schedule construction, backing checks, and
+state transitions in the core lets new markets reuse the same rules. The same
+interface can serve a simulator evaluating a curve locally and a host invoking
+a separate on-chain engine.
+
+Changing the curve mid-market could reprice circulating AVA and change its
+backing requirement. Fixing the characteristic at launch gives quotes and
+backing a consistent basis as the schedule evolves. The core relies on the
+engine's bounds. Wide bounds can prevent it from certifying an operation, and
+expensive evaluations can limit which curves are practical on-chain.
 
 ## Separate progress from circulation
 

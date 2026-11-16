@@ -47,9 +47,10 @@ The joins can equivalently be recovered from the intercepts:
 A=\frac{F-c}{a},\qquad E=\frac{b-c}{a-m}.
 ```
 
-Those equalities assume zero floor-join gap. With a permitted numerical upward
-gap, the stored start $`A=E-W`$ is the boundary and the equality at the floor is
-replaced by the explicit acceptance check.
+The relation for $`E`$ follows from the ramp and main intersection. The relation
+for $`A`$ assumes a continuous floor join. With a permitted numerical upward
+gap, the stored start $`A=E-W`$ gives the boundary, subject to the explicit
+floor-join check.
 
 Launch has $`P=T=E=A=0`$ and $`b=F_0`$. Subsequent floor raises preserve $`b`$;
 ordinary redemption into the ramp or floor can change it. Floor issuance changes

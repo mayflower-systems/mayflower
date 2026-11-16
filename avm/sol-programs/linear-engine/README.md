@@ -28,6 +28,6 @@ instruction and decodes return data using these models.
 
 Keep `ts/package.json` and `ts/tsconfig.json` as the package definition;
 regenerate `ts/src/` instead of editing it. The TypeScript config extends the
-repository's `tsconfig.base.json` unchanged, and the package depends only on
+repository's `tsconfig.base.json`. The package's runtime dependencies are
 `borsh` and `bs58`. The generated `create…Instruction` builders take the
 program address as their first argument.

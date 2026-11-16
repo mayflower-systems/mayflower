@@ -52,11 +52,11 @@ The floor join must be continuous in the exact model, or have only an allowed
 upward gap in bounded arithmetic. The ramp may narrow or collapse; its end may
 stay fixed or advance. The live price stays on unchanged main.
 
-For a nonnegative reserve budget $`G`$, numerical acceptance requires the entire
-backing-change enclosure to satisfy
+For a nonnegative reserve budget $`\epsilon_B`$, numerical acceptance requires
+the entire backing-change enclosure to satisfy
 
 ```math
-0\le B'-B\le G,
+0\le B'-B\le \epsilon_B,
 ```
 
 and the upper bound for $`B'`$ must be covered by $`H+D`$. The budget is a
@@ -82,7 +82,7 @@ one-unit-donation-to-one-unit-floor conversion.
 | Floor                                | Increases                                | Increases                                       |
 | Progress and circulation             | Preserved                                | Preserved                                       |
 | Required backing in exact arithmetic | Unchanged                                | May increase                                    |
-| Numerical backing-change allowance   | $`[-\epsilon_B,0]`$                      | $`[0,G]`$                                       |
+| Numerical backing-change allowance   | $`[-\epsilon_B,0]`$                      | $`[0,\epsilon_B]`$                              |
 | Source of additional floor backing   | Reallocation within existing requirement | Existing surplus plus any internal reallocation |
 
 Both use the same geometry and coverage checks.

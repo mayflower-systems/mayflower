@@ -38,6 +38,18 @@ Progress and circulation are separate quantities. Ordinary issuance advances
 both; floor issuance and special floor redemption change only circulation.
 Consequently, price must be evaluated at $`P`$, not at $`T`$.
 
+## Characteristic engine
+
+A characteristic engine receives a batch of spans on the progress axis and
+returns results in request order. For a span with start $`u`$ and nonnegative
+width $`w`$, it returns bounds enclosing $`g(u)`$, $`g(u+w)`$, and
+$`\int_u^{u+w}g(x)\,dx`$. A zero-width span returns the same point bounds at
+both ends and exact zero area.
+
+Evaluations use only the characteristic's fixed parameters and the requested
+spans. The AVM uses those evaluations to construct the pricing schedule, quote
+trades, calculate backing, and verify floor raises.
+
 ## Price schedule
 
 Define the main and ramp functions:
@@ -157,8 +169,9 @@ liquidity source.
 
 ## Floor raises
 
-A proposal chooses $`F'\gt F`$, $`E'`$, and $`W'`$, with $`A'=E'-W'`$. It must
-satisfy
+A proposal chooses a positive floor increment $`\Delta F`$, ramp end $`E'`$,
+and width $`W'`$. The new floor is $`F'=F+\Delta F`$ and the new ramp start is
+$`A'=E'-W'`$. The proposal must satisfy
 
 ```math
 0\le A'\le E'\le P,\qquad A'\ge A,\qquad E'\ge E.
@@ -176,15 +189,15 @@ themselves. [AVM Floor Raising](AVM-Floor-Raising) defines the full checks.
 
 ## Numerical and settlement rules
 
-Calculations produce lower and upper bounds enclosing exact values. Issuance
-charges the upper reserve bound; redemption pays the lower bound. Rounding an
-updated main offset upward during contraction may increase retained backing;
-that increase is reserved from redemption proceeds. An operation fails when its
-bounds cannot certify the required inequalities.
+Calculations use lower and upper bounds enclosing exact values. Issuance
+charges the upper cost bound and redemption pays the lower proceeds bound. When
+a sale contracts within the ramp, that proceeds bound deducts an upper bound
+on any additional retained backing caused by rounding the main offset upward.
+An operation fails when its bounds cannot certify the required inequalities.
 
-For a floor raise, let $`G`$ be the new ramp's value at $`A'`$ minus $`F'`$; for
-a zero-width ramp use $`M(E')-F'`$. With configured allowances $`\epsilon_p`$ in
-price units and $`\epsilon_B`$ in reserve units:
+With proposed ramp $`R'`$, the floor-join gap is $`G=R'(A')-F'`$. For a
+zero-width ramp, use $`G=M(E')-F'`$. The allowances are $`\epsilon_p\ge0`$
+in price units and $`\epsilon_B\ge0`$ in reserve units.
 
 - The entire enclosure for $`G`$ must lie in $`[0,\epsilon_p]`$.
 - An ordinary raise requires the entire enclosure for $`B'-B`$ to lie in
@@ -215,7 +228,9 @@ transaction. There is no deferred transfer through an operator's fee wallet or
 conversion into another asset. This routing belongs to the integrating AVM
 program, while the arithmetic specifies the fee amounts.
 
-An integrating application must authenticate market and position state, bind the
-same characteristic parameters, enforce collateral custody and any option
-authorization, and atomically settle token supply, reserve transfers, fees, and
-new state. The arithmetic alone does not establish those external facts.
+The integrating program authenticates market and position state and binds each
+market to its characteristic engine, parameters, and ramp multiplier for the
+life of the market. The AVM relies on that engine to enclose the true values
+and integrals. The integrating program also enforces collateral custody and
+option authorization and atomically settles token supply changes, reserve
+transfers, fees, and the new state.

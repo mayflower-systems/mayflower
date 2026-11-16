@@ -13,7 +13,8 @@ pub enum CharacteristicError {
     ArithmeticFailure,
 }
 
-/// An immutable, smooth, increasing function on its supported nonnegative domain.
+/// An immutable, smooth, strictly increasing function on its supported
+/// nonnegative domain.
 ///
 /// The function passes through the origin. Each successful result must enclose
 /// the exact mathematical value on the chosen fixed-point grid.

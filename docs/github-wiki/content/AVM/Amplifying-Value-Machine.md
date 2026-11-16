@@ -13,11 +13,12 @@ reserve-backed assets. A buyer supplies the reserve asset and receives an
 A deterministic pricing schedule sets the exchange amounts, and purchases fund
 the reserve used by subsequent redemptions.
 
-An AVA has a minimum redemption value denominated in its market's reserve asset,
-before fees and subject to any outstanding advance secured by the position.
-This **floor** remains fixed or rises under the market's rules. A valid
-[floor raise](AVM-Floor-Raising) increases it without changing the live market
-price, while preserving the required backing constraints.
+In exact arithmetic, the **floor** is the minimum gross redemption price per
+AVA, denominated in its market's reserve asset. The final payout depends on
+fees, any outstanding advance, conservative rounding, and available liquid
+reserve. The floor is nondecreasing under the market's rules. A valid
+[floor raise](AVM-Floor-Raising) increases it while preserving the live market
+price and satisfying the backing constraints.
 
 The floor is a reserve-denominated amount. It does not guarantee the reserve
 asset's value in another currency or recover the premium paid by someone who
@@ -27,7 +28,8 @@ and an accepted proposal; their occurrence or rate is not guaranteed.
 ## The market in three parts
 
 - **Pricing:** a floor, a transition ramp, and a main schedule determine issuance
-  costs and redemption proceeds.
+  costs and redemption proceeds. The ramp and main are built from the market's
+  chosen base curve, called its [characteristic](AVM-Specification#characteristic-engine).
 - **Backing:** the market accounts for the capital required by circulating AVA.
   Held reserve and collateralized advances must cover that requirement, and
   payouts must have sufficient liquid reserve.
@@ -36,9 +38,8 @@ and an accepted proposal; their occurrence or rate is not guaranteed.
   higher minimum reserve claim.
 
 Buying supplies the market's liquidity, so the core mechanism does not depend
-on separately recruited liquidity providers. This makes the reserve and pricing
-rules central to the market's operation. [AVM Rationale](AVM-Rationale)
-explains the motivation and the limits of these properties.
+on separately recruited liquidity providers. [AVM Rationale](AVM-Rationale)
+explains this choice and why markets can use different characteristics.
 
 ## Read the specification
 
