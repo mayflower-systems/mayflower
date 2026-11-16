@@ -320,6 +320,8 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  browser/theme: {}
+
   fixed-number/ts/fixed-number-ts:
     devDependencies:
       '@types/node':

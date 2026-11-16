@@ -1,0 +1,43 @@
+/* ──────────────────────────────────────────────────────────
+   @mayflower-sys/theme — base layer
+
+   Baseline rules applied to the document: body gets the
+   sans (Inter) stack, paper background, ink body color, and
+   antialiasing. Selection uses the accent (Mayflower pink).
+
+   Typography helpers for headings / labels / numeric readouts
+   live in `typography.css` — import separately when you want
+   raw h1-h4 to be Fraunces.
+   ────────────────────────────────────────────────────────── */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-size: var(--text-base);
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

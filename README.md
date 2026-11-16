@@ -1,4 +1,6 @@
-# Mayflower
+<h1 align="center">
+  <img src="./browser/theme/src/assets/splash.svg" alt="Mayflower" width="384" height="224" />
+</h1>
 
 Mayflower is a systemic library for non-custodial & decentralized incentive games on public blockchains.
 
@@ -16,6 +18,8 @@ Alpha release date TBD. You'll be one of the first to know.
 ## Getting acquainted
 
 Explore the [wiki](https://github.com/mayflower-system/mayflower/wiki) for explanation & specification of the modules.
+
+Use the [Mayflower brand kit](./browser/theme/README.md) for app styles, pamphlets, and flowcharts.
 
 Engage in [discussions](https://github.com/mayflower-system/mayflower/discussions). Announcements will be posted here.
 
