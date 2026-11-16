@@ -1,0 +1,29 @@
+[package]
+name = "mayf-referral-network-sol"
+version = "0.1.0"
+description = "Mayflower referral network Solana program"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mayf_referral_network_sol"
+doctest = false
+
+[features]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+default = ["no-log-ix-name"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+mayf-referral = { workspace = true }

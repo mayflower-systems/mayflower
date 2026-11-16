@@ -2211,6 +2211,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mayf-referral-network-sol"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "mayf-referral",
+]
+
+[[package]]
 name = "mayf-reward-clearing"
 version = "0.1.0"
 dependencies = [
