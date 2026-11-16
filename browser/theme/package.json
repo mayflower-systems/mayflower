@@ -1,0 +1,29 @@
+{
+  "name": "@mayflower-sys/theme",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "style": "./src/index.css",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.css",
+    "./tailwind.css": "./src/tailwind.css",
+    "./tokens.css": "./src/tokens.css",
+    "./base.css": "./src/base.css",
+    "./typography.css": "./src/typography.css",
+    "./fonts.css": "./src/fonts.css",
+    "./assets/logomark.svg": "./src/assets/logomark.svg",
+    "./assets/logomark-inverted.svg": "./src/assets/logomark-inverted.svg",
+    "./assets/splash.svg": "./src/assets/splash.svg"
+  },
+  "peerDependencies": {
+    "tailwindcss": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "tailwindcss": {
+      "optional": true
+    }
+  }
+}
