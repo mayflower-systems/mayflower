@@ -68,13 +68,15 @@ When viewing the SVG as a document, link the token stylesheet with an XML styles
 </svg>
 ```
 
-For an SVG shared as an image, embed the contents of `tokens.css` in a `<style>` element inside the SVG. A Node-based generator can read the packaged stylesheet with `readFileSync(new URL(import.meta.resolve("@mayflower-sys/theme/tokens.css")), "utf8")` from `node:fs` and place it in a `<![CDATA[...]]>` section. Image contexts disable external stylesheet loading. [SVG 2 processing modes](https://www.w3.org/TR/SVG2/conform.html)
+For an SVG shared as an image, embed its required tokens in an ordinary `<style>` element inside the SVG. Include font data in a `data:` URL within `@font-face` when the image needs to carry its typeface. Image contexts disable external stylesheet loading. [SVG 2 processing modes](https://www.w3.org/TR/SVG2/conform.html)
 
 For renderers that require literal SVG paint values, resolve the theme in a browser and write the computed `fill` and `stroke` into the exported SVG. Embed font data or convert text to paths when the output needs to carry its typography with it.
 
 ## Fonts and artwork
 
-The font stacks use Fraunces for display and Inter for UI and body copy. To load them, link [`fonts.css`](src/fonts.css) as a separate stylesheet or supply the fonts through your app's existing font loader. The package's loader uses Google Fonts, and the stacks include local fallbacks.
+The font stacks use Fraunces for display and Inter for UI and body copy. Link [`fonts.css`](src/fonts.css) as a separate stylesheet or supply the fonts through your app's existing font loader. It loads the bundled Fraunces variable font and requests Inter from Google Fonts.
+
+For Fraunces alone, import `@mayflower-sys/theme/fraunces.css` or link [`fraunces.css`](src/fraunces.css). The WOFF2 file is exported at `@mayflower-sys/theme/fonts/Fraunces.woff2`. It preserves the weight and optical-size axes of the [Fraunces 1.000 source](https://github.com/google/fonts/tree/ac502d8ef/ofl/fraunces) and ships with the [SIL Open Font License](src/fonts/OFL.txt).
 
 The two logomark SVGs are self-contained. Import `@mayflower-sys/theme/assets/logomark.svg` or `@mayflower-sys/theme/assets/logomark-inverted.svg` as an asset URL in a bundler or copy the files from [`src/assets/`](src/assets/) alongside a document.
 

@@ -1,0 +1,57 @@
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/tokens.css"?>
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/fraunces.css"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-labelledby="earn-title earn-desc">
+  <title id="earn-title">Rewards follow real holdings.</title>
+  <desc id="earn-desc">Illustrative core allocation: a member with ten percent of eligible holdings in one AVA lane is attributed one hundred of its one thousand scheduled credits. With two earning ancestors and a ten percent commission per ancestor, the holder retains eighty credits and each ancestor receives ten. Referrals divide the existing attribution. Optional family sharing is omitted.</desc>
+  <defs>
+    <marker id="earn-credits-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="var(--pink-500)" />
+    </marker>
+  </defs>
+  <g font-family="var(--font-sans)">
+    <rect x="0" y="0" width="1080" height="1080" fill="var(--paper)" />
+    <!-- Mayflower press kit lockup. -->
+    <g transform="translate(64 33)" role="img" aria-label="Mayflower" fill="var(--navy-900)">
+      <path d="M39.9028 19.9514C39.9028 30.9703 30.9703 39.9028 19.9514 39.9028C8.93255 39.9028 0 30.9703 0 19.9514C0 8.93255 8.93255 0 19.9514 0C30.9703 0 39.9028 8.93255 39.9028 19.9514Z" />
+      <g fill="var(--pink-200)" fill-rule="evenodd">
+        <path d="M29.3904 30.7852L21.3156 24.0517C20.5079 23.3781 19.3343 23.3781 18.5266 24.0517L10.4518 30.7852L7.94043 27.7736L16.0152 21.0401C18.2775 19.1536 21.5647 19.1536 23.827 21.0401L31.9018 27.7736L29.3904 30.7852Z" />
+        <path d="M19.9211 12.7232L29.3904 20.6196L31.9018 17.608L19.9211 7.61734L7.94043 17.608L10.4518 20.6196L19.9211 12.7232Z" />
+      </g>
+      <text x="52" y="27" font-family="var(--font-serif)" font-weight="700" font-size="22" letter-spacing="1.2">MAYFLOWER</text>
+    </g>
+    <text x="1016" y="62" font-size="18" fill="var(--navy-400)" font-weight="400" text-anchor="end" letter-spacing="var(--tracking-wider)">01 / EARN</text>
+    <text x="64" y="134" font-size="48" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">Rewards follow real holdings.</text>
+    <text x="64" y="181" font-size="26" fill="var(--navy-400)" font-weight="400" text-anchor="start">Eligible AVA balances determine the core allocation.</text>
+    <path d="M 64 207 H 1016" fill="none" stroke="var(--ink-100)" stroke-width="1.5" />
+    <rect x="64" y="230" width="952" height="137" fill="var(--pink-100)" />
+    <text x="92" y="276" font-size="19" fill="var(--navy-900)" font-weight="700" text-anchor="start" letter-spacing="var(--tracking-wider)">AVA A’S EMISSION LANE</text>
+    <text x="92" y="331" font-size="45" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">1,000 credits</text>
+    <text x="405" y="329" font-size="26" fill="var(--navy-500)" font-weight="400" text-anchor="start">scheduled for this illustrative interval</text>
+    <path d="M 540 367 L 540 418" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#earn-credits-arrow)" />
+    <rect x="224" y="418" width="632" height="147" fill="var(--paper)" stroke="var(--ink-100)" stroke-width="1.5" />
+    <text x="540" y="464" font-size="28" fill="var(--navy-900)" font-weight="700" text-anchor="middle">Your eligible AVA A holdings</text>
+    <text x="540" y="507" font-size="27" fill="var(--navy-500)" font-weight="400" text-anchor="middle">10% of this lane’s eligible balance</text>
+    <text x="540" y="545" font-size="28" fill="var(--pink-600)" font-weight="700" text-anchor="middle">→ 100 credits attributed to your position</text>
+    <path d="M 540 565 L 540 602" fill="none" stroke="var(--pink-500)" stroke-width="3.5" />
+    <path d="M 540 602 L 214 602 L 214 640" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#earn-credits-arrow)" />
+    <rect x="64" y="640" width="300" height="210" fill="var(--navy-800)" />
+    <text x="90" y="706" font-size="48" fill="var(--paper)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">80</text>
+    <text x="90" y="759" font-size="26" fill="var(--paper)" font-weight="700" text-anchor="start">You</text>
+    <text x="90" y="805" font-size="22" fill="var(--paper)" font-weight="400" text-anchor="start">Retained credits</text>
+    <path d="M 540 602 L 540 602 L 540 640" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#earn-credits-arrow)" />
+    <rect x="390" y="640" width="300" height="210" fill="var(--mist)" />
+    <text x="416" y="706" font-size="48" fill="var(--navy-400)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">10</text>
+    <text x="416" y="759" font-size="26" fill="var(--navy-900)" font-weight="700" text-anchor="start">Your parent</text>
+    <text x="416" y="805" font-size="22" fill="var(--navy-500)" font-weight="400" text-anchor="start">Referral credits</text>
+    <path d="M 540 602 L 866 602 L 866 640" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#earn-credits-arrow)" />
+    <rect x="716" y="640" width="300" height="210" fill="var(--pink-100)" />
+    <text x="742" y="706" font-size="48" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">10</text>
+    <text x="742" y="759" font-size="26" fill="var(--navy-900)" font-weight="700" text-anchor="start">Your grandparent</text>
+    <text x="742" y="805" font-size="22" fill="var(--navy-500)" font-weight="400" text-anchor="start">Referral credits</text>
+    <rect x="64" y="904" width="952" height="112" fill="var(--navy-800)" />
+    <text x="92" y="950" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">The holder and referrers share the same 100 credits.</text>
+    <text x="92" y="987" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">The eligible AVA principal is not spent on commissions.</text>
+    <text x="64" y="1053" font-size="16" fill="var(--navy-400)" font-weight="400" text-anchor="start">MAYFLOWER  /  Intended system composition</text>
+    <text x="64" y="882" font-size="18" fill="var(--navy-500)" font-weight="400" text-anchor="start">Example: two earning ancestors, 10% each; optional family sharing omitted.</text>
+  </g>
+</svg>
