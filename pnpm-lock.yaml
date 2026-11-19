@@ -355,6 +355,12 @@ importers:
       '@mayflower-sys/reward-clearing-sol-client':
         specifier: workspace:*
         version: link:../../sol-programs/reward-clearing/ts
+      '@solana/web3.js':
+        specifier: 'catalog:'
+        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)
+      buffer:
+        specifier: 'catalog:'
+        version: 6.0.3
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

@@ -1,6 +1,6 @@
 # @mayflower-sys/reward-clearing-sdk-ts
 
-Models of the Reward Clearing program's accounts, for application code. Every model is plain data, and every function is pure.
+Account models, PDA helpers, and instruction builders for the Reward Clearing program. Models are plain data; the helpers and builders run locally without RPC calls.
 
 The generated client `@mayflower-sys/reward-clearing-sol-client` decodes an account into the types of the Anchor IDL. There, a public key is an array of 32 numbers and a fraction is a raw `u128`. This package converts those types into models that are easier to read and to compute with.
 
@@ -87,6 +87,73 @@ if (terms.ok) {
 ```
 
 `toAccount` does not round. It checks that each number fits its stored format, and nothing else: the program's rules, such as the range of a slope, stay with the program.
+
+## Deriving addresses
+
+`createRewardClearingPda` binds the helpers to a program ID. Addresses are `PublicKey` objects from `@solana/web3.js`.
+
+```ts
+import { PublicKey } from "@solana/web3.js"
+import { createRewardClearingPda } from "@mayflower-sys/reward-clearing-sdk-ts"
+
+const programId = new PublicKey("RCgecPmsA1YfbwBZ9FkPmGUkKqnEGwvMrpnzUhUthxd")
+const pda = createRewardClearingPda(programId)
+const organization = pda.organization(authority)
+const channelGroup = pda.channelGroup(organization, channelGroupIndex)
+const channel = pda.channel(channelGroup, rewardTokenMint)
+const channelEpoch = pda.channelEpoch(channel, epochCounter)
+```
+
+The helpers also derive group epochs, bidder positions, the group's clearing escrow, the channel's staging vault, and both channel epoch escrows. Indices and counters must be integers in the `u32` range.
+
+## Building instructions
+
+All 13 program instructions have builders exported from this package. Each takes the program ID and one parameters object, and returns a `TransactionInstruction` from `@solana/web3.js`. The generated client supplies the account order, access flags, and encoding.
+
+```ts
+import {
+  createBidderPositionInstruction,
+  depositCreditsInstruction,
+} from "@mayflower-sys/reward-clearing-sdk-ts"
+
+const selectedEpoch = { channelGroup, channel, epochCounter }
+const instructions = [
+  createBidderPositionInstruction(programId, {
+    ...selectedEpoch,
+    authority,
+    payer: authority,
+  }),
+  depositCreditsInstruction(programId, {
+    ...selectedEpoch,
+    authority,
+    payer: authority,
+    clearingCreditsSource,
+    amount: 1_000n,
+  }),
+]
+// Add these instructions to a web3 Transaction.
+```
+
+`createRewardClearingInstructions` closes over the program ID. Its methods take only the parameters object and omit the `Instruction` suffix:
+
+```ts
+import { createRewardClearingInstructions } from "@mayflower-sys/reward-clearing-sdk-ts"
+
+const builders = createRewardClearingInstructions(programId)
+const instruction = builders.depositCredits({
+  ...selectedEpoch,
+  authority,
+  payer: authority,
+  clearingCreditsSource,
+  amount: 1_000n,
+})
+```
+
+Read `Organization.nextChannelGroupIndex` before creating a group, and `ChannelGroup.currentEpochIndex` before creating a channel or advancing an epoch. Builders for existing channel epochs take an explicit `epochCounter`, including for finalization and claims of older epochs. Builders derive the dependent PDAs from those inputs. Source and destination token accounts are explicit, and amounts are `bigint` base units.
+
+Pass an explicit `payer` for account creation or position growth. It may be the same key as `authority` or a separate sponsor. Building an instruction does not sign or submit it.
+
+Channel creation and default-term updates accept the SDK's `EpochTerms` model. Builders throw `RangeError` when an integer does not fit its stored format or the default slope cannot be represented exactly. Business constraints, such as valid epoch terms, are checked by the program.
 
 ## Tests
 
