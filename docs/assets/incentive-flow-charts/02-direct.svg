@@ -1,0 +1,52 @@
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/tokens.css"?>
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/fraunces.css"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-labelledby="direct-title direct-desc">
+  <title id="direct-title">One budget. Many AVAs.</title>
+  <desc id="direct-desc">Pledged credits allocate one global emission budget across AVA lanes. Illustrative alternatives divide the same one hundred credit budget between two AVAs at sixty and forty, or three AVAs at fifty, thirty and twenty. Adding a lane does not create extra emission. Pledges must be released before the same credits can be bid in clearing.</desc>
+  <g font-family="var(--font-sans)">
+    <rect x="0" y="0" width="1080" height="1080" fill="var(--paper)" />
+    <!-- Mayflower press kit lockup. -->
+    <g transform="translate(64 33)" role="img" aria-label="Mayflower" fill="var(--navy-900)">
+      <path d="M39.9028 19.9514C39.9028 30.9703 30.9703 39.9028 19.9514 39.9028C8.93255 39.9028 0 30.9703 0 19.9514C0 8.93255 8.93255 0 19.9514 0C30.9703 0 39.9028 8.93255 39.9028 19.9514Z" />
+      <g fill="var(--pink-200)" fill-rule="evenodd">
+        <path d="M29.3904 30.7852L21.3156 24.0517C20.5079 23.3781 19.3343 23.3781 18.5266 24.0517L10.4518 30.7852L7.94043 27.7736L16.0152 21.0401C18.2775 19.1536 21.5647 19.1536 23.827 21.0401L31.9018 27.7736L29.3904 30.7852Z" />
+        <path d="M19.9211 12.7232L29.3904 20.6196L31.9018 17.608L19.9211 7.61734L7.94043 17.608L10.4518 20.6196L19.9211 12.7232Z" />
+      </g>
+      <text x="52" y="27" font-family="var(--font-serif)" font-weight="700" font-size="22" letter-spacing="1.2">MAYFLOWER</text>
+    </g>
+    <text x="1016" y="62" font-size="18" fill="var(--navy-400)" font-weight="400" text-anchor="end" letter-spacing="var(--tracking-wider)">02 / DIRECT</text>
+    <text x="64" y="134" font-size="48" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">One budget. Many AVAs.</text>
+    <text x="64" y="181" font-size="26" fill="var(--navy-400)" font-weight="400" text-anchor="start">Pledged credits direct each AVA’s share of future emission.</text>
+    <path d="M 64 207 H 1016" fill="none" stroke="var(--ink-100)" stroke-width="1.5" />
+    <rect x="64" y="230" width="952" height="123" fill="var(--pink-100)" />
+    <text x="92" y="273" font-size="19" fill="var(--navy-900)" font-weight="700" text-anchor="start" letter-spacing="var(--tracking-wider)">GLOBAL CREDIT BUDGET</text>
+    <text x="92" y="325" font-size="44" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">100 credits</text>
+    <text x="360" y="323" font-size="25" fill="var(--navy-500)" font-weight="400" text-anchor="start">Two illustrative ways to divide the same budget</text>
+    <text x="64" y="409" font-size="29" fill="var(--navy-900)" font-weight="700" text-anchor="start">Two AVAs</text>
+    <rect x="64" y="436" width="567.2" height="90" fill="var(--navy-800)" />
+    <text x="349.6" y="475" font-size="23" fill="var(--paper)" font-weight="700" text-anchor="middle">AVA A</text>
+    <text x="349.6" y="509" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="middle">60 credits</text>
+    <rect x="635.2" y="436" width="376.8" height="90" fill="var(--navy-400)" />
+    <text x="825.6" y="475" font-size="23" fill="var(--paper)" font-weight="700" text-anchor="middle">AVA B</text>
+    <text x="825.6" y="509" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="middle">40 credits</text>
+    <text x="64" y="562" font-size="22" fill="var(--navy-500)" font-weight="400" text-anchor="start">Pledged-credit weights: 60 / 40</text>
+    <text x="1016" y="562" font-size="24" fill="var(--navy-900)" font-weight="700" text-anchor="end">Total: 100</text>
+    <text x="64" y="641" font-size="29" fill="var(--navy-900)" font-weight="700" text-anchor="start">Three AVAs</text>
+    <rect x="64" y="668" width="472.0" height="90" fill="var(--navy-800)" />
+    <text x="302.0" y="707" font-size="23" fill="var(--paper)" font-weight="700" text-anchor="middle">AVA A</text>
+    <text x="302.0" y="741" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="middle">50 credits</text>
+    <rect x="540.0" y="668" width="281.6" height="90" fill="var(--navy-400)" />
+    <text x="682.8" y="707" font-size="23" fill="var(--paper)" font-weight="700" text-anchor="middle">AVA B</text>
+    <text x="682.8" y="741" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="middle">30 credits</text>
+    <rect x="825.6" y="668" width="186.4" height="90" fill="var(--pink-200)" />
+    <text x="920.8000000000001" y="707" font-size="23" fill="var(--navy-900)" font-weight="700" text-anchor="middle">AVA C</text>
+    <text x="920.8000000000001" y="741" font-size="27" fill="var(--navy-900)" font-weight="400" text-anchor="middle">20 credits</text>
+    <text x="64" y="794" font-size="22" fill="var(--navy-500)" font-weight="400" text-anchor="start">Pledged-credit weights: 50 / 30 / 20</text>
+    <text x="1016" y="794" font-size="24" fill="var(--navy-900)" font-weight="700" text-anchor="end">Total: 100</text>
+    <text x="64" y="849" font-size="25" fill="var(--navy-500)" font-weight="400" text-anchor="start">The new AVA receives a share when it attracts credit pledges.</text>
+    <rect x="64" y="904" width="952" height="112" fill="var(--navy-800)" />
+    <text x="92" y="950" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">Adding AVAs divides the scheduled budget among more lanes.</text>
+    <text x="92" y="987" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">Pledges direct allocation; they do not increase total emission.</text>
+    <text x="64" y="1053" font-size="16" fill="var(--navy-400)" font-weight="400" text-anchor="start">MAYFLOWER  /  Intended system composition</text>
+  </g>
+</svg>

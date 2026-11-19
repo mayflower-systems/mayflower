@@ -1,0 +1,65 @@
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/tokens.css"?>
+<?xml-stylesheet type="text/css" href="../../../browser/theme/src/fraunces.css"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-labelledby="spend-title spend-desc">
+  <title id="spend-title">Many assets. One bidding unit.</title>
+  <desc id="spend-desc">AVM protocol fees fund separate reward clearing pots in their original reserve assets. Credits provide a common bidding unit across the pots. Bidders choose which assets to pursue and how much to commit. Each pot pays in its original asset, in proportion to surviving time-weighted shares. Credits remaining committed at finalization burn. The protocol need not convert the pots into a common token or assign them a common dollar price.</desc>
+  <defs>
+    <marker id="spend-reserve-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="var(--navy-800)" />
+    </marker>
+    <marker id="spend-credits-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="var(--pink-500)" />
+    </marker>
+  </defs>
+  <g font-family="var(--font-sans)">
+    <rect x="0" y="0" width="1080" height="1080" fill="var(--paper)" />
+    <!-- Mayflower press kit lockup. -->
+    <g transform="translate(64 33)" role="img" aria-label="Mayflower" fill="var(--navy-900)">
+      <path d="M39.9028 19.9514C39.9028 30.9703 30.9703 39.9028 19.9514 39.9028C8.93255 39.9028 0 30.9703 0 19.9514C0 8.93255 8.93255 0 19.9514 0C30.9703 0 39.9028 8.93255 39.9028 19.9514Z" />
+      <g fill="var(--pink-200)" fill-rule="evenodd">
+        <path d="M29.3904 30.7852L21.3156 24.0517C20.5079 23.3781 19.3343 23.3781 18.5266 24.0517L10.4518 30.7852L7.94043 27.7736L16.0152 21.0401C18.2775 19.1536 21.5647 19.1536 23.827 21.0401L31.9018 27.7736L29.3904 30.7852Z" />
+        <path d="M19.9211 12.7232L29.3904 20.6196L31.9018 17.608L19.9211 7.61734L7.94043 17.608L10.4518 20.6196L19.9211 12.7232Z" />
+      </g>
+      <text x="52" y="27" font-family="var(--font-serif)" font-weight="700" font-size="22" letter-spacing="1.2">MAYFLOWER</text>
+    </g>
+    <text x="1016" y="62" font-size="18" fill="var(--navy-400)" font-weight="400" text-anchor="end" letter-spacing="var(--tracking-wider)">03 / SPEND</text>
+    <text x="64" y="134" font-size="48" fill="var(--navy-900)" font-weight="600" text-anchor="start" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">Many assets. One bidding unit.</text>
+    <text x="64" y="181" font-size="26" fill="var(--navy-400)" font-weight="400" text-anchor="start">Credits connect participation to heterogeneous reward pots.</text>
+    <path d="M 64 207 H 1016" fill="none" stroke="var(--ink-100)" stroke-width="1.5" />
+    <text x="540" y="262" font-size="28" fill="var(--navy-800)" font-weight="700" text-anchor="middle">AVM protocol fees arrive in their original reserve assets</text>
+    <path d="M 214 290 L 214 337" fill="none" stroke="var(--navy-800)" stroke-width="3" marker-end="url(#spend-reserve-arrow)" />
+    <rect x="64" y="337" width="300" height="247" fill="var(--mist)" />
+    <text x="214" y="380" font-size="17" fill="var(--navy-500)" font-weight="700" text-anchor="middle" letter-spacing="var(--tracking-wider)">REWARD CLEARING</text>
+    <rect x="186" y="401" width="56" height="56" fill="var(--navy-800)" />
+    <text x="214" y="439" font-size="28" fill="var(--paper)" font-weight="700" text-anchor="middle">A</text>
+    <text x="214" y="498" font-size="30" fill="var(--navy-900)" font-weight="700" text-anchor="middle">Reserve A pot</text>
+    <text x="214" y="542" font-size="23" fill="var(--navy-500)" font-weight="400" text-anchor="middle">Pays bidders in A</text>
+    <path d="M 540 290 L 540 337" fill="none" stroke="var(--navy-800)" stroke-width="3" marker-end="url(#spend-reserve-arrow)" />
+    <rect x="390" y="337" width="300" height="247" fill="var(--mist)" />
+    <text x="540" y="380" font-size="17" fill="var(--navy-500)" font-weight="700" text-anchor="middle" letter-spacing="var(--tracking-wider)">REWARD CLEARING</text>
+    <rect x="512" y="401" width="56" height="56" fill="var(--navy-400)" />
+    <text x="540" y="439" font-size="28" fill="var(--paper)" font-weight="700" text-anchor="middle">B</text>
+    <text x="540" y="498" font-size="30" fill="var(--navy-900)" font-weight="700" text-anchor="middle">Reserve B pot</text>
+    <text x="540" y="542" font-size="23" fill="var(--navy-500)" font-weight="400" text-anchor="middle">Pays bidders in B</text>
+    <path d="M 866 290 L 866 337" fill="none" stroke="var(--navy-800)" stroke-width="3" marker-end="url(#spend-reserve-arrow)" />
+    <rect x="716" y="337" width="300" height="247" fill="var(--mist)" />
+    <text x="866" y="380" font-size="17" fill="var(--navy-500)" font-weight="700" text-anchor="middle" letter-spacing="var(--tracking-wider)">REWARD CLEARING</text>
+    <rect x="838" y="401" width="56" height="56" fill="var(--pink-200)" />
+    <text x="866" y="439" font-size="28" fill="var(--navy-900)" font-weight="700" text-anchor="middle">C</text>
+    <text x="866" y="498" font-size="30" fill="var(--navy-900)" font-weight="700" text-anchor="middle">Reserve C pot</text>
+    <text x="866" y="542" font-size="23" fill="var(--navy-500)" font-weight="400" text-anchor="middle">Pays bidders in C</text>
+    <path d="M 540 738 L 540 723" fill="none" stroke="var(--pink-500)" stroke-width="4" />
+    <path d="M 540 677 L 540 649" fill="none" stroke="var(--pink-500)" stroke-width="4" />
+    <path d="M 540 649 L 214 649 L 214 584" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#spend-credits-arrow)" />
+    <path d="M 540 649 L 540 584" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#spend-credits-arrow)" />
+    <path d="M 540 649 L 866 649 L 866 584" fill="none" stroke="var(--pink-500)" stroke-width="3.5" marker-end="url(#spend-credits-arrow)" />
+    <text x="540" y="705" font-size="25" fill="var(--pink-600)" font-weight="700" text-anchor="middle">Choose pots · commit credits · receive weighted shares</text>
+    <rect x="328" y="738" width="424" height="120" fill="var(--pink-100)" />
+    <text x="540" y="786" font-size="38" fill="var(--navy-900)" font-weight="600" text-anchor="middle" font-family="var(--font-serif)" letter-spacing="var(--tracking-tight)">Credits · $M</text>
+    <text x="540" y="829" font-size="27" fill="var(--navy-500)" font-weight="400" text-anchor="middle">A common bidding unit</text>
+    <rect x="64" y="904" width="952" height="112" fill="var(--navy-800)" />
+    <text x="92" y="950" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">Bidders decide what each asset is worth to them.</text>
+    <text x="92" y="987" font-size="27" fill="var(--paper)" font-weight="400" text-anchor="start">Credits still committed at finalization are burned.</text>
+    <text x="64" y="1053" font-size="16" fill="var(--navy-400)" font-weight="400" text-anchor="start">MAYFLOWER  /  Intended system composition</text>
+  </g>
+</svg>

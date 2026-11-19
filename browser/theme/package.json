@@ -14,6 +14,8 @@
     "./base.css": "./src/base.css",
     "./typography.css": "./src/typography.css",
     "./fonts.css": "./src/fonts.css",
+    "./fraunces.css": "./src/fraunces.css",
+    "./fonts/Fraunces.woff2": "./src/fonts/Fraunces.woff2",
     "./assets/logomark.svg": "./src/assets/logomark.svg",
     "./assets/logomark-inverted.svg": "./src/assets/logomark-inverted.svg",
     "./assets/splash.svg": "./src/assets/splash.svg"
