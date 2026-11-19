@@ -4,13 +4,13 @@ This is a standalone companion to the broader Mayflower incentive bundle. It use
 
 ## Reading order and files
 
-| File stem | Purpose |
-| --- | --- |
-| `00-master` | One shared tree, a core allocation, and an optional family pool. |
-| `01-earn-through-the-tree` | How a holding’s credit attribution divides among its holder and earning ancestors. |
-| `02-share-with-the-family` | How a parent’s sharing percentage and children’s credit escrow determine family allocations. |
-| `03-benefit-across-branches` | Why someone can benefit from participation in a sibling’s branch. |
-| `04-choose-a-link` | Ordinary admission, top-level auctions, family escrow, and permanent parent links. |
+| File stem                    | Purpose                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `00-master`                  | One shared tree, a core allocation, and an optional family pool.                             |
+| `01-earn-through-the-tree`   | How a holding’s credit attribution divides among its holder and earning ancestors.           |
+| `02-share-with-the-family`   | How a parent’s sharing percentage and children’s credit escrow determine family allocations. |
+| `03-benefit-across-branches` | Why someone can benefit from participation in a sibling’s branch.                            |
+| `04-choose-a-link`           | Ordinary admission, top-level auctions, family escrow, and permanent parent links.           |
 
 Each chart is supplied as an editable SVG and a high-resolution PNG. The master is 1600 × 1120 in SVG and 3200 × 2240 in PNG. Companion charts are 1080 × 1080 in SVG and 2160 × 2160 in PNG.
 
@@ -43,12 +43,12 @@ The diagrams show this branch, not every member of the network. For the example:
 - Eligibility, escrow balances, and sharing fractions stay unchanged during the example interval. All figures are illustrative, not deployment defaults or promised earning rates.
 
 | Recipient | Core allocation from Dana’s source | Family sharing adjustment | Final earned allocation |
-| --- | ---: | ---: | ---: |
-| Alice | 30 | −15 | 15 |
-| Bob | 30 | +5 | 35 |
-| Carol | 0 | +10 | 10 |
-| Dana | 240 | 0 | 240 |
-| **Total** | **300** | **0** | **300** |
+| --------- | ---------------------------------: | ------------------------: | ----------------------: |
+| Alice     |                                 30 |                       −15 |                      15 |
+| Bob       |                                 30 |                        +5 |                      35 |
+| Carol     |                                  0 |                       +10 |                      10 |
+| Dana      |                                240 |                         0 |                     240 |
+| **Total** |                            **300** |                     **0** |                 **300** |
 
 Alice’s 15-credit pool is divided by Bob and Carol’s 100:200 escrow ratio. The escrow principal remains 300. Its equality to the example’s 300-credit attribution is coincidental: escrow is existing inventory, while the attribution is new earned entitlement. The diagram does not spend principal to fund the pool or automatically compound the earnings into it.
 

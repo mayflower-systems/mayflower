@@ -264,6 +264,9 @@ catalogs:
     fastestsmallesttextencoderdecoder:
       specifier: 1.0.22
       version: 1.0.22
+    litesvm:
+      specifier: 0.2.0
+      version: 0.2.0
     prettier:
       specifier: 3.8.3
       version: 3.8.3
@@ -343,6 +346,36 @@ importers:
         specifier: 'catalog:'
         version: 6.0.0
     devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
+  reward-clearing/ts/reward-clearing-sdk-litesvm-tests:
+    devDependencies:
+      '@mayflower-sys/fixed-number-ts':
+        specifier: workspace:*
+        version: link:../../../fixed-number/ts/fixed-number-ts
+      '@mayflower-sys/reward-clearing-sdk-ts':
+        specifier: workspace:*
+        version: link:../reward-clearing-sdk-ts
+      '@mayflower-sys/reward-clearing-sol-client':
+        specifier: workspace:*
+        version: link:../../sol-programs/reward-clearing/ts
+      '@solana/spl-token':
+        specifier: 'catalog:'
+        version: 0.4.15(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@7.0.2))(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@7.0.2)
+      '@solana/web3.js':
+        specifier: 'catalog:'
+        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      fastestsmallesttextencoderdecoder:
+        specifier: 'catalog:'
+        version: 1.0.22
+      litesvm:
+        specifier: 'catalog:'
+        version: 0.2.0(bufferutil@4.1.0)(typescript@7.0.2)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -793,6 +826,36 @@ packages:
 
   json-stringify-safe@5.0.1:
     resolution: {integrity: sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==}
+
+  litesvm-darwin-arm64@0.2.0:
+    resolution: {integrity: sha512-fqGE7Z6iT+5Xob9o1xs0N7Tf3c1meJxDERf7Z6T7Loqm0seyUsfjM0gTOvMJHiWvvnOx+qIo/Cjhtp84Kb9v8w==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  litesvm-darwin-x64@0.2.0:
+    resolution: {integrity: sha512-blRxD4y0FIx3E27Iv7oX0uz9x3v9KPD+++HLatBx5K5bh57qrAStUINsgT6MchYrxxOE0T2xktJaiSQSEMxWSA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  litesvm-linux-x64-gnu@0.2.0:
+    resolution: {integrity: sha512-2PQcLvn5c8GLGPp/vLCFaladWe61wbtwwTlIMLEfPeU5f88jBPOaEryO85+0FHZS1awbT97caa55sFDpAO4CWw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  litesvm-linux-x64-musl@0.2.0:
+    resolution: {integrity: sha512-9vAYFIicGjZIlwoCBii6yJmfIUVS4cdF0CxoAL+DGexTBLECk+Tr+WEFEXsvsYe4s81jxP04TTiUnasj/EaIcw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  litesvm@0.2.0:
+    resolution: {integrity: sha512-75+ZMkSFY5ynI3S+vCMnZv1wcILg5iNEj21B+XE/G3/P2dfTPj+rbdNM1q3eLFdlnXdewhiB4BLypKsBnQTSOw==}
+    engines: {node: '>= 10'}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -1264,6 +1327,33 @@ snapshots:
       - utf-8-validate
 
   json-stringify-safe@5.0.1: {}
+
+  litesvm-darwin-arm64@0.2.0:
+    optional: true
+
+  litesvm-darwin-x64@0.2.0:
+    optional: true
+
+  litesvm-linux-x64-gnu@0.2.0:
+    optional: true
+
+  litesvm-linux-x64-musl@0.2.0:
+    optional: true
+
+  litesvm@0.2.0(bufferutil@4.1.0)(typescript@7.0.2):
+    dependencies:
+      '@solana/web3.js': 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)
+      bs58: 4.0.1
+    optionalDependencies:
+      litesvm-darwin-arm64: 0.2.0
+      litesvm-darwin-x64: 0.2.0
+      litesvm-linux-x64-gnu: 0.2.0
+      litesvm-linux-x64-musl: 0.2.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - typescript
+      - utf-8-validate
 
   ms@2.1.3: {}
 
