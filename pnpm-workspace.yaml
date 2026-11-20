@@ -5,6 +5,7 @@ packages:
   - "reward-clearing/ts/*"
   - "avm/sol-programs/linear-engine/ts"
   - "weighted-emitter/sol-programs/weighted-emitter/ts"
+  - "weighted-emitter/ts/*"
   - "browser/*"
 
 strictPeerDependencies: false
