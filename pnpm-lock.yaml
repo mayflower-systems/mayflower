@@ -443,6 +443,28 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
 
+  weighted-emitter/ts/weighted-emitter-sdk-ts:
+    dependencies:
+      '@mayflower-sys/fixed-number-ts':
+        specifier: workspace:*
+        version: link:../../../fixed-number/ts/fixed-number-ts
+      '@mayflower-sys/weighted-emitter-sol-client':
+        specifier: workspace:*
+        version: link:../../sol-programs/weighted-emitter/ts
+      '@solana/web3.js':
+        specifier: 'catalog:'
+        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)
+      buffer:
+        specifier: 'catalog:'
+        version: 6.0.3
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+
 packages:
 
   '@babel/runtime@7.29.10':

@@ -1,0 +1,29 @@
+{
+  "name": "@mayflower-sys/weighted-emitter-sdk-ts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@mayflower-sys/fixed-number-ts": "workspace:*",
+    "@mayflower-sys/weighted-emitter-sol-client": "workspace:*",
+    "@solana/web3.js": "catalog:",
+    "buffer": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
