@@ -1,5 +1,6 @@
 # Voluntary upgrade of Nirvana & Samsara
-*How existing positions on Nirvana & Samsara will be given the choice to transfer into Mayflower's connected ecosystem*
+
+_How existing positions on Nirvana & Samsara will be given the choice to transfer into Mayflower's connected ecosystem_
 
 ## Summary
 

@@ -10,19 +10,19 @@ effects, and persist the entire receipt atomically.
 signers; they are provisional until source, auction, and token accounts are
 added. An error rolls back Anchor's preliminary account initialization too.
 
-| Instruction | Authorization | Kernel action / remaining work |
-| --- | --- | --- |
-| `create_network` | Authority and rent payer | Validate immutable terms; create an empty protocol and bind its credit mint. |
-| `register_lane` | Network authority and rent payer | Authenticate the current earnings baseline; register and persist a permanent asset slot. |
-| `set_balance` | Network authority and rent payer | Authenticate current earnings and the complete ancestry; settle old eligibility and store all changed records with the eligible position change. |
-| `join_at_top_level` | Winning owner and rent payer | Authenticate and consume a scarce-seat auction award once; burn its price and activate the node atomically. |
-| `join_under_parent` | New owner and rent payer | Enforce the maximum fee; pay the parent's owner, increment the offer and create the permanent child. |
-| `set_offer` | Node owner | Replace the ordinary admission price and increment. |
-| `set_sharing` | Node owner | Settle every source under old terms, then apply the prospective sharing rate. |
-| `set_credit_stake` | Child owner | Settle every parent source and old gifts; transfer the principal delta into or out of exclusive escrow. |
-| `collect_credits` | Node owner | Mint already-accrued net whole credits and retain the fractional claim. |
-| `settle_node_in_lane` | Permissionless | Settle an existing lane position and complete ancestry against authenticated earnings. |
-| `settle_family` | Permissionless | Settle every parent source and credit the child's incoming gifts. |
+| Instruction           | Authorization                    | Kernel action / remaining work                                                                                                                   |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `create_network`      | Authority and rent payer         | Validate immutable terms; create an empty protocol and bind its credit mint.                                                                     |
+| `register_lane`       | Network authority and rent payer | Authenticate the current earnings baseline; register and persist a permanent asset slot.                                                         |
+| `set_balance`         | Network authority and rent payer | Authenticate current earnings and the complete ancestry; settle old eligibility and store all changed records with the eligible position change. |
+| `join_at_top_level`   | Winning owner and rent payer     | Authenticate and consume a scarce-seat auction award once; burn its price and activate the node atomically.                                      |
+| `join_under_parent`   | New owner and rent payer         | Enforce the maximum fee; pay the parent's owner, increment the offer and create the permanent child.                                             |
+| `set_offer`           | Node owner                       | Replace the ordinary admission price and increment.                                                                                              |
+| `set_sharing`         | Node owner                       | Settle every source under old terms, then apply the prospective sharing rate.                                                                    |
+| `set_credit_stake`    | Child owner                      | Settle every parent source and old gifts; transfer the principal delta into or out of exclusive escrow.                                          |
+| `collect_credits`     | Node owner                       | Mint already-accrued net whole credits and retain the fractional claim.                                                                          |
+| `settle_node_in_lane` | Permissionless                   | Settle an existing lane position and complete ancestry against authenticated earnings.                                                           |
+| `settle_family`       | Permissionless                   | Settle every parent source and credit the child's incoming gifts.                                                                                |
 
 Rent payers can differ from owners and authorities. A settlement caller does
 not need the owner's signature. Ordinary joins do not need a parent's signature;

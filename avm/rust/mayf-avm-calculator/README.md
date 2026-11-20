@@ -26,15 +26,15 @@ the returned bounds.
 
 `AvmCalculator::new(ramp_scalar)` owns the shared calculation rules:
 
-| Method                  | Result                                                     |
-| ----------------------- | ---------------------------------------------------------- |
-| `price`                 | Current price bounds at pricing progress                   |
-| `backing`               | Required backing bounds for all circulating supply         |
-| `quote_issue`           | Reserve cost bounds and next state                         |
-| `quote_redeem`          | Reserve proceeds bounds and contracted next state          |
-| `quote_issue_at_floor`  | Floor cost bounds and increased circulation                |
-| `quote_redeem_at_floor` | Floor proceeds bounds and decreased circulation            |
-| `verify_floor_raise`    | Accepted next state, proposed backing, and backing change  |
+| Method                  | Result                                                    |
+| ----------------------- | --------------------------------------------------------- |
+| `price`                 | Current price bounds at pricing progress                  |
+| `backing`               | Required backing bounds for all circulating supply        |
+| `quote_issue`           | Reserve cost bounds and next state                        |
+| `quote_redeem`          | Reserve proceeds bounds and contracted next state         |
+| `quote_issue_at_floor`  | Floor cost bounds and increased circulation               |
+| `quote_redeem_at_floor` | Floor proceeds bounds and decreased circulation           |
+| `verify_floor_raise`    | Accepted next state, proposed backing, and backing change |
 
 `AvmCalculator` sends the required spans for an operation in at most one batch,
 including any evaluations needed for contraction or floor-raise verification.

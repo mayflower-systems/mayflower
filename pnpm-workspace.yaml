@@ -50,6 +50,8 @@ catalog:
   borsh: 2.0.0
   bs58: 6.0.0
   buffer: 6.0.3
+  # web3.js v1 API and a GNU/Linux binding compatible with Ubuntu 22.04.
+  litesvm: 0.2.0
   # A peer dependency of @solana/codecs-strings, which @solana/spl-token pulls
   # in. autoInstallPeers is off, so packages that use spl-token must list it.
   fastestsmallesttextencoderdecoder: 1.0.22
