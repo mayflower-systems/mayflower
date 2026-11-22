@@ -1,0 +1,21 @@
+{
+  "name": "@mayflower-sys/weighted-emitter-sdk-litesvm-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test --test-isolation=none --test-concurrency=1 \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@mayflower-sys/fixed-number-ts": "workspace:*",
+    "@mayflower-sys/weighted-emitter-sdk-ts": "workspace:*",
+    "@mayflower-sys/weighted-emitter-sol-client": "workspace:*",
+    "@solana/spl-token": "catalog:",
+    "@solana/web3.js": "catalog:",
+    "@types/node": "catalog:",
+    "fastestsmallesttextencoderdecoder": "catalog:",
+    "litesvm": "catalog:",
+    "typescript": "catalog:"
+  }
+}

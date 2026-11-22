@@ -75,3 +75,6 @@ jobs:
 
       - name: Reward Clearing SDK runtime tests
         run: pnpm --filter @mayflower-sys/reward-clearing-sdk-litesvm-tests test
+
+      - name: Weighted Emitter SDK runtime tests
+        run: pnpm --filter @mayflower-sys/weighted-emitter-sdk-litesvm-tests test
